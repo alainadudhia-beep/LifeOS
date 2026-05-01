@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import { getDays, TIMELINE_WIDTH } from '../utils/timeline'
 import { DAY_WIDTH } from '../data/initialData'
 import './LifeModules.css'

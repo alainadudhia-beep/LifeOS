@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { migrateToSupabase } from '../lib/db'
 
 export default function AuthGate({ children }) {
   const [session, setSession] = useState(undefined)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) migrateToSupabase()
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
+      if (session) migrateToSupabase()
     })
     return () => subscription.unsubscribe()
   }, [])

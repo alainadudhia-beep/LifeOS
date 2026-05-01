@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import { INITIAL_THIS_WEEK } from '../data/initialData'
 import './ThisWeek.css'
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import { INITIAL_TRACKS, INITIAL_COMMITMENTS, STATUSES, STATUS_MIGRATION, DAY_WIDTH } from '../data/initialData'
 import { TIMELINE_WIDTH, getDays, getMonths, dateToPx, DAY_ABBR, MONTH_NAMES, currentStatus } from '../utils/timeline'
 import CareerTrackRow from './CareerTrackRow'

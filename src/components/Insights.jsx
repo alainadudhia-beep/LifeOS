@@ -241,37 +241,64 @@ const Insights = forwardRef(function Insights(_, ref) {
     addInsights(newInsights) {
       if (!newInsights?.length) return
       setItems(prev => {
-        const existingTexts = new Set(prev.map(it => it.text.toLowerCase().trim()))
         let next = [...prev]
         const toAppend = []
+        const handledTopics = []
 
         for (const ins of newInsights) {
           const text = ins.text.replace(/—/g, '-').trim()
-          if (existingTexts.has(text.toLowerCase())) continue
+          if (next.some(it => it.text.toLowerCase().trim() === text.toLowerCase())) continue
 
           const topic = insightTopic(text)
 
-          // Skip if a batch item already covers the same topic
-          if (toAppend.some(a => insightTopic(a.text) === topic || topicsOverlap(insightTopic(a.text), topic))) continue
+          // Skip if this batch already handled the same topic
+          if (handledTopics.some(t => t === topic || topicsOverlap(t, topic))) continue
+          handledTopics.push(topic)
 
-          const newItem = {
-            id: `ins-claude-${Date.now()}-${Math.random()}`,
-            type: 'claude',
-            text,
-            positive: ins.positive ?? false,
-            actionable: ins.actionable ?? false,
-            completed: false,
-            completed_at: null,
-            created_at: new Date().toISOString(),
+          if (ins.positive) {
+            // If a completed item already covers this topic, suppress — it's already a win
+            const alreadyWon = next.some(it =>
+              it.completed &&
+              (insightTopic(it.text) === topic || topicsOverlap(insightTopic(it.text), topic))
+            )
+            if (alreadyWon) continue
+
+            // If there's an active item covering this topic, complete it with the positive text
+            const activeIdx = next.findIndex(it =>
+              !it.completed &&
+              (insightTopic(it.text) === topic || topicsOverlap(insightTopic(it.text), topic))
+            )
+            if (activeIdx !== -1) {
+              next = next.map((it, i) => i === activeIdx
+                ? { ...it, text, positive: true, completed: true, completed_at: new Date().toISOString() }
+                : it
+              )
+            } else {
+              // No existing item — add as a fresh win
+              toAppend.push({
+                id: `ins-claude-${Date.now()}-${Math.random()}`,
+                type: 'claude', text,
+                positive: true, actionable: false,
+                completed: false, completed_at: null,
+                created_at: new Date().toISOString(),
+              })
+            }
+          } else {
+            // Non-positive: replace same-topic CLAUDE items (track items suppressed at render time)
+            next = next.filter(it =>
+              it.completed ||
+              it.type === 'track' ||
+              (insightTopic(it.text) !== topic && !topicsOverlap(insightTopic(it.text), topic))
+            )
+            toAppend.push({
+              id: `ins-claude-${Date.now()}-${Math.random()}`,
+              type: 'claude', text,
+              positive: ins.positive ?? false,
+              actionable: ins.actionable ?? false,
+              completed: false, completed_at: null,
+              created_at: new Date().toISOString(),
+            })
           }
-
-          // Remove same-topic CLAUDE items from storage (track items are handled at render time)
-          next = next.filter(it =>
-            it.completed ||
-            it.type === 'track' ||
-            (insightTopic(it.text) !== topic && !topicsOverlap(insightTopic(it.text), topic))
-          )
-          toAppend.push(newItem)
         }
 
         return toAppend.length || next.length !== prev.length ? [...next, ...toAppend] : prev
@@ -301,54 +328,71 @@ const Insights = forwardRef(function Insights(_, ref) {
     return it.actionable || ACTION_KEYWORDS.test(it.text) || /still to capture/i.test(it.text)
   }
 
-  const claudeObservations = items.filter(it => it.type === 'claude' && !it.completed && !isActionable(it))
-  const claudeActions      = items.filter(it => it.type === 'claude' && !it.completed && isActionable(it))
+  const HEALTH_WORDS = /\b(water|hydrat|mood|sleep|diet|exercise|alcohol|drink|steps|health|eczema|hayfever|period|cycle|fruit|sugar|protein|energy|focus|walk|yoga|pilates|gym|caffeine|step)\b/i
 
-  const sortedInsights = [
-    ...visibleAuto.filter(a => a.positive),
-    ...claudeObservations.filter(it => it.positive),
-    ...visibleAuto.filter(a => !a.positive),
-    ...claudeObservations.filter(it => !it.positive),
-  ]
-  const insightItems   = sortedInsights
   const tracks = readTracks()
   const trackPriority = id => {
     const t = tracks.find(t => t.id === id)
     return PRIORITY_ORDER[t?.priority] ?? 3
   }
 
-  const allClaudeText = items.filter(it => it.type === 'claude' && !it.completed).map(it => it.text.toLowerCase())
-  const trackItems = items.filter(it => it.type === 'track' && !it.completed).filter(it => {
-    const trackName = insightTopic(it.text)
-    return !allClaudeText.some(t => t.includes(trackName))
-  }).sort((a, b) => trackPriority(a.track_id) - trackPriority(b.track_id))
+  const claudeActive = items.filter(it => it.type === 'claude' && !it.completed)
+  const claudeActiveText = claudeActive.map(it => it.text.toLowerCase())
 
-  // Match each Claude action to its track priority if the text mentions a known track
-  const claudeActionsSorted = [...claudeActions].sort((a, b) => {
-    const pa = tracks.reduce((best, t) =>
-      a.text.toLowerCase().includes(t.name.toLowerCase())
+  // Suppress track items (active or completed) when Claude already covers that topic
+  function coveredByClaude(item) {
+    const trackName = insightTopic(item.text)
+    return claudeActiveText.some(t => t.includes(trackName))
+  }
+
+  function textTrackPriority(text) {
+    return tracks.reduce((best, t) =>
+      text.toLowerCase().includes(t.name.toLowerCase())
         ? Math.min(best, PRIORITY_ORDER[t.priority] ?? 3)
         : best, 4)
-    const pb = tracks.reduce((best, t) =>
-      b.text.toLowerCase().includes(t.name.toLowerCase())
-        ? Math.min(best, PRIORITY_ORDER[t.priority] ?? 3)
-        : best, 4)
-    return pa - pb
-  })
+  }
 
-  const actionItems = [...trackItems, ...claudeActionsSorted]
+  const trackItems = items.filter(it => it.type === 'track' && !it.completed)
+    .filter(it => !coveredByClaude(it))
+    .sort((a, b) => trackPriority(a.track_id) - trackPriority(b.track_id))
+
+  const claudeCareerActions = claudeActive.filter(it => isActionable(it) && !HEALTH_WORDS.test(it.text))
+  const claudeCareerActionsSorted = [...claudeCareerActions].sort((a, b) => textTrackPriority(a.text) - textTrackPriority(b.text))
+
+  // Completed track items are suppressed if Claude already has a positive insight covering that track
   const completedItems = items.filter(it => it.completed)
+    .filter(it => it.type !== 'track' || !coveredByClaude(it))
+    .sort((a, b) => {
+      const pa = a.track_id ? trackPriority(a.track_id) : textTrackPriority(a.text)
+      const pb = b.track_id ? trackPriority(b.track_id) : textTrackPriority(b.text)
+      return pa - pb
+    })
+
+  const winItems = [
+    ...visibleAuto.filter(a => a.positive),
+    ...claudeActive.filter(it => it.positive && !isActionable(it))
+      .sort((a, b) => textTrackPriority(a.text) - textTrackPriority(b.text)),
+    ...completedItems,
+  ]
+
+  const actionItems = [...trackItems, ...claudeCareerActionsSorted]
+
+  const improveItems = [
+    ...visibleAuto.filter(a => !a.positive),
+    ...claudeActive.filter(it => !it.positive && !isActionable(it))
+      .sort((a, b) => textTrackPriority(a.text) - textTrackPriority(b.text)),
+    ...claudeActive.filter(it => isActionable(it) && HEALTH_WORDS.test(it.text))
+      .sort((a, b) => textTrackPriority(a.text) - textTrackPriority(b.text)),
+  ]
+
+  const isEmpty = winItems.length === 0 && actionItems.length === 0 && improveItems.length === 0
 
   return (
     <div className="ins-panel">
-      <Section title="Insights" items={insightItems}   onDismiss={id => dismiss(id)} />
-      <Section title="Actions"  items={actionItems}    onDismiss={id => dismiss(id)} getAge={itemAgeDays} />
-      {completedItems.length > 0 && (
-        <Section title="Done"   items={completedItems} onDismiss={id => dismiss(id)} faded />
-      )}
-      {insightItems.length === 0 && actionItems.length === 0 && completedItems.length === 0 && (
-        <p className="ins-empty">Log a check-in to get insights</p>
-      )}
+      <Section title="Wins"         items={winItems}     onDismiss={id => dismiss(id)} />
+      <Section title="Actions"      items={actionItems}  onDismiss={id => dismiss(id)} getAge={itemAgeDays} />
+      <Section title="Improvements" items={improveItems} onDismiss={id => dismiss(id)} />
+      {isEmpty && <p className="ins-empty">Log a check-in to get insights</p>}
     </div>
   )
 })

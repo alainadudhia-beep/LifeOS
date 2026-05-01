@@ -1,3 +1,5 @@
+import { dbWrite } from '../lib/db'
+
 const LIFE_LOGS_KEY = 'lifetracker-life-logs'
 const TRACKS_KEY    = 'lifetracker-tracks-v3'
 
@@ -85,7 +87,7 @@ function mergeModule(existing, parsed, moduleKey) {
         const newCount = prevCount + 1
         out[`_${k}_sum`] = newSum
         out[`_${k}_n`]   = newCount
-        out[k] = Math.round((newSum / newCount) * 10) / 10
+        out[k] = Math.round(newSum / newCount)
       } else {
         out[k]           = v
         out[`_${k}_sum`] = v
@@ -148,8 +150,7 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
 
   logs[today] = todayLog
   writeJson(LIFE_LOGS_KEY, logs)
-  console.log('[applyCheckin] wrote to', today, todayLog)
-  console.log('[applyCheckin] localStorage now has:', JSON.parse(localStorage.getItem(LIFE_LOGS_KEY))?.[today])
+  dbWrite(LIFE_LOGS_KEY, logs)
   window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
 
   // Apply career track updates + new track creation
@@ -209,10 +210,12 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
     if (changed) {
       if (Array.isArray(tracks)) {
         writeJson(TRACKS_KEY, tracksArr)
+        dbWrite(TRACKS_KEY, tracksArr)
       } else {
         const updated = {}
         for (const t of tracksArr) updated[t.id] = t
         writeJson(TRACKS_KEY, updated)
+        dbWrite(TRACKS_KEY, updated)
       }
       window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
       onTracksUpdated?.()
