@@ -15,7 +15,7 @@ function fmtDate(iso) {
 
 export default function MobileTodayModules() {
   const [logs, setLogs] = useLocalStorage('lifetracker-life-logs', {})
-  const [activeModule, setActiveModule] = useState(null)
+  const [activeModule, setActiveModule] = useState(null) // module key or 'journal'
   const [gratEdit, setGratEdit] = useState(false)
 
   useEffect(() => {
@@ -31,6 +31,7 @@ export default function MobileTodayModules() {
 
   const today = todayIso()
   const todayLog = logs[today] ?? {}
+  const transcripts = todayLog.transcripts ?? []
 
   function setFieldValue(moduleKey, fieldKey, value) {
     setLogs(prev => ({
@@ -67,7 +68,9 @@ export default function MobileTodayModules() {
     setActiveModule(key)
   }
 
-  const activeMod = activeModule ? MODULES.find(m => m.key === activeModule) : null
+  const activeMod = activeModule && activeModule !== 'journal'
+    ? MODULES.find(m => m.key === activeModule)
+    : null
 
   return (
     <div className="mlm-panel">
@@ -104,6 +107,18 @@ export default function MobileTodayModules() {
           <span className="mlm-card-name">Cycle</span>
           {todayLog.period && <span className="mlm-card-value">Period</span>}
         </button>
+
+        {/* Journal */}
+        <button
+          className={`mlm-card ${transcripts.length ? 'mlm-card--has-journal' : ''} ${activeModule === 'journal' ? 'mlm-card--active' : ''}`}
+          onClick={() => transcripts.length && setActiveModule('journal')}
+        >
+          <span className="mlm-card-emoji">📝</span>
+          <span className="mlm-card-name">Journal</span>
+          {transcripts.length > 0 && (
+            <span className="mlm-card-value">{transcripts.length} {transcripts.length === 1 ? 'entry' : 'entries'}</span>
+          )}
+        </button>
       </div>
 
       {/* Gratitude */}
@@ -135,7 +150,7 @@ export default function MobileTodayModules() {
         )}
       </div>
 
-      {/* Bottom sheet */}
+      {/* Module edit bottom sheet */}
       {activeMod && createPortal(
         <>
           <div className="mlm-overlay" onClick={() => setActiveModule(null)} />
@@ -156,6 +171,34 @@ export default function MobileTodayModules() {
                   value={(todayLog[activeMod.key] ?? {})[field.key] ?? null}
                   onSet={v => setFieldValue(activeMod.key, field.key, v)}
                 />
+              ))}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Journal read-only bottom sheet */}
+      {activeModule === 'journal' && createPortal(
+        <>
+          <div className="mlm-overlay" onClick={() => setActiveModule(null)} />
+          <div className="mlm-sheet">
+            <div className="mlm-sheet-handle" />
+            <div className="mlm-sheet-header">
+              <span className="mlm-sheet-title">📝 Journal</span>
+              <span className="mlm-sheet-date">{fmtDate(today)}</span>
+              <button className="mlm-sheet-close" onClick={() => setActiveModule(null)}>✕</button>
+            </div>
+            <div className="mlm-journal-entries">
+              {transcripts.map((t, i) => (
+                <div key={i} className="mlm-journal-entry">
+                  {transcripts.length > 1 && (
+                    <div className="mlm-journal-time">
+                      {new Date(t.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                  <p className="mlm-journal-text">{t.text}</p>
+                </div>
               ))}
             </div>
           </div>

@@ -157,7 +157,7 @@ export default function App() {
                 <LifeModules mobile />
               </div>
             )}
-            {mobileTab === 'work' && <Timeline />}
+            {mobileTab === 'work' && <Timeline mobile />}
           </div>
 
           <nav className="app-mobile-tabs">

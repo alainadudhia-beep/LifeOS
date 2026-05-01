@@ -237,7 +237,14 @@ function fmtDate(iso) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function LifeModules({ mobile } = {}) {
-  const days       = mobile ? allDays.filter(d => d.toISOString().slice(0, 10) <= todayIso) : allDays
+  const days = mobile ? (() => {
+    const d = new Date(); d.setDate(d.getDate() - 6)
+    const sixAgo = d.toISOString().slice(0, 10)
+    return allDays.filter(day => {
+      const iso = day.toISOString().slice(0, 10)
+      return iso >= sixAgo && iso <= todayIso
+    })
+  })() : allDays
   const gridWidth  = days.length * DAY_WIDTH
   const [logs, setLogs]             = useLocalStorage('lifetracker-life-logs', {})
   const [activeCell, setActiveCell] = useState(null) // { moduleKey, date }

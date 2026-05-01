@@ -570,3 +570,23 @@
   margin: -4px -6px;
   width: calc(100% + 12px);
 }
+
+/* ─── mobile Life tab overrides ─── */
+.app-mobile-gantt-scroll .lm-label {
+  width: 80px;
+  min-width: 80px;
+  padding: 0 6px;
+  font-size: 10.5px;
+}
+
+/* Popover opens downward on mobile (rows are near the top) */
+.app-mobile-gantt-scroll .lm-popover {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+.app-mobile-gantt-scroll .lm-popover::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: #e2e8f0;
+}
