@@ -212,10 +212,23 @@ function hasAny(d) {
   )
 }
 
+// ─── completion checks (today only) ──────────────────────────────────────────
+
+const COMPLETE_CHECK = {
+  mood:     d => d?.work != null && d?.life != null && d?.energy != null && d?.focus != null,
+  sleep:    d => d?.hours != null && d?.quality != null,
+  diet:     d => d?.caffeine != null && d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
+  water:    d => d?.glasses != null,
+  exercise: d => d?.steps != null,
+  alcohol:  d => d?.level != null && (d.level === 'None' || d?.type?.length > 0),
+  health:   d => d?.eczema != null && d?.hayfever != null,
+}
+
 // ─── derived data ─────────────────────────────────────────────────────────────
 
-const days     = getDays()
-const todayIso = new Date().toISOString().slice(0, 10)
+const days        = getDays()
+const todayIso    = new Date().toISOString().slice(0, 10)
+const yesterdayIso = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) })()
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -357,14 +370,16 @@ export default function LifeModules() {
                 const dayData  = logs[iso]?.[mod.key] ?? null
                 const bg       = mod.cellColor(dayData)
                 const label    = mod.cellLabel(dayData)
-                const open     = activeCell?.moduleKey === mod.key && activeCell?.date === iso
-                const isFuture = iso > todayIso
+                const open       = activeCell?.moduleKey === mod.key && activeCell?.date === iso
+                const isFuture   = iso > todayIso
+                const isRecent   = iso === todayIso || iso === yesterdayIso
+                const incomplete = isRecent && COMPLETE_CHECK[mod.key] && !COMPLETE_CHECK[mod.key](dayData)
 
                 const noteText = dayData?.note
                 return (
                   <div
                     key={iso}
-                    className={`lm-cell ${isFuture ? 'lm-cell--future' : 'lm-cell--clickable'} ${open ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
+                    className={`lm-cell ${isFuture ? 'lm-cell--future' : 'lm-cell--clickable'} ${open ? 'lm-cell--active' : ''} ${incomplete ? 'lm-cell--incomplete' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
                     style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
                     title={noteText || undefined}
                     onClick={isFuture ? undefined : e => handleCellClick(e, mod.key, iso)}
