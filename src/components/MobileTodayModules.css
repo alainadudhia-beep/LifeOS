@@ -1,0 +1,184 @@
+.mlm-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mlm-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ── Card grid ── */
+.mlm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.mlm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: #f1f5f9;
+  cursor: pointer;
+  min-height: 68px;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+}
+
+.mlm-card:active {
+  opacity: 0.8;
+}
+
+.mlm-card--active {
+  border-color: #94a3b8;
+}
+
+.mlm-card--incomplete {
+  border-color: #fca5a5;
+}
+
+.mlm-card--period {
+  background: #fce7f3;
+}
+
+.mlm-card-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mlm-card-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.01em;
+}
+
+.mlm-card-value {
+  font-size: 10px;
+  color: #1e293b;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Gratitude ── */
+.mlm-gratitude {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.mlm-gratitude-emoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.mlm-gratitude-text {
+  flex: 1;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.mlm-gratitude-text--empty {
+  color: #94a3b8;
+}
+
+.mlm-gratitude-input {
+  flex: 1;
+  font-size: 13px;
+  border: none;
+  outline: none;
+  color: #334155;
+  background: transparent;
+  font-family: inherit;
+}
+
+/* ── Bottom sheet overlay ── */
+.mlm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+/* ── Bottom sheet ── */
+.mlm-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 101;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 12px 16px 32px;
+  max-height: 70vh;
+  overflow-y: auto;
+  animation: sheet-up 0.2s ease-out;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.mlm-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  margin: 0 auto 12px;
+}
+
+.mlm-sheet-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mlm-sheet-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.mlm-sheet-date {
+  font-size: 11px;
+  color: #94a3b8;
+  flex: 1;
+}
+
+.mlm-sheet-close {
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* ── Popover fields (reused from LifeModules.css via class names) ── */
+.mlm-sheet-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

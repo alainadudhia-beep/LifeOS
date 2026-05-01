@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
-import { getDays, TIMELINE_WIDTH } from '../utils/timeline'
+import { getDays } from '../utils/timeline'
 import { DAY_WIDTH } from '../data/initialData'
 import './LifeModules.css'
 
@@ -226,7 +226,7 @@ const COMPLETE_CHECK = {
 
 // ─── derived data ─────────────────────────────────────────────────────────────
 
-const days        = getDays()
+const allDays     = getDays()
 const todayIso    = new Date().toISOString().slice(0, 10)
 const yesterdayIso = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) })()
 
@@ -236,7 +236,9 @@ function fmtDate(iso) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export default function LifeModules() {
+export default function LifeModules({ mobile } = {}) {
+  const days       = mobile ? allDays.filter(d => d.toISOString().slice(0, 10) <= todayIso) : allDays
+  const gridWidth  = days.length * DAY_WIDTH
   const [logs, setLogs]             = useLocalStorage('lifetracker-life-logs', {})
   const [activeCell, setActiveCell] = useState(null) // { moduleKey, date }
   const popoverRef   = useRef(null)
@@ -353,7 +355,7 @@ export default function LifeModules() {
     <>
       <div className="lm-section-header">
         <div className="lm-section-label">Life</div>
-        <div style={{ width: TIMELINE_WIDTH, flexShrink: 0 }} />
+        <div style={{ width: gridWidth, flexShrink: 0 }} />
       </div>
 
       {MODULES.map(mod => {
@@ -362,8 +364,8 @@ export default function LifeModules() {
           <div key={mod.key} className="lm-row">
             <div className="lm-label">{MODULE_EMOJI[mod.key] && <span className="lm-label-emoji">{MODULE_EMOJI[mod.key]}</span>} {mod.label}</div>
 
-            <div className="lm-day-grid" style={{ width: TIMELINE_WIDTH }}>
-              <WeekLines />
+            <div className="lm-day-grid" style={{ width: gridWidth }}>
+              <WeekLines days={days} />
 
               {days.map((d, i) => {
                 const iso      = d.toISOString().slice(0, 10)
@@ -416,8 +418,8 @@ export default function LifeModules() {
       {/* ── Cycle ── */}
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">🌸</span> Cycle</div>
-        <div className="lm-day-grid" style={{ width: TIMELINE_WIDTH }}>
-          <WeekLines />
+        <div className="lm-day-grid" style={{ width: gridWidth }}>
+          <WeekLines days={days} />
           {days.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const onPeriod = !!logs[iso]?.period
@@ -440,8 +442,8 @@ export default function LifeModules() {
       {/* ── Gratitude ── */}
       <div className="lm-row lm-row--gratitude">
         <div className="lm-label"><span className="lm-label-emoji">🙏</span> Gratitude</div>
-        <div className="lm-day-grid" style={{ width: TIMELINE_WIDTH }}>
-          <WeekLines />
+        <div className="lm-day-grid" style={{ width: gridWidth }}>
+          <WeekLines days={days} />
           {days.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const text     = logs[iso]?.gratitude ?? null
@@ -477,8 +479,8 @@ export default function LifeModules() {
       {/* ── Transcript ── */}
       <div className="lm-row lm-row--transcript">
         <div className="lm-label"><span className="lm-label-emoji">📝</span> Journal</div>
-        <div className="lm-day-grid" style={{ width: TIMELINE_WIDTH }}>
-          <WeekLines />
+        <div className="lm-day-grid" style={{ width: gridWidth }}>
+          <WeekLines days={days} />
           {days.map((d, i) => {
             const iso = d.toISOString().slice(0, 10)
             const transcripts = logs[iso]?.transcripts ?? []
@@ -569,7 +571,7 @@ function TranscriptTextarea({ initialText, onSave }) {
 
 // ─── WeekLines ────────────────────────────────────────────────────────────────
 
-function WeekLines() {
+function WeekLines({ days }) {
   return days.map((d, i) =>
     d.getDay() === 1
       ? <div key={i} className="lm-week-line" style={{ left: i * DAY_WIDTH }} />
@@ -736,3 +738,5 @@ function PopoverField({ field, value, onSet }) {
 
   return null
 }
+
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField }
