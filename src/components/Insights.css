@@ -37,9 +37,6 @@
   border-top: 1px solid #f1f5f9;
 }
 
-.ins-section--faded {
-  opacity: 0.6;
-}
 
 .ins-section-label {
   font-size: 10.5px;
@@ -72,28 +69,6 @@
   background: #f0fdf4;
 }
 
-.ins-item--done {
-  background: #f0fdf4;
-  opacity: 0.75;
-}
-
-.ins-item--stale-yellow {
-  background: #fefce8;
-  border-left: 3px solid #fbbf24;
-  padding-left: 7px;
-}
-
-.ins-item--stale-red {
-  background: #fff5f5;
-  border-left: 3px solid #f87171;
-  padding-left: 7px;
-}
-
-.ins-item--done .ins-text {
-  text-decoration: line-through;
-  color: #86efac;
-  text-decoration-color: #86efac;
-}
 
 /* ── Emoji icon ── */
 .ins-emoji {
