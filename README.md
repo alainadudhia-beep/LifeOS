@@ -1,16 +1,15 @@
-# React + Vite
+# Life OS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal life and career tracking app built for one person. Not a product.
+Tracks career opportunities on a Gantt timeline alongside daily life data — mood, sleep, health, exercise, diet, alcohol, social, cycle. Voice check-in via Claude API parses natural speech into structured daily logs. Built with React + Vite, deployed on Vercel, data synced via Supabase.
 
-Currently, two official plugins are available:
+Built for an ADHD brain: low friction, visual, and fast to update. If input takes more than 30 seconds it won't get used.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Tech
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- React + Vite
+- Claude API (voice check-in parsing)
+- Supabase (data sync)
+- Vercel (deployment)
