@@ -1,0 +1,32 @@
+.commitment-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(148, 163, 184, 0.08);
+  border-left: 1.5px solid rgba(148, 163, 184, 0.3);
+  border-right: 1.5px solid rgba(148, 163, 184, 0.3);
+  cursor: pointer;
+  z-index: 1;
+  transition: background 0.15s;
+  overflow: hidden;
+}
+
+.commitment-band:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.commitment-label {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

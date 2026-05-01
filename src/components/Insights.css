@@ -1,0 +1,123 @@
+.ins-panel {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ins-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.ins-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.01em;
+}
+
+.ins-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ins-section + .ins-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ins-section--faded {
+  opacity: 0.6;
+}
+
+.ins-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 2px;
+}
+
+.ins-empty {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  padding: 4px 0;
+}
+
+/* ── Insight row ── */
+.ins-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.ins-item--positive {
+  background: #f0fdf4;
+}
+
+.ins-item--done {
+  background: #f0fdf4;
+  opacity: 0.75;
+}
+
+.ins-item--done .ins-text {
+  text-decoration: line-through;
+  color: #86efac;
+  text-decoration-color: #86efac;
+}
+
+/* ── Emoji icon ── */
+.ins-emoji {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  margin-top: 1px;
+  user-select: none;
+}
+
+/* ── Text ── */
+.ins-text {
+  flex: 1;
+  font-size: 12px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+/* ── Dismiss ── */
+.ins-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.ins-item:hover .ins-dismiss {
+  opacity: 1;
+}
+
+.ins-dismiss:hover {
+  color: #94a3b8;
+}

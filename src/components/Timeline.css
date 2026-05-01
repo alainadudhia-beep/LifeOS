@@ -1,0 +1,395 @@
+.tl-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.tl-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.tl-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── sticky columns ─── */
+.tl-label-col {
+  width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+}
+
+.tl-notes-col {
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  right: 0;
+  z-index: 4;
+}
+
+/* ─── commitment title row ─── */
+.tl-commitment-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #e2e8f0;
+  height: 26px;
+  position: sticky;
+  top: 0;
+  z-index: 7;
+}
+
+.tl-commitment-cell {
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+}
+.tl-commitment-cell:last-child { border-right: none; border-left: 1px solid #e2e8f0; }
+
+.tl-commitment-title-grid {
+  flex-shrink: 0;
+  position: relative;
+  background: #f8fafc;
+}
+
+/* ─── month row ─── */
+.tl-month-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #e2e8f0;
+  height: 28px;
+  position: sticky;
+  top: 26px;
+  z-index: 6;
+}
+
+.tl-month-cell {
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+}
+
+.tl-month-cell:last-child {
+  border-right: none;
+  border-left: 1px solid #e2e8f0;
+}
+
+.tl-month-grid {
+  flex-shrink: 0;
+  position: relative;
+  background: #f8fafc;
+}
+
+.th-month-label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* ─── day header row ─── */
+.tl-day-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #e2e8f0;
+  height: 44px;
+  position: sticky;
+  top: 54px; /* 26 commitment row + 28 month row */
+  z-index: 6;
+}
+
+.tl-day-header-cell {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+}
+
+.tl-day-header-cell:last-child {
+  border-right: none;
+  border-left: 1px solid #e2e8f0;
+}
+
+.tl-day-header-grid {
+  flex-shrink: 0;
+  position: relative;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.day-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-right: 1px solid #f1f5f9;
+}
+
+.day-name {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.day-num {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1;
+}
+
+.day-weekend .day-name,
+.day-weekend .day-num {
+  color: #cbd5e1;
+}
+
+.day-today {
+  background: color-mix(in srgb, #3b82f6 8%, #f8fafc);
+}
+
+.day-today .day-name { color: #3b82f6; }
+.day-today .day-num  { color: #2563eb; font-weight: 700; }
+
+.col-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ─── group headers ─── */
+.group-header-row {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.group-header-label {
+  width: 240px;
+  min-width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  background: #f8fafc;
+  z-index: 3;
+  padding: 0 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-right: 3px solid #e2e8f0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.group-header-line {
+  flex-shrink: 0;
+  height: 1px;
+  background: transparent; /* bands visible through */
+}
+
+.group-header-notes {
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  position: sticky;
+  right: 0;
+  background: #f8fafc;
+  z-index: 3;
+  border-left: 1px solid #e2e8f0;
+  height: 100%;
+}
+
+/* ─── body ─── */
+.tl-body {
+  position: relative;
+  flex: 1;
+}
+
+/* non-interactive grid lines layer */
+.tl-grid-lines {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.grid-week-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e2e8f0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* clickable commitment bands layer */
+.tl-commitment-layer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none; /* children opt back in */
+  z-index: 1;
+}
+
+.commitment-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(148, 163, 184, 0.07);
+  border-left: 1.5px solid rgba(148, 163, 184, 0.25);
+  border-right: 1.5px solid rgba(148, 163, 184, 0.25);
+  pointer-events: none;
+}
+
+/* commitment title caps in the month header row */
+.commitment-header-cap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(148, 163, 184, 0.1);
+  border-left: 1.5px solid rgba(148, 163, 184, 0.3);
+  border-right: 1.5px solid rgba(148, 163, 184, 0.3);
+  border-top: 2px solid rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  z-index: 2;
+  transition: background 0.15s;
+}
+
+.commitment-header-cap:hover {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.commitment-header-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── toolbar ─── */
+.tl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+.tl-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tl-legend {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.add-btn {
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+
+.add-btn.secondary {
+  background: none;
+  border: 1px dashed #cbd5e1;
+  color: #94a3b8;
+}
+
+.add-btn.secondary:hover {
+  border-color: #94a3b8;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.add-btn.primary {
+  background: #0f172a;
+  border: 1px solid #0f172a;
+  color: #fff;
+}
+
+.add-btn.primary:hover {
+  background: #1e293b;
+}
+
+.add-btn.today-btn {
+  background: none;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
+.add-btn.today-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
