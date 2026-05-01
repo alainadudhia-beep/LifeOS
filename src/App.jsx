@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Timeline from './components/Timeline'
 import Insights from './components/Insights'
 import TodayPanel from './components/TodayPanel'
+import AuthGate from './components/AuthGate'
 import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
 import { applyCheckin } from './utils/applyCheckin'
@@ -21,6 +22,40 @@ export default function App() {
 
   const [checkinStatus, setCheckinStatus] = useState('idle')
   const [errorMsg, setErrorMsg] = useState(null)
+
+  const [leftWidth, setLeftWidth] = useState(() => {
+    return parseInt(localStorage.getItem('lifetracker-left-width') ?? '340', 10)
+  })
+  const dragging = useRef(false)
+  const dragStart = useRef({ x: 0, width: 0 })
+
+  const onResizerMouseDown = useCallback(e => {
+    dragging.current = true
+    dragStart.current = { x: e.clientX, width: leftWidth }
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [leftWidth])
+
+  useEffect(() => {
+    function onMouseMove(e) {
+      if (!dragging.current) return
+      const next = Math.max(240, Math.min(520, dragStart.current.width + e.clientX - dragStart.current.x))
+      setLeftWidth(next)
+    }
+    function onMouseUp() {
+      if (!dragging.current) return
+      dragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      setLeftWidth(w => { localStorage.setItem('lifetracker-left-width', w); return w })
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
 
   async function handleImport(e) {
     const file = e.target.files[0]
@@ -83,6 +118,7 @@ export default function App() {
   }
 
   return (
+    <AuthGate>
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">Life OS</h1>
@@ -93,7 +129,7 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <div className="app-left">
+        <div className="app-left" style={{ width: leftWidth, minWidth: leftWidth }}>
           <TodayPanel
             ref={todayRef}
             checkinStatus={checkinStatus}
@@ -102,8 +138,10 @@ export default function App() {
           />
           <Insights ref={thisWeekRef} />
         </div>
+        <div className="app-resizer" onMouseDown={onResizerMouseDown} />
         <Timeline />
       </main>
     </div>
+    </AuthGate>
   )
 }
