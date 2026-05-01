@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { dbWrite } from '../lib/db'
 import './Insights.css'
 
 const INSIGHTS_KEY = 'lifetracker-insights'
@@ -12,6 +13,7 @@ function loadInsights() {
 }
 function saveInsights(items) {
   try { localStorage.setItem(INSIGHTS_KEY, JSON.stringify(items)) } catch {}
+  dbWrite(INSIGHTS_KEY, items).catch(err => console.error('[Insights] save error', err))
 }
 
 // Extract the topic label from an insight text (the part before ' - ' or ' — ')

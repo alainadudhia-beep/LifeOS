@@ -34,6 +34,8 @@ export function useSyncedStorage(key, initialValue) {
     setValue_(toStore)
     localStorage.setItem(key, JSON.stringify(toStore))
     dbWrite(key, toStore).catch(err => console.error('[useSyncedStorage] write error', key, err))
+    if (key === 'lifetracker-life-logs')  window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
+    if (key === 'lifetracker-tracks-v3') window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
   }
 
   return [value, setValue]
