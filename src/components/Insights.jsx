@@ -21,6 +21,17 @@ function insightTopic(text) {
   return text.slice(0, 20).toLowerCase().trim()
 }
 
+const TOPIC_STOPWORDS = new Set(['this', 'that', 'with', 'your', 'have', 'been', 'from', 'will', 'also', 'into', 'more', 'week'])
+
+// Returns true if two topic strings share a meaningful word (length >= 4, not a stopword)
+function topicsOverlap(a, b) {
+  const words = t => t.toLowerCase().split(/\W+/).filter(w => w.length >= 4 && !TOPIC_STOPWORDS.has(w))
+  const wb = new Set(words(b))
+  return words(a).some(w => wb.has(w))
+}
+
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 }
+
 function daysAgo(n) {
   const d = new Date(); d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
@@ -199,7 +210,19 @@ const Insights = forwardRef(function Insights(_, ref) {
     refreshAuto()
     syncTrackActions(readTracks())
 
-    function onLogsUpdated()   { refreshAuto() }
+    function onLogsUpdated() {
+      refreshAuto()
+      // Auto-dismiss nudges whose data has since been filled in manually
+      const todayIso = new Date().toISOString().slice(0, 10)
+      const log = readLogs()[todayIso] ?? {}
+      setItems(prev => prev.filter(it => {
+        if (it.completed) return true
+        const t = it.text.toLowerCase()
+        if (t.includes('mood') && t.includes('not logged') && Object.values(log.mood ?? {}).some(v => v != null)) return false
+        if (t.includes('sleep') && t.includes('not') && log.sleep?.hours) return false
+        return true
+      }))
+    }
     function onTracksUpdated() {
       const tracks = readTracks()
       autoCompleteTrackInsights(tracks)
@@ -218,27 +241,50 @@ const Insights = forwardRef(function Insights(_, ref) {
     addInsights(newInsights) {
       if (!newInsights?.length) return
       setItems(prev => {
-        const existingTexts  = new Set(prev.map(it => it.text.toLowerCase().trim()))
-        const existingTopics = new Set(prev.map(it => insightTopic(it.text)))
-        const fresh = newInsights
-          .filter(ins => !existingTexts.has(ins.text.toLowerCase().trim()))
-          .filter(ins => !existingTopics.has(insightTopic(ins.text)))
-          .map(ins => ({
+        const existingTexts = new Set(prev.map(it => it.text.toLowerCase().trim()))
+        let next = [...prev]
+        const toAppend = []
+
+        for (const ins of newInsights) {
+          const text = ins.text.replace(/—/g, '-').trim()
+          if (existingTexts.has(text.toLowerCase())) continue
+
+          const topic = insightTopic(text)
+
+          // Skip if a batch item already covers the same topic
+          if (toAppend.some(a => insightTopic(a.text) === topic || topicsOverlap(insightTopic(a.text), topic))) continue
+
+          const newItem = {
             id: `ins-claude-${Date.now()}-${Math.random()}`,
             type: 'claude',
-            text: ins.text,
+            text,
             positive: ins.positive ?? false,
             actionable: ins.actionable ?? false,
             completed: false,
             completed_at: null,
             created_at: new Date().toISOString(),
-          }))
-        return fresh.length ? [...prev, ...fresh] : prev
+          }
+
+          // Remove same-topic CLAUDE items from storage (track items are handled at render time)
+          next = next.filter(it =>
+            it.completed ||
+            it.type === 'track' ||
+            (insightTopic(it.text) !== topic && !topicsOverlap(insightTopic(it.text), topic))
+          )
+          toAppend.push(newItem)
+        }
+
+        return toAppend.length || next.length !== prev.length ? [...next, ...toAppend] : prev
       })
     }
   }))
 
   function dismiss(id) { setItems(prev => prev.filter(it => it.id !== id)) }
+
+  function itemAgeDays(item) {
+    if (!item.created_at) return 0
+    return Math.floor((Date.now() - new Date(item.created_at).getTime()) / 86_400_000)
+  }
 
   // Suppress auto insights when Claude already covers same topic
   const claudeText = items.filter(i => i.type === 'claude').map(i => i.text.toLowerCase()).join(' ')
@@ -265,18 +311,38 @@ const Insights = forwardRef(function Insights(_, ref) {
     ...claudeObservations.filter(it => !it.positive),
   ]
   const insightItems   = sortedInsights
-  const claudeActionText = claudeActions.map(it => it.text.toLowerCase())
+  const tracks = readTracks()
+  const trackPriority = id => {
+    const t = tracks.find(t => t.id === id)
+    return PRIORITY_ORDER[t?.priority] ?? 3
+  }
+
+  const allClaudeText = items.filter(it => it.type === 'claude' && !it.completed).map(it => it.text.toLowerCase())
   const trackItems = items.filter(it => it.type === 'track' && !it.completed).filter(it => {
     const trackName = insightTopic(it.text)
-    return !claudeActionText.some(t => t.includes(trackName))
+    return !allClaudeText.some(t => t.includes(trackName))
+  }).sort((a, b) => trackPriority(a.track_id) - trackPriority(b.track_id))
+
+  // Match each Claude action to its track priority if the text mentions a known track
+  const claudeActionsSorted = [...claudeActions].sort((a, b) => {
+    const pa = tracks.reduce((best, t) =>
+      a.text.toLowerCase().includes(t.name.toLowerCase())
+        ? Math.min(best, PRIORITY_ORDER[t.priority] ?? 3)
+        : best, 4)
+    const pb = tracks.reduce((best, t) =>
+      b.text.toLowerCase().includes(t.name.toLowerCase())
+        ? Math.min(best, PRIORITY_ORDER[t.priority] ?? 3)
+        : best, 4)
+    return pa - pb
   })
-  const actionItems = [...trackItems, ...claudeActions]
+
+  const actionItems = [...trackItems, ...claudeActionsSorted]
   const completedItems = items.filter(it => it.completed)
 
   return (
     <div className="ins-panel">
       <Section title="Insights" items={insightItems}   onDismiss={id => dismiss(id)} />
-      <Section title="Actions"  items={actionItems}    onDismiss={id => dismiss(id)} />
+      <Section title="Actions"  items={actionItems}    onDismiss={id => dismiss(id)} getAge={itemAgeDays} />
       {completedItems.length > 0 && (
         <Section title="Done"   items={completedItems} onDismiss={id => dismiss(id)} faded />
       )}
@@ -289,23 +355,27 @@ const Insights = forwardRef(function Insights(_, ref) {
 
 export default Insights
 
-function Section({ title, items, onDismiss, faded }) {
+function Section({ title, items, onDismiss, faded, getAge }) {
   if (!items.length) return null
   return (
     <div className={`ins-section ${faded ? 'ins-section--faded' : ''}`}>
       <div className="ins-section-label">{title}</div>
-      {items.map(item => (
-        <div
-          key={item.id}
-          className={`ins-item ${item.completed ? 'ins-item--done' : ''} ${item.positive ? 'ins-item--positive' : ''}`}
-        >
-          <span className="ins-emoji">{insightEmoji(item)}</span>
-          <InsightText text={item.text} />
-          {item.type !== 'auto' && (
-            <button className="ins-dismiss" onClick={() => onDismiss(item.id)} title="Dismiss">×</button>
-          )}
-        </div>
-      ))}
+      {items.map(item => {
+        const age = getAge ? getAge(item) : 0
+        const ageClass = age >= 7 ? 'ins-item--stale-red' : age >= 3 ? 'ins-item--stale-yellow' : ''
+        return (
+          <div
+            key={item.id}
+            className={`ins-item ${item.completed ? 'ins-item--done' : ''} ${item.positive ? 'ins-item--positive' : ''} ${ageClass}`}
+          >
+            <span className="ins-emoji">{insightEmoji(item)}</span>
+            <InsightText text={item.text} />
+            {item.type !== 'auto' && (
+              <button className="ins-dismiss" onClick={() => onDismiss(item.id)} title="Dismiss">×</button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

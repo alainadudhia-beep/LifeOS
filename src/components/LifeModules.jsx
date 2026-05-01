@@ -156,10 +156,10 @@ const MODULES = [
   },
   {
     key: 'water', label: 'Water',
-    cellColor: d => ({ '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#bbf7d0' }[d?.level] ?? null),
-    cellLabel: d => d?.level ?? null,
+    cellColor: d => ({ '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#bbf7d0' }[d?.glasses] ?? null),
+    cellLabel: d => d?.glasses ?? null,
     fields: [
-      { key: 'level', label: 'Glasses', type: 'options', options: ['<3', '4-6', '7+'], colors: { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#bbf7d0' } },
+      { key: 'glasses', label: 'Glasses', type: 'options', options: ['<3', '4-6', '7+'], colors: { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#bbf7d0' } },
     ],
   },
   {

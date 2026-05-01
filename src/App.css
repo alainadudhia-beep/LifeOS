@@ -50,8 +50,8 @@ body {
 .app-header-spacer { flex: 1; }
 
 .app-left {
-  width: 280px;
-  min-width: 280px;
+  width: 340px;
+  min-width: 340px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

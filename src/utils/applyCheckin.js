@@ -173,7 +173,7 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
         status_history: [{ id: `sh-${id}-1`, status, start_date: today, end_date: null }],
         milestones: [],
         notes_log: nt.note
-          ? [{ id: `n-${Date.now()}`, text: nt.note, timestamp: new Date().toISOString() }]
+          ? [{ id: `n-${Date.now()}`, text: nt.note.replace(/—/g, '-').replace(/–/g, '-'), timestamp: new Date().toISOString() }]
           : [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -197,8 +197,9 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
         match.updated_at = new Date().toISOString()
       }
       if (update.note) {
+        const noteText = update.note.replace(/—/g, '-').replace(/–/g, '-')
         match.notes_log = [
-          { id: Date.now() + Math.random(), text: update.note, timestamp: new Date().toISOString() },
+          { id: Date.now() + Math.random(), text: noteText, timestamp: new Date().toISOString() },
           ...(match.notes_log ?? []),
         ]
       }

@@ -2,6 +2,8 @@ const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
 const SYSTEM_PROMPT = `You are a personal health and life check-in parser. The user will give you a free-form voice transcription of their day. Your job is to extract structured data and return ONLY valid JSON with no preamble, no markdown fences, no explanation.
 
+IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes (—) or en dashes (–).
+
 Use exactly these field values:
 
 mood fields (work, life, energy, focus): integer 1–5, or null
@@ -35,7 +37,7 @@ new_tracks: array of { name: string, group: string | null, status: string, note:
   - use when user mentions wanting to track, apply for, or add something new that doesn't exist yet
   - group: assign to an existing group name if the user mentions one, otherwise null
   - status values same as career_updates; default to "in_progress" if not specified
-daily_win: string (one warm but not sycophantic sentence) | null
+daily_win: string in "Topic - one warm but not sycophantic observation" format (e.g. "Zoe application - got it done and off your plate") | null
 missing_important: array of field keys absent and important - default important set: ["mood","sleep"]; add "career_updates" if any work topic is mentioned
 insights: array of { text: string, positive: boolean, actionable: boolean }
   - ALWAYS format text as "Topic - description" where Topic is the main subject (Sleep, Water, Capsa, PM Role at Zoe, etc.) — this enables bolding in the UI
