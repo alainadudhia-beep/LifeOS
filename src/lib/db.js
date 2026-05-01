@@ -9,6 +9,13 @@ const DATA_KEYS = [
   'lifetracker-dismissed-track-actions',
 ]
 
+export async function preloadAllKeys() {
+  await Promise.all(DATA_KEYS.map(async key => {
+    const value = await dbRead(key)
+    if (value !== null) localStorage.setItem(key, JSON.stringify(value))
+  }))
+}
+
 export async function dbRead(key) {
   const { data, error } = await supabase
     .from('user_data')
