@@ -110,18 +110,31 @@ export default function App() {
       const parsed = await parseTranscript(text, trackNames, recentContext)
       applyCheckin(parsed, text)
 
-      const insightsToAdd = [...(parsed.insights ?? [])]
-
-      if (parsed.daily_win) {
-        insightsToAdd.push({ text: parsed.daily_win, positive: true, actionable: false })
-      }
-
       const todayLog = (() => {
         try {
           const logs = JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {}
           return logs[new Date().toISOString().slice(0, 10)] ?? {}
         } catch { return {} }
       })()
+
+      // Filter out AI insights that contradict what's already been logged today
+      const filteredInsights = (parsed.insights ?? []).filter(ins => {
+        const t = ins.text.toLowerCase()
+        const mentionsNotLogged = /\b(not log|no log|haven't|not track|not mention|not record|yet to)\b/.test(t)
+        if (mentionsNotLogged) {
+          if (t.includes('sleep') && todayLog.sleep?.hours) return false
+          if (t.includes('mood')  && Object.values(todayLog.mood ?? {}).some(v => v != null)) return false
+          if (t.includes('water') && todayLog.water?.glasses) return false
+        }
+        return true
+      })
+
+      const insightsToAdd = [...filteredInsights]
+
+      if (parsed.daily_win) {
+        insightsToAdd.push({ text: parsed.daily_win, positive: true, actionable: false })
+      }
+
       for (const field of parsed.missing_important ?? []) {
         if (field === 'sleep'  && todayLog.sleep?.hours)  continue
         if (field === 'mood'   && Object.values(todayLog.mood ?? {}).some(v => v != null)) continue

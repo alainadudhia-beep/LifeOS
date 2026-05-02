@@ -606,8 +606,9 @@
   font-weight: 700;
   color: #334155;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   line-height: 1;
+  margin-bottom: 1px;
 }
 
 /* ─── mobile container — gives rows a real width so sticky works ─── */
@@ -625,7 +626,7 @@
 
 /* ─── date header row ─── */
 .lm-row--date-header {
-  height: 32px;
+  height: 44px;
   background: #f8fafc;
 }
 

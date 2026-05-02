@@ -135,7 +135,7 @@ function computeAutoInsights(logs) {
     .map(([name]) => name)
   const complete = Object.keys(YESTERDAY_CHECKS).length - missing.length
   if (missing.length === 0) {
-    out.unshift({ id: 'auto-yesterday', positive: true, bg: 'green', text: '⭐ Well done - you completed everything yesterday!' })
+    out.unshift({ id: 'auto-yesterday', positive: true, bg: 'green', text: 'Well done - you completed everything yesterday!' })
   } else if (complete >= 4) {
     const listed = missing.length <= 2
       ? missing.join(' and ')

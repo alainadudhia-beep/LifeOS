@@ -386,13 +386,11 @@ export default function LifeModules({ mobile } = {}) {
               return (
                 <div
                   key={i}
-                  className={`lm-date-cell`}
+                  className={`lm-date-cell ${isMonthStart ? 'lm-date-cell--month-start' : ''}`}
                   style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
                 >
-                  {isMonthStart
-                    ? <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
-                    : <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
-                  }
+                  {isMonthStart && <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>}
+                  <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
                   <span className="lm-date-cell-num">{d.getDate()}</span>
                 </div>
               )
