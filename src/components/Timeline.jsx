@@ -130,6 +130,7 @@ export default function Timeline({ mobile } = {}) {
   const [editingCommitment, setEditingCommitment] = useState(null)
   const [showArchived,      setShowArchived]      = useState(false)
   const [showLegend,        setShowLegend]        = useState(false)
+  const [showAddNew,        setShowAddNew]        = useState(false)
   const scrollRef = useRef(null)
 
   function scrollToToday() {
@@ -235,32 +236,21 @@ export default function Timeline({ mobile } = {}) {
 
       {/* ── toolbar ── */}
       <div className="tl-toolbar">
-        {mobile ? (
-          <div className="tl-legend-btn-wrap">
-            <button className="add-btn secondary" onClick={() => setShowLegend(v => !v)}>
-              Legend {showLegend ? '▲' : '▼'}
-            </button>
-            {showLegend && (
-              <div className="tl-legend-dropdown">
-                {Object.entries(STATUSES).map(([key, s]) => (
-                  <span key={key} className="legend-item">
-                    <span className="legend-swatch" style={{ background: s.bar }} />
-                    {s.label}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="tl-legend">
-            {Object.entries(STATUSES).map(([key, s]) => (
-              <span key={key} className="legend-item">
-                <span className="legend-swatch" style={{ background: s.bar }} />
-                {s.label}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="tl-legend-btn-wrap">
+          <button className="add-btn secondary" onClick={() => setShowLegend(v => !v)}>
+            Legend {showLegend ? '▲' : '▼'}
+          </button>
+          {showLegend && (
+            <div className="tl-legend-dropdown">
+              {Object.entries(STATUSES).map(([key, s]) => (
+                <span key={key} className="legend-item">
+                  <span className="legend-swatch" style={{ background: s.bar }} />
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="tl-toolbar-actions">
           <button className="add-btn today-btn" onClick={scrollToToday}>Today</button>
           {archivedCount > 0 && (
@@ -268,8 +258,21 @@ export default function Timeline({ mobile } = {}) {
               {showArchived ? 'Hide archived' : `Archived (${archivedCount})`}
             </button>
           )}
-          <button className="add-btn secondary" onClick={() => setEditingCommitment(newCommitment())}>+ Add commitment</button>
-          <button className="add-btn primary" onClick={() => { const t = newTrack(); update(ts => [...ts, t]); setEditingTrack(t) }}>+ Add track</button>
+          <div className="tl-add-new-wrap">
+            <button className="add-btn primary" onClick={() => setShowAddNew(v => !v)}>
+              Add New {showAddNew ? '▲' : '▼'}
+            </button>
+            {showAddNew && (
+              <div className="tl-add-new-dropdown">
+                <button className="tl-add-new-item" onClick={() => { setEditingCommitment(newCommitment()); setShowAddNew(false) }}>
+                  Commitment
+                </button>
+                <button className="tl-add-new-item" onClick={() => { const t = newTrack(); update(ts => [...ts, t]); setEditingTrack(t); setShowAddNew(false) }}>
+                  Track
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

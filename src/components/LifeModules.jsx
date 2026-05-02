@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
-import { getDays } from '../utils/timeline'
+import { getDays, MONTH_NAMES } from '../utils/timeline'
 import { DAY_WIDTH } from '../data/initialData'
 import './LifeModules.css'
 
@@ -239,8 +239,12 @@ function fmtDate(iso) {
 const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 export default function LifeModules({ mobile } = {}) {
-  const days      = mobile ? allDays.filter(d => d.toISOString().slice(0, 10) <= todayIso) : allDays
-  const gridWidth = days.length * DAY_WIDTH
+  // On mobile: grid shows all history EXCEPT today; today gets its own sticky-right column
+  const gridDays  = mobile
+    ? allDays.filter(d => d.toISOString().slice(0, 10) < todayIso)
+    : allDays
+  const gridWidth = gridDays.length * DAY_WIDTH
+
   const [logs, setLogs]             = useLocalStorage('lifetracker-life-logs', {})
   const [activeCell, setActiveCell] = useState(null) // { moduleKey, date }
   const popoverRef   = useRef(null)
@@ -355,39 +359,51 @@ export default function LifeModules({ mobile } = {}) {
 
   return (
     <>
-      <div className="lm-section-header">
-        <div className="lm-section-label">Life</div>
-        <div style={{ width: gridWidth, flexShrink: 0 }} />
-      </div>
+      {!mobile && (
+        <div className="lm-section-header">
+          <div className="lm-section-label">Life</div>
+          <div style={{ width: gridWidth, flexShrink: 0 }} />
+        </div>
+      )}
 
+      {/* Date header row — mobile only */}
       {mobile && (
         <div className="lm-row lm-row--date-header">
           <div className="lm-label" />
           <div className="lm-day-grid" style={{ width: gridWidth }}>
-            {days.map((d, i) => (
-              <div
-                key={i}
-                className={`lm-date-cell ${d.toISOString().slice(0,10) === todayIso ? 'lm-date-cell--today' : ''}`}
-                style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
-              >
-                <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
-                <span className="lm-date-cell-num">{d.getDate()}</span>
-              </div>
-            ))}
+            {gridDays.map((d, i) => {
+              const isMonthStart = d.getDate() === 1
+              return (
+                <div
+                  key={i}
+                  className={`lm-date-cell`}
+                  style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
+                >
+                  {isMonthStart
+                    ? <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
+                    : <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
+                  }
+                  <span className="lm-date-cell-num">{d.getDate()}</span>
+                </div>
+              )
+            })}
+          </div>
+          <div className="lm-today-col lm-today-col--header">
+            <span className="lm-date-cell-day lm-date-cell-day--today">T</span>
+            <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>
           </div>
         </div>
       )}
 
       {MODULES.map(mod => {
-        const isActive = mod => activeCell?.moduleKey === mod.key
         return (
           <div key={mod.key} className="lm-row">
             <div className="lm-label">{MODULE_EMOJI[mod.key] && <span className="lm-label-emoji">{MODULE_EMOJI[mod.key]}</span>} {mod.label}</div>
 
             <div className="lm-day-grid" style={{ width: gridWidth }}>
-              <WeekLines days={days} />
+              <WeekLines days={gridDays} />
 
-              {days.map((d, i) => {
+              {gridDays.map((d, i) => {
                 const iso      = d.toISOString().slice(0, 10)
                 const dayData  = logs[iso]?.[mod.key] ?? null
                 const bg       = mod.cellColor(dayData)
@@ -431,6 +447,41 @@ export default function LifeModules({ mobile } = {}) {
               })}
             </div>
 
+            {/* Today sticky column */}
+            {mobile && (() => {
+              const dayData  = logs[todayIso]?.[mod.key] ?? null
+              const bg       = mod.cellColor(dayData)
+              const label    = mod.cellLabel(dayData)
+              const open     = activeCell?.moduleKey === mod.key && activeCell?.date === todayIso
+              const incomplete = COMPLETE_CHECK[mod.key] && !COMPLETE_CHECK[mod.key](dayData)
+              return (
+                <div className="lm-today-col">
+                  <div
+                    className={`lm-cell lm-cell--clickable ${open ? 'lm-cell--active' : ''} ${incomplete ? 'lm-cell--incomplete' : ''}`}
+                    style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                    onClick={e => handleCellClick(e, mod.key, todayIso)}
+                  >
+                    {Array.isArray(label)
+                      ? <div className="lm-cell-stack">
+                          {label.map(l => (
+                            <span key={l} className="lm-cell-label lm-cell-label--act" style={{ color: ACTIVITY_TEXT[l] ?? '#64748b' }}>{l}</span>
+                          ))}
+                        </div>
+                      : label && <span className="lm-cell-label">{label}</span>
+                    }
+                    {open && (
+                      <Popover
+                        ref={popoverRef}
+                        mod={mod}
+                        date={todayIso}
+                        dayData={dayData ?? {}}
+                        onSet={(fk, v) => setFieldValue(mod.key, todayIso, fk, v)}
+                      />
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )
       })}
@@ -439,8 +490,8 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">🌸</span> Cycle</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={days} />
-          {days.map((d, i) => {
+          <WeekLines days={gridDays} />
+          {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const onPeriod = !!logs[iso]?.period
             const isFuture = iso > todayIso
@@ -457,14 +508,28 @@ export default function LifeModules({ mobile } = {}) {
             )
           })}
         </div>
+        {mobile && (() => {
+          const onPeriod = !!logs[todayIso]?.period
+          return (
+            <div className="lm-today-col">
+              <div
+                className={`lm-cell lm-cell--clickable ${onPeriod ? 'lm-cell--period' : ''}`}
+                style={{ left: 1, width: DAY_WIDTH - 2 }}
+                onClick={() => togglePeriod(todayIso)}
+              >
+                {onPeriod && <span className="lm-period-dot" />}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Gratitude ── */}
       <div className="lm-row lm-row--gratitude">
         <div className="lm-label"><span className="lm-label-emoji">🙏</span> Gratitude</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={days} />
-          {days.map((d, i) => {
+          <WeekLines days={gridDays} />
+          {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const text     = logs[iso]?.gratitude ?? null
             const isEditing = gratEdit?.date === iso
@@ -494,14 +559,42 @@ export default function LifeModules({ mobile } = {}) {
             )
           })}
         </div>
+        {mobile && (() => {
+          const text = logs[todayIso]?.gratitude ?? null
+          const isEditing = gratEdit?.date === todayIso
+          return (
+            <div className="lm-today-col">
+              <div
+                className={`lm-cell lm-cell--clickable ${isEditing ? 'lm-cell--active' : ''}`}
+                style={{ left: 1, width: DAY_WIDTH - 2 }}
+                onClick={() => { if (!isEditing) setGratEdit({ date: todayIso, value: text ?? '' }) }}
+              >
+                {isEditing ? (
+                  <div className="lm-grat-popover" ref={gratRef} onClick={e => e.stopPropagation()}>
+                    <input
+                      className="lm-grat-input"
+                      autoFocus
+                      placeholder="What are you grateful for?"
+                      value={gratEdit.value}
+                      onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
+                    />
+                  </div>
+                ) : text ? (
+                  <span className="lm-grat-emoji" data-tooltip={text}>🙏</span>
+                ) : null}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Transcript ── */}
       <div className="lm-row lm-row--transcript">
         <div className="lm-label"><span className="lm-label-emoji">📝</span> Journal</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={days} />
-          {days.map((d, i) => {
+          <WeekLines days={gridDays} />
+          {gridDays.map((d, i) => {
             const iso = d.toISOString().slice(0, 10)
             const transcripts = logs[iso]?.transcripts ?? []
             const hasEntry = transcripts.length > 0
@@ -522,6 +615,23 @@ export default function LifeModules({ mobile } = {}) {
             )
           })}
         </div>
+        {mobile && (() => {
+          const transcripts = logs[todayIso]?.transcripts ?? []
+          const hasEntry = transcripts.length > 0
+          const isOpen = transcriptOpen === todayIso
+          return (
+            <div className="lm-today-col">
+              <div
+                ref={el => { transcriptCellRefs.current[todayIso] = el }}
+                className={`lm-cell ${hasEntry ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
+                style={{ left: 1, width: DAY_WIDTH - 2 }}
+                onClick={hasEntry ? () => setTranscriptOpen(isOpen ? null : todayIso) : undefined}
+              >
+                {hasEntry && <span className="lm-transcript-dot" title={`${transcripts.length} entry`}>📝</span>}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Transcript portal popover ── */}

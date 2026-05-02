@@ -571,6 +571,45 @@
   width: calc(100% + 12px);
 }
 
+/* ─── today sticky column ─── */
+.lm-today-col {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  flex-shrink: 0;
+  width: 38px; /* DAY_WIDTH */
+  background: #fff;
+  border-left: 2px solid #334155;
+}
+
+.lm-today-col--header {
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.lm-date-cell-day--today {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.lm-date-cell-num--today {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.lm-date-cell-month {
+  font-size: 7px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
 /* ─── mobile Life tab overrides ─── */
 .app-mobile-gantt-scroll .lm-label {
   width: 90px;

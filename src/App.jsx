@@ -141,17 +141,14 @@ export default function App() {
     }
   }
 
+  const [showCheckin, setShowCheckin] = useState(false)
+
   if (isMobile) {
     return (
       <AuthGate>
         <div className="app app--mobile">
           <header className="app-mobile-header">
-            <div className="app-mobile-header-row">
-              <h1 className="app-title">Life OS</h1>
-              {checkinStatus === 'parsing' && <span className="app-mobile-status">Parsing…</span>}
-              {checkinStatus === 'error'   && <span className="app-mobile-status app-mobile-status--error">{errorMsg ?? 'Error'}</span>}
-            </div>
-            <VoiceCheckin onTranscript={handleTranscript} disabled={checkinStatus === 'parsing'} />
+            <h1 className="app-title">Life OS</h1>
           </header>
 
           <div className="app-mobile-content">
@@ -171,9 +168,9 @@ export default function App() {
 
           <nav className="app-mobile-tabs">
             {[
-              { key: 'today', label: 'Today',  icon: '✦' },
-              { key: 'life',  label: 'Life',   icon: '🌿' },
-              { key: 'work',  label: 'Work',   icon: '💼' },
+              { key: 'today', label: 'Today', icon: '✦' },
+              { key: 'life',  label: 'Life',  icon: '🌿' },
+              { key: 'work',  label: 'Work',  icon: '💼' },
             ].map(t => (
               <button
                 key={t.key}
@@ -184,7 +181,34 @@ export default function App() {
                 <span className="app-tab-label">{t.label}</span>
               </button>
             ))}
+            <button
+              className={`app-tab-btn ${showCheckin ? 'app-tab-btn--active' : ''}`}
+              onClick={() => { setShowCheckin(v => !v); setCheckinStatus('idle'); setErrorMsg(null) }}
+            >
+              <span className="app-tab-icon">🎙️</span>
+              <span className="app-tab-label">Check-in</span>
+            </button>
           </nav>
+
+          {showCheckin && (
+            <>
+              <div className="app-checkin-overlay" onClick={() => setShowCheckin(false)} />
+              <div className="app-checkin-sheet">
+                <div className="app-checkin-sheet-header">
+                  <span>Voice Check-in</span>
+                  <button className="app-checkin-close" onClick={() => setShowCheckin(false)}>✕</button>
+                </div>
+                <div className="app-checkin-sheet-body">
+                  <VoiceCheckin onTranscript={async text => {
+                    await handleTranscript(text)
+                  }} disabled={checkinStatus === 'parsing'} />
+                  {checkinStatus === 'parsing' && <span className="app-checkin-status">Parsing…</span>}
+                  {checkinStatus === 'done'    && <span className="app-checkin-status app-checkin-status--done">Done ✓</span>}
+                  {checkinStatus === 'error'   && <span className="app-checkin-status app-checkin-status--error">{errorMsg ?? 'Error'}</span>}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </AuthGate>
     )

@@ -135,22 +135,64 @@ body {
   flex-shrink: 0;
   padding: 12px 16px 10px;
   border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
-.app-mobile-header-row {
+/* ── Check-in bottom sheet ── */
+.app-checkin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.app-checkin-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 101;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: sheet-up 0.22s ease;
+}
+
+.app-checkin-sheet-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.app-mobile-status {
-  font-size: 11px;
+.app-checkin-close {
+  background: none;
+  border: none;
   color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
 }
-.app-mobile-status--error { color: #ef4444; }
+.app-checkin-close:hover { color: #475569; }
+
+.app-checkin-sheet-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-checkin-status {
+  font-size: 13px;
+  color: #64748b;
+  text-align: center;
+}
+.app-checkin-status--done  { color: #16a34a; }
+.app-checkin-status--error { color: #ef4444; }
 
 /* content area fills space between header and tabs */
 .app-mobile-content {
