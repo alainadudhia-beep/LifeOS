@@ -36,9 +36,14 @@ const SLEEP_COLORS  = [
 
 function sleepSummaryColor(d) {
   if (!d) return null
-  const h = d.hours   != null ? HOURS_SCORE[d.hours]    : null
-  const q = d.quality != null ? QUALITY_SCORE[d.quality] : null
+  const h = d.hours != null ? HOURS_SCORE[d.hours] : null
   if (h == null) return null
+  let q = null
+  if (d.efficiency_pct != null) {
+    q = d.efficiency_pct >= 85 ? 2 : d.efficiency_pct >= 70 ? 1 : 0
+  } else if (d.quality != null) {
+    q = QUALITY_SCORE[d.quality] ?? null
+  }
   if (q == null) return SLEEP_H[d.hours]
   return SLEEP_COLORS[h + q] ?? '#4ade80'
 }
@@ -381,23 +386,21 @@ export default function LifeModules({ mobile } = {}) {
         <div className="lm-row lm-row--date-header">
           <div className="lm-label" />
           <div className="lm-day-grid" style={{ width: gridWidth }}>
-            {gridDays.map((d, i) => {
-              const isMonthStart = d.getDate() === 1
-              return (
-                <div
-                  key={i}
-                  className={`lm-date-cell ${isMonthStart ? 'lm-date-cell--month-start' : ''}`}
-                  style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
-                >
-                  {isMonthStart && <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>}
-                  <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
-                  <span className="lm-date-cell-num">{d.getDate()}</span>
-                </div>
-              )
-            })}
+            {gridDays.map((d, i) => (
+              <div
+                key={i}
+                className="lm-date-cell"
+                style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
+              >
+                <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
+                <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
+                <span className="lm-date-cell-num">{d.getDate()}</span>
+              </div>
+            ))}
           </div>
           <div className="lm-today-col lm-today-col--header">
-            <span className="lm-date-cell-day lm-date-cell-day--today">T</span>
+            <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[new Date(todayIso).getMonth()]}</span>
+            <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[new Date(todayIso).getDay()]}</span>
             <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>
           </div>
         </div>
