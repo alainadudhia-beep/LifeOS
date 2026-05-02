@@ -54,8 +54,12 @@ export default async function handler(req, res) {
     // Sleep
     sleep_minutes,
     in_bed_minutes,
-    // Body
+    // Body & vitals
     resting_hr,
+    hrv,
+    respiratory_rate,
+    spo2,
+    skin_temp_deviation,
     weight_kg,
   } = req.body
 
@@ -137,6 +141,10 @@ export default async function handler(req, res) {
     sleep_minutes,
     in_bed_minutes,
     resting_hr,
+    hrv,
+    respiratory_rate,
+    spo2,
+    skin_temp_deviation,
     weight_kg,
     workouts,
     synced_at: new Date().toISOString(),
