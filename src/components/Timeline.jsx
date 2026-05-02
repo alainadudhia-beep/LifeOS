@@ -131,7 +131,18 @@ export default function Timeline({ mobile } = {}) {
   const [showArchived,      setShowArchived]      = useState(false)
   const [showLegend,        setShowLegend]        = useState(false)
   const [showAddNew,        setShowAddNew]        = useState(false)
-  const scrollRef = useRef(null)
+  const scrollRef   = useRef(null)
+  const legendRef   = useRef(null)
+  const addNewRef   = useRef(null)
+
+  useEffect(() => {
+    function onDown(e) {
+      if (showLegend && legendRef.current && !legendRef.current.contains(e.target)) setShowLegend(false)
+      if (showAddNew && addNewRef.current  && !addNewRef.current.contains(e.target))  setShowAddNew(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [showLegend, showAddNew])
 
   function scrollToToday() {
     const px = dateToPx(todayIso)
@@ -236,7 +247,7 @@ export default function Timeline({ mobile } = {}) {
 
       {/* ── toolbar ── */}
       <div className="tl-toolbar">
-        <div className="tl-legend-btn-wrap">
+        <div className="tl-legend-btn-wrap" ref={legendRef}>
           <button className="add-btn secondary" onClick={() => setShowLegend(v => !v)}>
             Legend {showLegend ? '▲' : '▼'}
           </button>
@@ -258,7 +269,7 @@ export default function Timeline({ mobile } = {}) {
               {showArchived ? 'Hide archived' : `Archived (${archivedCount})`}
             </button>
           )}
-          <div className="tl-add-new-wrap">
+          <div className="tl-add-new-wrap" ref={addNewRef}>
             <button className="add-btn primary" onClick={() => setShowAddNew(v => !v)}>
               Add New {showAddNew ? '▲' : '▼'}
             </button>
