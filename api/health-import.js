@@ -44,24 +44,26 @@ export default async function handler(req, res) {
   const userId = process.env.HEALTH_IMPORT_USER_ID
   if (!userId) return res.status(500).json({ error: 'Server misconfigured: missing HEALTH_IMPORT_USER_ID' })
 
-  const {
-    date,
-    // Activity
-    steps,
-    active_energy_kcal,
-    exercise_minutes,
-    workouts,
-    // Sleep
-    sleep_minutes,
-    in_bed_minutes,
-    // Body & vitals
-    resting_hr,
-    hrv,
-    respiratory_rate,
-    spo2,
-    skin_temp_deviation,
-    weight_kg,
-  } = req.body
+  // Accept both JSON and form-encoded bodies
+  const body = typeof req.body === 'string'
+    ? Object.fromEntries(new URLSearchParams(req.body))
+    : req.body
+
+  const num = (v) => (v == null || v === '' ? null : Number(v))
+
+  const date               = body.date
+  const steps              = num(body.steps)
+  const active_energy_kcal = num(body.active_energy_kcal)
+  const exercise_minutes   = num(body.exercise_minutes)
+  const workouts           = body.workouts ?? null
+  const sleep_minutes      = num(body.sleep_minutes)
+  const in_bed_minutes     = num(body.in_bed_minutes)
+  const resting_hr         = num(body.resting_hr)
+  const hrv                = num(body.hrv)
+  const respiratory_rate   = num(body.respiratory_rate)
+  const spo2               = num(body.spo2)
+  const skin_temp_deviation = num(body.skin_temp_deviation)
+  const weight_kg          = num(body.weight_kg)
 
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
 
