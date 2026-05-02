@@ -44,10 +44,14 @@ export default async function handler(req, res) {
   const userId = process.env.HEALTH_IMPORT_USER_ID
   if (!userId) return res.status(500).json({ error: 'Server misconfigured: missing HEALTH_IMPORT_USER_ID' })
 
-  // Accept both JSON and form-encoded bodies
-  const body = typeof req.body === 'string'
-    ? Object.fromEntries(new URLSearchParams(req.body))
-    : req.body
+  // Accept JSON object, JSON string, or form-encoded string
+  let body = req.body
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body) } catch {
+      try { body = Object.fromEntries(new URLSearchParams(body)) } catch { body = {} }
+    }
+  }
+  if (!body) body = {}
 
   const num = (v) => (v == null || v === '' ? null : Number(v))
 
