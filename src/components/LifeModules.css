@@ -610,6 +610,11 @@
   line-height: 1;
 }
 
+/* ─── mobile container — gives rows a real width so sticky works ─── */
+.lm-mobile-container {
+  min-width: max-content;
+}
+
 /* ─── mobile Life tab overrides ─── */
 .app-mobile-gantt-scroll .lm-label {
   width: 90px;

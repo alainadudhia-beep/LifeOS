@@ -358,7 +358,7 @@ export default function LifeModules({ mobile } = {}) {
   }
 
   return (
-    <>
+    <div className={mobile ? 'lm-mobile-container' : undefined}>
       {!mobile && (
         <div className="lm-section-header">
           <div className="lm-section-label">Life</div>
@@ -680,7 +680,7 @@ export default function LifeModules({ mobile } = {}) {
           document.body
         )
       })()}
-    </>
+    </div>
   )
 }
 
