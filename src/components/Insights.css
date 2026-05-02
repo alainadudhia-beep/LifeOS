@@ -69,6 +69,14 @@
   background: #f0fdf4;
 }
 
+.ins-item--warning {
+  background: #fef9c3;
+}
+
+.ins-item--alert {
+  background: #fee2e2;
+}
+
 
 /* ── Emoji icon ── */
 .ins-emoji {
