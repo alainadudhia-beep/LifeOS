@@ -4,12 +4,21 @@ import './Insights.css'
 
 const INSIGHTS_KEY = 'lifetracker-insights'
 
+function isTodayClaude(it) {
+  // Claude insights are daily observations — expire them at midnight
+  if (it.type !== 'claude') return true
+  if (!it.created_at) return true
+  return it.created_at.slice(0, 10) >= new Date().toISOString().slice(0, 10)
+}
+
 function loadInsights() {
   try {
     const data = JSON.parse(localStorage.getItem(INSIGHTS_KEY))
     if (!Array.isArray(data)) return []
     return data
       .filter(it => it && it.id && it.text && it.type)
+      // Drop stale claude observations from previous days
+      .filter(isTodayClaude)
       // Claude items should never be "done" — only track items get struck through
       .map(it => it.type === 'claude' && it.completed ? { ...it, completed: false, completed_at: null } : it)
       // One-time text fixes
@@ -108,6 +117,33 @@ function computeAutoInsights(logs) {
   const noPeriodToday = logged[0] && logged[0].log.cycle?.period === false
   if (periodDays.length > 0 && noPeriodToday)
     out.push({ id: 'auto-cycle-done', positive: true, text: `Period - over, woohoo! 🎉` })
+
+  // Yesterday completeness summary (pinned at top of Life Summary)
+  const yIso = daysAgo(1)
+  const yLog = logs[yIso]
+  const YESTERDAY_CHECKS = {
+    Mood:      d => d?.work != null && d?.life != null && d?.energy != null && d?.focus != null,
+    Health:    d => d?.eczema != null && d?.hayfever != null,
+    Diet:      d => d?.caffeine != null && d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
+    Alcohol:   d => d?.level != null && (d.level === 'None' || d?.type?.length > 0),
+    Water:     d => d?.glasses != null,
+    Sleep:     d => d?.hours != null && d?.quality != null,
+    Gratitude: d => !!d,
+  }
+  const missing = Object.entries(YESTERDAY_CHECKS)
+    .filter(([name, check]) => !check(name === 'Gratitude' ? yLog?.gratitude : yLog?.[name.toLowerCase()]))
+    .map(([name]) => name)
+  const complete = Object.keys(YESTERDAY_CHECKS).length - missing.length
+  if (missing.length === 0) {
+    out.unshift({ id: 'auto-yesterday', positive: true, bg: 'green', text: '⭐ Well done - you completed everything yesterday!' })
+  } else if (complete >= 4) {
+    const listed = missing.length <= 2
+      ? missing.join(' and ')
+      : `${missing.slice(0, 2).join(', ')} and ${missing.length - 2} more`
+    out.unshift({ id: 'auto-yesterday', positive: false, bg: 'yellow', text: `👍 Yesterday is nearly finished - don't forget to update ${listed}!` })
+  } else {
+    out.unshift({ id: 'auto-yesterday', positive: false, bg: 'red', text: `❗ A few data points missing from yesterday - why don't you fill them in now?` })
+  }
 
   return out
 }
@@ -252,7 +288,8 @@ const Insights = forwardRef(function Insights(_, ref) {
     addInsights(newInsights) {
       if (!newInsights?.length) return
       setItems(prev => {
-        let next = [...prev]
+        // Always purge stale claude observations before adding today's
+        let next = prev.filter(isTodayClaude)
         const toAppend = []
         const handledTopics = []
 
@@ -373,16 +410,18 @@ const Insights = forwardRef(function Insights(_, ref) {
     .sort((a, b) => textTrackIndex(a.text) - textTrackIndex(b.text))
   const workItems = [...activeTrackItems, ...claudeWorkItems, ...completedTrackItems]
 
-  // Life Summary — auto insights + Claude items that don't mention a track, positive first
+  // Life Summary — yesterday summary pinned first, then auto + Claude life items (positive first)
   // Suppress Claude items when an auto insight already covers the same topic (auto is trend-based and wins)
-  const autoTopics = visibleAuto.map(a => insightTopic(a.text))
-  const lifeItems = [
-    ...visibleAuto,
+  const yesterdaySummary = visibleAuto.find(a => a.id === 'auto-yesterday')
+  const autoTopics = visibleAuto.filter(a => a.id !== 'auto-yesterday').map(a => insightTopic(a.text))
+  const sortedLifeItems = [
+    ...visibleAuto.filter(a => a.id !== 'auto-yesterday'),
     ...claudeActive.filter(it =>
       !mentionsTrack(it.text) &&
       !autoTopics.some(t => t === insightTopic(it.text) || topicsOverlap(t, insightTopic(it.text)))
     ),
   ].sort((a, b) => (a.positive === b.positive ? 0 : a.positive ? -1 : 1))
+  const lifeItems = yesterdaySummary ? [yesterdaySummary, ...sortedLifeItems] : sortedLifeItems
 
   const isEmpty = workItems.length === 0 && lifeItems.length === 0
 
@@ -397,15 +436,19 @@ const Insights = forwardRef(function Insights(_, ref) {
 
 export default Insights
 
+const BG_CLASS = { green: 'ins-item--positive', yellow: 'ins-item--warning', red: 'ins-item--alert' }
+
 function Section({ title, items, onDismiss }) {
   if (!items.length) return null
   return (
     <div className="ins-section">
       <div className="ins-section-label">{title}</div>
-      {items.map(item => (
+      {items.map(item => {
+        const bgClass = item.bg ? (BG_CLASS[item.bg] ?? '') : (item.positive ? 'ins-item--positive' : '')
+        return (
         <div
           key={item.id}
-          className={`ins-item ${item.positive ? 'ins-item--positive' : ''}`}
+          className={`ins-item ${bgClass}`}
         >
           <span className="ins-emoji">{insightEmoji(item)}</span>
           <InsightText text={item.text} />
@@ -413,7 +456,8 @@ function Section({ title, items, onDismiss }) {
             <button className="ins-dismiss" onClick={() => onDismiss(item.id)} title="Dismiss">×</button>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
