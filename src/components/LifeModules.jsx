@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
-import { getDays, MONTH_NAMES } from '../utils/timeline'
+import { getDays, MONTH_NAMES, DAY_ABBR } from '../utils/timeline'
 import { DAY_WIDTH } from '../data/initialData'
 import './LifeModules.css'
 
@@ -251,7 +251,7 @@ function fmtDate(iso) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+const DAY_SHORT = DAY_ABBR
 
 export default function LifeModules({ mobile } = {}) {
   // On mobile: grid shows all history EXCEPT today; today gets its own sticky-right column

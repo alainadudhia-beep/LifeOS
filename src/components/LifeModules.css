@@ -642,11 +642,11 @@
 }
 
 .lm-date-cell-day {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   line-height: 1;
 }
 
