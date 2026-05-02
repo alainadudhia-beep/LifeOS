@@ -560,6 +560,7 @@ export default function LifeModules({ mobile } = {}) {
                       placeholder="What are you grateful for?"
                       value={gratEdit.value}
                       onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
+                      onBlur={saveGratitude}
                       onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
                     />
                   </div>
@@ -588,6 +589,7 @@ export default function LifeModules({ mobile } = {}) {
                       placeholder="What are you grateful for?"
                       value={gratEdit.value}
                       onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
+                      onBlur={saveGratitude}
                       onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
                     />
                   </div>
