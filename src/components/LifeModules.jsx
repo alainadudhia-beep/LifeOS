@@ -123,6 +123,7 @@ const MODULES = [
     defaults: { adhd_meds: 'None', antihistamines: 'None' },
     fields: [
       { key: 'eczema',          label: 'Eczema',          type: 'options',     options: ['None', 'Low', 'Med', 'Bad'], colors: { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' } },
+      { key: 'eczema_location', label: 'Location',        type: 'multiselect', options: ['Eyes', 'Under mouth', 'Neck', 'Back of neck', 'Scalp'] },
       { key: 'hayfever',        label: 'Hayfever',        type: 'options',     options: ['None', 'Low', 'Med', 'Bad'], colors: { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' } },
       { key: 'symptoms',        label: 'Symptoms',        type: 'multiselect', options: ['Headache', 'Fatigue', 'Bloating', 'Brain fog', 'Cramps', 'Anxious', 'Diarrhoea', 'Itchy throat', 'Itchy eyes'] },
       { key: 'adhd_meds',       label: 'ADHD Meds',       type: 'options',     options: ['None', '5mg', '7.5mg', '10mg'], colors: { None: '#f1f5f9', '5mg': '#e0f2fe', '7.5mg': '#bae6fd', '10mg': '#7dd3fc' } },
