@@ -166,6 +166,15 @@ const MODULES = [
   {
     key: 'exercise', label: 'Exercise',
     cellColor: d => {
+      const steps = d?.steps
+      if (steps != null) {
+        if (steps < 4000)  return '#fee2e2'
+        if (steps < 6000)  return '#fde8c8'
+        if (steps < 8000)  return '#fef9c3'
+        if (steps < 10000) return '#dcfce7'
+        if (steps < 12000) return '#bbf7d0'
+        return '#86efac'
+      }
       const acts = d?.activities
       if (!acts?.length) return null
       const ACTIVITY_COLORS = { 'Yoga': '#e9d5ff', 'Pilates': '#fce7f3', 'Long walk': '#cffafe', 'Gym': '#dbeafe' }
