@@ -573,10 +573,49 @@
 
 /* ─── mobile Life tab overrides ─── */
 .app-mobile-gantt-scroll .lm-label {
-  width: 80px;
-  min-width: 80px;
+  width: 90px;
+  min-width: 90px;
   padding: 0 6px;
   font-size: 10.5px;
+}
+
+/* ─── date header row ─── */
+.lm-row--date-header {
+  height: 32px;
+  background: #f8fafc;
+}
+
+.lm-date-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+
+.lm-date-cell-day {
+  font-size: 8px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.lm-date-cell-num {
+  font-size: 10px;
+  font-weight: 500;
+  color: #475569;
+  line-height: 1;
+}
+
+.lm-date-cell--today .lm-date-cell-day,
+.lm-date-cell--today .lm-date-cell-num {
+  color: #0f172a;
+  font-weight: 700;
 }
 
 /* Popover opens downward on mobile (rows are near the top) */

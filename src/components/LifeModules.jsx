@@ -236,16 +236,11 @@ function fmtDate(iso) {
 
 // ─── main component ───────────────────────────────────────────────────────────
 
+const DAY_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
 export default function LifeModules({ mobile } = {}) {
-  const days = mobile ? (() => {
-    const d = new Date(); d.setDate(d.getDate() - 6)
-    const sixAgo = d.toISOString().slice(0, 10)
-    return allDays.filter(day => {
-      const iso = day.toISOString().slice(0, 10)
-      return iso >= sixAgo && iso <= todayIso
-    })
-  })() : allDays
-  const gridWidth  = days.length * DAY_WIDTH
+  const days      = mobile ? allDays.filter(d => d.toISOString().slice(0, 10) <= todayIso) : allDays
+  const gridWidth = days.length * DAY_WIDTH
   const [logs, setLogs]             = useLocalStorage('lifetracker-life-logs', {})
   const [activeCell, setActiveCell] = useState(null) // { moduleKey, date }
   const popoverRef   = useRef(null)
@@ -364,6 +359,24 @@ export default function LifeModules({ mobile } = {}) {
         <div className="lm-section-label">Life</div>
         <div style={{ width: gridWidth, flexShrink: 0 }} />
       </div>
+
+      {mobile && (
+        <div className="lm-row lm-row--date-header">
+          <div className="lm-label" />
+          <div className="lm-day-grid" style={{ width: gridWidth }}>
+            {days.map((d, i) => (
+              <div
+                key={i}
+                className={`lm-date-cell ${d.toISOString().slice(0,10) === todayIso ? 'lm-date-cell--today' : ''}`}
+                style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
+              >
+                <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
+                <span className="lm-date-cell-num">{d.getDate()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {MODULES.map(mod => {
         const isActive = mod => activeCell?.moduleKey === mod.key

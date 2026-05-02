@@ -138,9 +138,11 @@ export default function Timeline({ mobile } = {}) {
   }
 
   useEffect(() => {
-    const px = dateToPx(todayIso)
-    scrollRef.current?.scrollTo({ left: px - 200, behavior: 'instant' })
-  }, [])
+    requestAnimationFrame(() => {
+      const px = dateToPx(todayIso)
+      scrollRef.current?.scrollTo({ left: Math.max(0, px - (mobile ? 80 : 200)), behavior: 'instant' })
+    })
+  }, []) // eslint-disable-line
 
   useEffect(() => {
     function onTracksUpdated() {
@@ -266,7 +268,7 @@ export default function Timeline({ mobile } = {}) {
               {showArchived ? 'Hide archived' : `Archived (${archivedCount})`}
             </button>
           )}
-          {!mobile && <button className="add-btn secondary" onClick={() => setEditingCommitment(newCommitment())}>+ Add commitment</button>}
+          <button className="add-btn secondary" onClick={() => setEditingCommitment(newCommitment())}>+ Add commitment</button>
           <button className="add-btn primary" onClick={() => { const t = newTrack(); update(ts => [...ts, t]); setEditingTrack(t) }}>+ Add track</button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import LifeModules from './components/LifeModules'
 import Insights from './components/Insights'
 import TodayPanel from './components/TodayPanel'
 import MobileTodayModules from './components/MobileTodayModules'
+import VoiceCheckin from './components/VoiceCheckin'
 import AuthGate from './components/AuthGate'
 import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
@@ -28,11 +29,20 @@ const NUDGE_TEXT = {
 }
 
 export default function App() {
-  const isMobile    = useIsMobile()
+  const isMobile       = useIsMobile()
   const [mobileTab, setMobileTab] = useState('today')
-  const importRef   = useRef(null)
-  const todayRef    = useRef(null)
-  const thisWeekRef = useRef(null)
+  const lifeScrollRef  = useRef(null)
+  const importRef      = useRef(null)
+  const todayRef       = useRef(null)
+  const thisWeekRef    = useRef(null)
+
+  useEffect(() => {
+    if (mobileTab !== 'life') return
+    requestAnimationFrame(() => {
+      if (lifeScrollRef.current)
+        lifeScrollRef.current.scrollLeft = lifeScrollRef.current.scrollWidth
+    })
+  }, [mobileTab])
 
   const [checkinStatus, setCheckinStatus] = useState('idle')
   const [errorMsg, setErrorMsg] = useState(null)
@@ -136,24 +146,23 @@ export default function App() {
       <AuthGate>
         <div className="app app--mobile">
           <header className="app-mobile-header">
-            <h1 className="app-title">Life OS</h1>
+            <div className="app-mobile-header-row">
+              <h1 className="app-title">Life OS</h1>
+              {checkinStatus === 'parsing' && <span className="app-mobile-status">Parsing…</span>}
+              {checkinStatus === 'error'   && <span className="app-mobile-status app-mobile-status--error">{errorMsg ?? 'Error'}</span>}
+            </div>
+            <VoiceCheckin onTranscript={handleTranscript} disabled={checkinStatus === 'parsing'} />
           </header>
 
           <div className="app-mobile-content">
             {mobileTab === 'today' && (
               <div className="app-mobile-scroll">
-                <TodayPanel
-                  ref={todayRef}
-                  checkinStatus={checkinStatus}
-                  errorMsg={errorMsg}
-                  onTranscript={handleTranscript}
-                />
                 <MobileTodayModules />
                 <Insights ref={thisWeekRef} />
               </div>
             )}
             {mobileTab === 'life' && (
-              <div className="app-mobile-gantt-scroll">
+              <div className="app-mobile-gantt-scroll" ref={lifeScrollRef}>
                 <LifeModules mobile />
               </div>
             )}
