@@ -10,11 +10,11 @@ const FITBIT_RAW_KEY = 'lifetracker-fitbit-raw'
 
 function minutesToHoursLabel(minutes) {
   if (minutes == null) return null
-  if (minutes < 300) return '<5'
-  if (minutes < 360) return '5'
-  if (minutes < 420) return '6'
-  if (minutes < 480) return '7'
-  if (minutes < 540) return '8'
+  if (minutes < 270) return '<5'
+  if (minutes < 330) return '5'
+  if (minutes < 390) return '6'
+  if (minutes < 450) return '7'
+  if (minutes < 510) return '8'
   return '9+'
 }
 
