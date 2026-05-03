@@ -59,7 +59,8 @@ export default async function handler(req, res) {
 
   const date               = body.date
   const steps              = num(body.steps)
-  const active_energy_kcal = num(body.active_energy_kcal)
+  const active_energy_kcal   = num(body.active_energy_kcal)
+  const resting_energy_kcal  = num(body.resting_energy_kcal)
   const exercise_minutes   = num(body.exercise_minutes)
   const workouts           = body.workouts ?? null
   const sleep_minutes      = num(body.sleep_minutes)
@@ -145,6 +146,7 @@ export default async function handler(req, res) {
     ...(raw[date] ?? {}),
     steps,
     active_energy_kcal,
+    resting_energy_kcal,
     exercise_minutes,
     sleep_minutes,
     in_bed_minutes,
