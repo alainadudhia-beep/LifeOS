@@ -150,13 +150,11 @@ export default function Timeline({ mobile } = {}) {
   }
 
   useEffect(() => {
-    function scrollToday() {
-      if (!scrollRef.current) return
-      scrollRef.current.scrollLeft = Math.max(0, dateToPx(todayIso) - (mobile ? 80 : 200))
-    }
-    const t1 = setTimeout(scrollToday, 50)
-    const t2 = setTimeout(scrollToday, 250)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    const t = setTimeout(() => {
+      if (scrollRef.current)
+        scrollRef.current.scrollLeft = Math.max(0, dateToPx(todayIso) - 200)
+    }, 150)
+    return () => clearTimeout(t)
   }, []) // eslint-disable-line
 
   useEffect(() => {
