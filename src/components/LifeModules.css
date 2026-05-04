@@ -50,6 +50,13 @@
   border-bottom: none;
 }
 
+/* Thick line separating autosync rows (Sleep/Steps) from manual-entry rows */
+.lm-autosync-divider {
+  height: 0;
+  border-top: 2.5px solid #cbd5e1;
+  margin: 2px 0;
+}
+
 .lm-label {
   width: 240px;
   min-width: 240px;
@@ -204,7 +211,7 @@
   border-radius: 10px;
   padding: 10px 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
-  min-width: 230px;
+  min-width: 300px;
   white-space: nowrap;
 }
 
@@ -258,6 +265,7 @@
   color: #64748b;
   min-width: 72px;
   flex-shrink: 0;
+  white-space: pre-line;
 }
 
 .lm-pf-controls {

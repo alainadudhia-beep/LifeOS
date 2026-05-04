@@ -7,6 +7,7 @@ const DATA_KEYS = [
   'lifetracker-thisweek-v1',
   'lifetracker-insights',
   'lifetracker-dismissed-track-actions',
+  'lifetracker-fitbit-raw',
 ]
 
 export async function preloadAllKeys() {
