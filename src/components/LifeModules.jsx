@@ -1224,4 +1224,4 @@ function PopoverField({ field, value, onSet }) {
   return null
 }
 
-export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField }
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }

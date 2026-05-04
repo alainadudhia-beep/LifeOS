@@ -155,6 +155,7 @@ export default function App() {
   }
 
   const [showCheckin, setShowCheckin] = useState(false)
+  const [textCheckin, setTextCheckin] = useState('')
 
   if (isMobile) {
     return (
@@ -196,7 +197,7 @@ export default function App() {
             ))}
             <button
               className={`app-tab-btn ${showCheckin ? 'app-tab-btn--active' : ''}`}
-              onClick={() => { setShowCheckin(v => !v); setCheckinStatus('idle'); setErrorMsg(null) }}
+              onClick={() => { setShowCheckin(v => !v); setCheckinStatus('idle'); setErrorMsg(null); setTextCheckin('') }}
             >
               <span className="app-tab-icon">🎙️</span>
               <span className="app-tab-label">Check-in</span>
@@ -208,13 +209,33 @@ export default function App() {
               <div className="app-checkin-overlay" onClick={() => setShowCheckin(false)} />
               <div className="app-checkin-sheet">
                 <div className="app-checkin-sheet-header">
-                  <span>Voice Check-in</span>
+                  <span>Check-in</span>
                   <button className="app-checkin-close" onClick={() => setShowCheckin(false)}>✕</button>
                 </div>
                 <div className="app-checkin-sheet-body">
                   <VoiceCheckin onTranscript={async text => {
                     await handleTranscript(text)
                   }} disabled={checkinStatus === 'parsing'} />
+                  <div className="app-checkin-divider"><span>or type</span></div>
+                  <div className="app-checkin-text-area">
+                    <textarea
+                      className="app-checkin-text-input"
+                      placeholder="Type your update…"
+                      value={textCheckin}
+                      onChange={e => setTextCheckin(e.target.value)}
+                      rows={3}
+                    />
+                    <button
+                      className="app-checkin-text-submit"
+                      disabled={!textCheckin.trim() || checkinStatus === 'parsing'}
+                      onClick={async () => {
+                        const text = textCheckin.trim()
+                        if (!text) return
+                        setTextCheckin('')
+                        await handleTranscript(text)
+                      }}
+                    >Log this</button>
+                  </div>
                   {checkinStatus === 'parsing' && <span className="app-checkin-status">Parsing…</span>}
                   {checkinStatus === 'done'    && <span className="app-checkin-status app-checkin-status--done">Done ✓</span>}
                   {checkinStatus === 'error'   && <span className="app-checkin-status app-checkin-status--error">{errorMsg ?? 'Error'}</span>}

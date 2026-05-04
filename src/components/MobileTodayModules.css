@@ -4,6 +4,12 @@
   gap: 10px;
 }
 
+.mlm-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .mlm-section-label {
   font-size: 10.5px;
   font-weight: 600;
@@ -11,6 +17,19 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
+
+.mlm-journal-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.mlm-journal-link:active { opacity: 0.6; }
 
 /* ── Card grid ── */
 .mlm-grid {
@@ -187,6 +206,26 @@
   background: #f8fafc;
   border-color: #cbd5e1;
 }
+
+/* ── Compact sheet (sleep/steps detail) ── */
+.mlm-sheet--compact {
+  max-height: 40vh;
+}
+
+/* ── Info rows (sleep/steps detail) ── */
+.mlm-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  color: #475569;
+}
+.mlm-info-row:last-child { border-bottom: none; }
+.mlm-info-row strong { color: #1e293b; font-weight: 600; }
+.mlm-info-row--sub { font-size: 11px; color: #94a3b8; }
+.mlm-info-row--sub span { color: #94a3b8; }
 
 /* ── Journal entries ── */
 .mlm-journal-entries {
