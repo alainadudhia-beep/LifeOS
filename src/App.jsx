@@ -6,11 +6,36 @@ import TodayPanel from './components/TodayPanel'
 import MobileTodayModules from './components/MobileTodayModules'
 import VoiceCheckin from './components/VoiceCheckin'
 import AuthGate from './components/AuthGate'
+import { dbWrite } from './lib/db'
 import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
 import { applyCheckin } from './utils/applyCheckin'
 import { buildCheckinContext } from './utils/buildCheckinContext'
 import './App.css'
+
+// One-time migration: '1-2' → '1', '3-4' → '3', '5+' → '5' for diet.fruit_veg
+async function migrateFruitVeg() {
+  const MAP = { '1-2': '1', '3-4': '3', '5+': '5' }
+  try {
+    const raw = localStorage.getItem('lifetracker-life-logs')
+    if (!raw) return
+    const logs = JSON.parse(raw)
+    let changed = false
+    for (const date of Object.keys(logs)) {
+      const fv = logs[date]?.diet?.fruit_veg
+      if (fv && MAP[fv]) {
+        logs[date] = { ...logs[date], diet: { ...logs[date].diet, fruit_veg: MAP[fv] } }
+        changed = true
+      }
+    }
+    if (!changed) return
+    localStorage.setItem('lifetracker-life-logs', JSON.stringify(logs))
+    await dbWrite('lifetracker-life-logs', logs)
+    console.log('[migrateFruitVeg] migrated fruit_veg bucket strings')
+  } catch (e) {
+    console.error('[migrateFruitVeg]', e)
+  }
+}
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -35,6 +60,8 @@ export default function App() {
   const importRef      = useRef(null)
   const todayRef       = useRef(null)
   const thisWeekRef    = useRef(null)
+
+  useEffect(() => { migrateFruitVeg() }, [])
 
   useEffect(() => {
     if (mobileTab !== 'life') return

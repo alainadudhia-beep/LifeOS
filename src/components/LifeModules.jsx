@@ -70,9 +70,12 @@ function scoreToSummary(score) {
 const SEVERITY_SCORE = { None: 3, Low: 2, Med: 1.5, Bad: 0 }
 const PROTEIN_SCORE  = { Low: 1, Med: 2, High: 3 }
 const FRUIT_SCORE    = { '1': 1, '2': 1, '3': 2, '4': 2, '5': 3, '6+': 3, '1-2': 1, '3-4': 2, '5+': 3 }
-const CARBS_SCORE    = { Low: 1, Med: 3, High: 1 }
+const CARBS_SCORE    = { Low: 2, Med: 3, High: 1 }
 const SNACKING_SCORE = { Low: 3, Med: 2, High: 0 }
 const SUGAR_SCORE    = { None: 3, Low: 2, Med: 1, High: 0 }
+
+// Diet field weights — fruit_veg counts 2× (biggest dietary signal), carbs/sugar 1.5×
+const DIET_WEIGHTS   = { sugar: 1.5, protein: 1, fruit_veg: 2, carbs: 1.5, snacking: 1 }
 
 function avg(nums) {
   const valid = nums.filter(n => n != null)
@@ -91,16 +94,24 @@ function inflammScore(d) {
 
 function dietScore(d) {
   if (!d) return null
-  const scores = [
-    d.sugar     != null ? SUGAR_SCORE[d.sugar]       : null,
-    d.protein   != null ? PROTEIN_SCORE[d.protein]   : null,
-    d.fruit_veg != null ? FRUIT_SCORE[d.fruit_veg]   : null,
-    d.carbs     != null ? CARBS_SCORE[d.carbs]       : null,
-    d.snacking  != null ? SNACKING_SCORE[d.snacking] : null,
+  const fields = [
+    ['sugar',     SUGAR_SCORE,    d.sugar],
+    ['protein',   PROTEIN_SCORE,  d.protein],
+    ['fruit_veg', FRUIT_SCORE,    d.fruit_veg],
+    ['carbs',     CARBS_SCORE,    d.carbs],
+    ['snacking',  SNACKING_SCORE, d.snacking],
   ]
-  const valid = scores.filter(n => n != null)
-  if (valid.length < 2) return null
-  return valid.reduce((a, b) => a + b, 0) / valid.length
+  let sum = 0, totalWeight = 0
+  for (const [key, table, val] of fields) {
+    if (val == null) continue
+    const score = table[val]
+    if (score == null) continue
+    const w = DIET_WEIGHTS[key]
+    sum += score * w
+    totalWeight += w
+  }
+  if (totalWeight < 2) return null
+  return sum / totalWeight
 }
 
 function hasAny(d) {
