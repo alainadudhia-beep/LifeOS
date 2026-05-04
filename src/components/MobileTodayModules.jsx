@@ -10,8 +10,7 @@ import './LifeModules.css'
 import './MobileTodayModules.css'
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
-const WATER_CYCLE   = [1, 2, 3, 4, 5, 6, 7, '8+', null]
-const ALCOHOL_CYCLE = [1, 2, 3, 4, '5+', null]
+const WATER_CYCLE = [1, 2, 3, 4, 5, 6, 7, '8+', null]
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -77,13 +76,6 @@ export default function MobileTodayModules() {
     const idx  = WATER_CYCLE.findIndex(v => String(v ?? '') === String(current ?? ''))
     const next = WATER_CYCLE[(idx < 0 ? 0 : idx + 1) % WATER_CYCLE.length]
     setFieldValue('water', 'glasses', next)
-  }
-
-  function incrementAlcohol() {
-    const current = todayLog.alcohol?.level
-    const idx  = ALCOHOL_CYCLE.findIndex(v => String(v ?? '') === String(current ?? ''))
-    const next = ALCOHOL_CYCLE[(idx < 0 ? 0 : idx + 1) % ALCOHOL_CYCLE.length]
-    setFieldValue('alcohol', 'level', next)
   }
 
   // ── Fitbit: sleep ─────────────────────────────────────────────────────────
@@ -241,23 +233,8 @@ export default function MobileTodayModules() {
           )
         })()}
 
-        {/* 6. Alcohol — tap to increment */}
-        {(() => {
-          const dayData = todayLog.alcohol ?? null
-          const bg      = alcoholMod.cellColor(dayData)
-          const label   = dayData?.level != null ? String(dayData.level) : null
-          return (
-            <button
-              className="mlm-card"
-              style={bg ? { background: bg } : undefined}
-              onClick={incrementAlcohol}
-            >
-              <span className="mlm-card-emoji">🍷</span>
-              <span className="mlm-card-name">Alcohol</span>
-              {label && <span className="mlm-card-value">{label}</span>}
-            </button>
-          )
-        })()}
+        {/* 6. Alcohol */}
+        {renderModCard(alcoholMod, todayLog.alcohol ?? null, () => openModule('alcohol'))}
 
         {/* 7. Diet */}
         {renderModCard(dietMod, todayLog.diet ?? null, () => openModule('diet'))}
