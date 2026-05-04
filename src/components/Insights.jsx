@@ -56,7 +56,8 @@ function daysAgo(n) {
   const d = new Date(); d.setDate(d.getDate() - n)
   return d.toISOString().slice(0, 10)
 }
-function readLogs()   { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } }
+function readLogs()     { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } }
+function readFitbitRaw(){ try { return JSON.parse(localStorage.getItem('lifetracker-fitbit-raw')) ?? {} } catch { return {} } }
 function readTracks() { try { const r = JSON.parse(localStorage.getItem('lifetracker-tracks-v3')); return Array.isArray(r) ? r : Object.values(r ?? {}) } catch { return [] } }
 
 // ── Auto-computed insights ────────────────────────────────────────────────────
@@ -121,18 +122,19 @@ function computeAutoInsights(logs) {
   // Yesterday completeness summary (pinned at top of Life Summary)
   const yIso = daysAgo(1)
   const yLog = logs[yIso]
-  const YESTERDAY_CHECKS = {
-    Mood:      d => d?.work != null && d?.life != null && d?.energy != null && d?.focus != null,
-    Health:    d => d?.eczema != null && d?.hayfever != null,
-    Diet:      d => d?.caffeine != null && d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
-    Alcohol:   d => d?.level != null && (d.level === 'None' || d?.type?.length > 0),
-    Water:     d => d?.glasses != null,
-    Sleep:     d => d?.hours != null && d?.quality != null,
-    Gratitude: d => !!d,
-  }
-  const missing = Object.entries(YESTERDAY_CHECKS)
-    .filter(([name, check]) => !check(name === 'Gratitude' ? yLog?.gratitude : yLog?.[name.toLowerCase()]))
-    .map(([name]) => name)
+  const yFitbit = readFitbitRaw()[yIso] ?? {}
+  const YESTERDAY_CHECKS = [
+    { label: 'Mind',       check: () => yLog?.mood?.work != null && yLog?.mood?.life != null && yLog?.mood?.focus != null },
+    { label: 'Inflammation', check: () => yLog?.health?.eczema != null && yLog?.health?.hayfever != null },
+    { label: 'Diet',       check: () => yLog?.diet?.caffeine != null && yLog?.diet?.sugar != null && yLog?.diet?.protein != null && yLog?.diet?.fruit_veg != null && yLog?.diet?.carbs != null && yLog?.diet?.snacking != null },
+    { label: 'Alcohol',    check: () => yLog?.alcohol?.level != null && (yLog.alcohol.level === 'None' || yLog?.alcohol?.type?.length > 0) },
+    { label: 'Water',      check: () => yLog?.water?.glasses != null },
+    { label: 'Sleep',      check: () => yFitbit.sleep_minutes != null || (yLog?.sleep?.hours != null && yLog?.sleep?.quality != null) },
+    { label: 'Gratitude',  check: () => !!yLog?.gratitude },
+  ]
+  const missing = YESTERDAY_CHECKS
+    .filter(({ check }) => !check())
+    .map(({ label }) => label)
   const complete = Object.keys(YESTERDAY_CHECKS).length - missing.length
   if (missing.length === 0) {
     out.unshift({ id: 'auto-yesterday', positive: true, bg: 'green', text: 'Well done - you completed everything yesterday!' })
