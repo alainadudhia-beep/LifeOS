@@ -114,7 +114,25 @@ export default function MobileTodayModules() {
   const bodyData = todayLog.body ?? {}
   const period   = bodyData.period ?? !!todayLog.period
   const illness  = bodyData.illness
-  const kg       = fitbitToday.weight_kg
+  // carry forward last known weight and pill
+  const kg = (() => {
+    const d = new Date(today)
+    for (let i = 0; i < 90; i++) {
+      const w = fitbitRaw[d.toISOString().slice(0, 10)]?.weight_kg
+      if (w != null) return w
+      d.setDate(d.getDate() - 1)
+    }
+    return null
+  })()
+  const pillFwd = bodyData.pill != null ? bodyData.pill : (() => {
+    const d = new Date(today); d.setDate(d.getDate() - 1)
+    for (let i = 0; i < 60; i++) {
+      const v = logs[d.toISOString().slice(0, 10)]?.body?.pill
+      if (v != null) return v
+      d.setDate(d.getDate() - 1)
+    }
+    return null
+  })()
   const bodyBg   = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kg != null ? '#f1f5f9' : null
 
   // ── Exercise ──────────────────────────────────────────────────────────────
@@ -162,7 +180,7 @@ export default function MobileTodayModules() {
 
   function getFieldValue(mod, field) {
     if (mod.key === 'body') {
-      const full = { ...bodyData, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null }
+      const full = { ...bodyData, pill: pillFwd, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null }
       return full[field.key] ?? null
     }
     if (mod.key === 'exercise') {

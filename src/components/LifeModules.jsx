@@ -323,6 +323,29 @@ export default function LifeModules({ mobile } = {}) {
   const [sleepOpen,  setSleepOpen]  = useState(null)   // iso date
   const [stepsOpen,  setStepsOpen]  = useState(null)   // iso date
 
+  // Carry forward last known values for display in the popover
+  function lastKnownWeight(iso) {
+    const d = new Date(iso)
+    for (let i = 0; i < 90; i++) {
+      const key = d.toISOString().slice(0, 10)
+      const w = fitbitRaw[key]?.weight_kg
+      if (w != null) return w
+      d.setDate(d.getDate() - 1)
+    }
+    return null
+  }
+  function lastKnownPill(iso) {
+    const d = new Date(iso)
+    d.setDate(d.getDate() - 1) // start from day before so today's null doesn't block
+    for (let i = 0; i < 60; i++) {
+      const key = d.toISOString().slice(0, 10)
+      const v = logs[key]?.body?.pill
+      if (v != null) return v
+      d.setDate(d.getDate() - 1)
+    }
+    return null
+  }
+
   const popoverRef     = useRef(null)
   const sleepRef       = useRef(null)
   const sleepCellRefs  = useRef({})
@@ -760,13 +783,15 @@ export default function LifeModules({ mobile } = {}) {
             const bodyData = logs[iso]?.body ?? {}
             const period   = bodyData.period ?? !!logs[iso]?.period  // backward compat
             const illness  = bodyData.illness
-            const kg       = fitbitRaw[iso]?.weight_kg
+            const kg       = lastKnownWeight(iso)
             const bg       = illness && illness !== 'None' ? '#fee2e2'
               : period ? '#fce7f3'
               : kg != null ? '#f1f5f9'
               : null
             const open     = activeCell?.moduleKey === 'body' && activeCell?.date === iso
             const isFuture = iso > todayIso
+            const fmtKg    = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
+            const pillFwd  = bodyData.pill != null ? bodyData.pill : lastKnownPill(iso)
             return (
               <div
                 key={iso}
@@ -780,7 +805,7 @@ export default function LifeModules({ mobile } = {}) {
                     ref={popoverRef}
                     mod={BODY_MODULE}
                     date={iso}
-                    dayData={{ ...bodyData, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null }}
+                    dayData={{ ...bodyData, pill: pillFwd, _weight_kg: fmtKg }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', iso, fk, v) }}
                   />
                 )}
@@ -792,9 +817,11 @@ export default function LifeModules({ mobile } = {}) {
           const bodyData = logs[todayIso]?.body ?? {}
           const period   = bodyData.period ?? !!logs[todayIso]?.period
           const illness  = bodyData.illness
-          const kg       = fitbitRaw[todayIso]?.weight_kg
+          const kg       = lastKnownWeight(todayIso)
           const bg       = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kg != null ? '#f1f5f9' : null
           const open     = activeCell?.moduleKey === 'body' && activeCell?.date === todayIso
+          const fmtKgT   = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
+          const pillFwdT = bodyData.pill != null ? bodyData.pill : lastKnownPill(todayIso)
           return (
             <div className="lm-today-col">
               <div
@@ -808,7 +835,7 @@ export default function LifeModules({ mobile } = {}) {
                     ref={popoverRef}
                     mod={BODY_MODULE}
                     date={todayIso}
-                    dayData={{ ...bodyData, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null }}
+                    dayData={{ ...bodyData, pill: pillFwdT, _weight_kg: fmtKgT }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', todayIso, fk, v) }}
                   />
                 )}
