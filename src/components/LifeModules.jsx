@@ -547,9 +547,9 @@ export default function LifeModules({ mobile } = {}) {
           {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const raw      = fitbitRaw[iso]
-            const sleepMin = raw?.sleep_minutes
-            const inBedMin = raw?.in_bed_minutes
             const oldSleep = logs[iso]?.sleep  // backward compat
+            const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
+            const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
             const hasFitbit = sleepMin != null
             const hasOld    = !hasFitbit && oldSleep?.hours != null
             const bg        = hasFitbit ? sleepColorFromFitbit(sleepMin, inBedMin)
@@ -573,9 +573,9 @@ export default function LifeModules({ mobile } = {}) {
         </div>
         {mobile && (() => {
           const raw      = fitbitRaw[todayIso]
-          const sleepMin = raw?.sleep_minutes
-          const inBedMin = raw?.in_bed_minutes
           const oldSleep = logs[todayIso]?.sleep
+          const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
+          const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
           const hasFitbit = sleepMin != null
           const hasOld    = !hasFitbit && oldSleep?.hours != null
           const bg     = hasFitbit ? sleepColorFromFitbit(sleepMin, inBedMin) : hasOld ? sleepColorFromOldData(oldSleep) : null
@@ -686,7 +686,7 @@ export default function LifeModules({ mobile } = {}) {
             const open     = activeCell?.moduleKey === 'exercise' && activeCell?.date === iso
             const isFuture = iso > todayIso
             const isRecent = iso === todayIso || iso === yesterdayIso
-            const incomplete = isRecent && !COMPLETE_CHECK.exercise?.(exData)
+            const incomplete = false
             return (
               <div
                 key={iso}
@@ -721,7 +721,7 @@ export default function LifeModules({ mobile } = {}) {
           const acts    = exData?.activities
           const labels  = acts?.length ? acts.map(a => EXERCISE_SHORT[a] ?? a) : null
           const open    = activeCell?.moduleKey === 'exercise' && activeCell?.date === todayIso
-          const incomplete = !COMPLETE_CHECK.exercise?.(exData)
+          const incomplete = false
           return (
             <div className="lm-today-col">
               <div
@@ -923,9 +923,9 @@ export default function LifeModules({ mobile } = {}) {
         const cellEl   = sleepCellRefs.current[sleepOpen]
         if (!cellEl) return null
         const raw      = fitbitRaw[sleepOpen]
-        const sleepMin = raw?.sleep_minutes
-        const inBedMin = raw?.in_bed_minutes
         const oldSleep = logs[sleepOpen]?.sleep
+        const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
+        const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
         const hasFitbit = sleepMin != null
         const eff       = hasFitbit && inBedMin ? Math.round(sleepMin / inBedMin * 100) : null
         const effLabel  = sleepEffLabel(sleepMin, inBedMin)
