@@ -37,6 +37,34 @@ async function migrateFruitVeg() {
   }
 }
 
+// One-time migration: health.dry_eyes: true → health.dryness: ['Eyes'], and health.dryness (old dehydration name)
+async function migrateDryEyes() {
+  try {
+    const raw = localStorage.getItem('lifetracker-life-logs')
+    if (!raw) return
+    const logs = JSON.parse(raw)
+    let changed = false
+    for (const date of Object.keys(logs)) {
+      if (logs[date]?.health?.dry_eyes === true) {
+        const health = { ...logs[date].health }
+        const existing = Array.isArray(health.dryness) ? health.dryness : []
+        if (!existing.includes('Eyes')) {
+          health.dryness = [...existing, 'Eyes']
+        }
+        delete health.dry_eyes
+        logs[date] = { ...logs[date], health }
+        changed = true
+      }
+    }
+    if (!changed) return
+    localStorage.setItem('lifetracker-life-logs', JSON.stringify(logs))
+    await dbWrite('lifetracker-life-logs', logs)
+    console.log('[migrateDryEyes] migrated dry_eyes → dryness')
+  } catch (e) {
+    console.error('[migrateDryEyes]', e)
+  }
+}
+
 // One-time migration: copy logs[date].exercise.steps → fitbitRaw[date].steps
 // for historical dates where steps lived in life-logs before the fitbit-raw store existed.
 async function migrateHistoricalSteps() {
@@ -87,7 +115,7 @@ export default function App() {
   const todayRef       = useRef(null)
   const thisWeekRef    = useRef(null)
 
-  useEffect(() => { migrateFruitVeg(); migrateHistoricalSteps() }, [])
+  useEffect(() => { migrateFruitVeg(); migrateHistoricalSteps(); migrateDryEyes() }, [])
 
   useEffect(() => {
     if (mobileTab !== 'life') return

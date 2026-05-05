@@ -59,6 +59,19 @@ function daysAgo(n) {
 function readLogs()     { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } }
 function readFitbitRaw(){ try { return JSON.parse(localStorage.getItem('lifetracker-fitbit-raw')) ?? {} } catch { return {} } }
 function readTracks() { try { const r = JSON.parse(localStorage.getItem('lifetracker-tracks-v3')); return Array.isArray(r) ? r : Object.values(r ?? {}) } catch { return [] } }
+function writeTracks(tracks) {
+  const raw = localStorage.getItem('lifetracker-tracks-v3')
+  let parsed; try { parsed = JSON.parse(raw) } catch { parsed = null }
+  if (Array.isArray(parsed)) {
+    localStorage.setItem('lifetracker-tracks-v3', JSON.stringify(tracks))
+    dbWrite('lifetracker-tracks-v3', tracks)
+  } else {
+    const obj = {}; for (const t of tracks) obj[t.id] = t
+    localStorage.setItem('lifetracker-tracks-v3', JSON.stringify(obj))
+    dbWrite('lifetracker-tracks-v3', obj)
+  }
+  window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
+}
 
 // ── Auto-computed insights ────────────────────────────────────────────────────
 
@@ -129,13 +142,12 @@ function computeAutoInsights(logs) {
     { label: 'Diet',       check: () => yLog?.diet?.caffeine != null && yLog?.diet?.sugar != null && yLog?.diet?.protein != null && yLog?.diet?.fruit_veg != null && yLog?.diet?.carbs != null && yLog?.diet?.snacking != null },
     { label: 'Alcohol',    check: () => yLog?.alcohol?.level != null && (yLog.alcohol.level === 'None' || yLog?.alcohol?.type?.length > 0) },
     { label: 'Water',      check: () => yLog?.water?.glasses != null },
-    { label: 'Sleep',      check: () => yFitbit.sleep_minutes != null || (yLog?.sleep?.hours != null && yLog?.sleep?.quality != null) },
     { label: 'Gratitude',  check: () => !!yLog?.gratitude },
   ]
   const missing = YESTERDAY_CHECKS
     .filter(({ check }) => !check())
     .map(({ label }) => label)
-  const complete = Object.keys(YESTERDAY_CHECKS).length - missing.length
+  const complete = YESTERDAY_CHECKS.length - missing.length
   if (missing.length === 0) {
     out.unshift({ id: 'auto-yesterday', positive: true, bg: 'green', text: 'Well done - you completed everything yesterday!' })
   } else if (complete >= 4) {
@@ -234,6 +246,62 @@ const Insights = forwardRef(function Insights(_, ref) {
     })
   }
 
+  function syncMilestoneNudges(tracks) {
+    const today = new Date().toISOString().slice(0, 10)
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 5)
+    const cutoffIso = cutoff.toISOString().slice(0, 10)
+
+    let tracksChanged = false
+    const updatedTracks = tracks.map(t => {
+      if (t.archived) return t
+      const upcomingMs = (t.milestones ?? []).filter(m => m.date >= today && m.date <= cutoffIso)
+      if (!upcomingMs.length) return t
+      const hist   = t.status_history
+      const status = hist?.length ? hist[hist.length - 1].status : t.status
+      if (status === 'action_required' || status === 'secured' || status === 'closed') return t
+      // Flip status to action_required
+      const closed = (hist ?? []).map((seg, i) =>
+        i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
+      )
+      tracksChanged = true
+      return {
+        ...t,
+        status_history: [...closed, { id: `sh-${t.id}-ms-${Date.now()}`, status: 'action_required', start_date: today, end_date: null }],
+        updated_at: new Date().toISOString(),
+      }
+    })
+
+    if (tracksChanged) writeTracks(updatedTracks)
+
+    // Add nudge insights for each upcoming milestone
+    setItems(prev => {
+      const existingMsIds = new Set(prev.map(it => it.ms_id).filter(Boolean))
+      const toAdd = []
+      for (const t of tracks) {
+        if (t.archived) continue
+        for (const ms of (t.milestones ?? [])) {
+          if (ms.date < today || ms.date > cutoffIso) continue
+          const msId = `ms-${t.id}-${ms.id}`
+          if (existingMsIds.has(msId)) continue
+          const daysUntil = Math.round((new Date(ms.date) - new Date(today)) / 86400000)
+          const when = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`
+          toAdd.push({
+            id: `ins-ms-${t.id}-${ms.id}`,
+            ms_id: msId,
+            type: 'track',
+            track_id: t.id,
+            text: `${t.name} - ${ms.label} ${when} (${ms.date})`,
+            positive: false,
+            completed: false,
+            completed_at: null,
+            created_at: new Date().toISOString(),
+          })
+        }
+      }
+      return toAdd.length ? [...prev, ...toAdd] : prev
+    })
+  }
+
   function autoCompleteTrackInsights(tracks) {
     setItems(prev => {
       let changed = false
@@ -257,7 +325,9 @@ const Insights = forwardRef(function Insights(_, ref) {
 
   useEffect(() => {
     refreshAuto()
-    syncTrackActions(readTracks())
+    const tracks = readTracks()
+    syncTrackActions(tracks)
+    syncMilestoneNudges(tracks)
 
     function onLogsUpdated() {
       refreshAuto()
@@ -276,6 +346,7 @@ const Insights = forwardRef(function Insights(_, ref) {
       const tracks = readTracks()
       autoCompleteTrackInsights(tracks)
       syncTrackActions(tracks)
+      syncMilestoneNudges(tracks)
       refreshAuto()
     }
     window.addEventListener('lifetracker-logs-updated',   onLogsUpdated)

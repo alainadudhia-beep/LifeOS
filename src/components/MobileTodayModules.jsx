@@ -84,7 +84,7 @@ export default function MobileTodayModules() {
   const oldSleep     = todayLog.sleep
   const sleepMin     = fitbitToday.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
   const inBedMin     = fitbitToday.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
-  const hasFitbitSleep = sleepMin != null
+  const hasFitbitSleep = sleepMin != null && sleepMin <= 960
   const hasOldSleep    = !hasFitbitSleep && oldSleep?.hours != null
   const sleepBg    = hasFitbitSleep
     ? sleepColorFromFitbit(sleepMin, inBedMin)

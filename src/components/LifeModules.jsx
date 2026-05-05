@@ -25,7 +25,7 @@ const SLEEP_COLORS  = [
 
 // Fitbit-sourced colour (sleep_minutes + in_bed_minutes)
 function sleepColorFromFitbit(sleepMin, inBedMin) {
-  if (sleepMin == null) return null
+  if (sleepMin == null || sleepMin > 960) return null
   const hrs     = sleepMin / 60
   const hBucket = hrs < 5 ? '<5' : hrs < 6 ? '5' : hrs < 7 ? '6' : hrs < 8 ? '7' : hrs < 9 ? '8' : '9+'
   const h       = HOURS_SCORE[hBucket]
@@ -147,13 +147,13 @@ const MODULES = [
     fields: [
       { key: 'antihistamines',    label: 'Antihistamines',    type: 'options',     options: ['None','1','2','3'],                                  colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
       { key: 'eczema',            label: 'Eczema',            type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'eczema_location',   label: 'Location',          type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp'] },
+      { key: 'eczema_location',   label: 'Location',          type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'hayfever',          label: 'Hayfever',          type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
       { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose'] },
       { key: 'gut',               label: 'Gut',               type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
       { key: 'gut_symptoms',      label: 'Gut Symptoms',      type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
       { key: 'wrist_nerve_pain',  label: 'Wrist Nerve Pain',  type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'dry_eyes',          label: 'Dry Eyes',          type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
+      { key: 'dryness',       label: 'Dryness',           type: 'multiselect', options: ['Eyes','Skin','Lips'] },
       { key: 'note',              label: 'Note',              type: 'text' },
     ],
   },
@@ -161,6 +161,7 @@ const MODULES = [
   // ── Mind ─────────────────────────────────────────────────────────────────────
   {
     key: 'mood', label: 'Mind',
+    defaults: { adhd_meds: 'None', melatonin: false },
     cellColor: d => {
       const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
@@ -252,9 +253,10 @@ const MODULES = [
     cellColor: d => d == null ? null : (d.activities?.length ? '#f1f5f9' : '#dde3eb'),
     cellLabel: d => {
       if (!d?.activities?.length) return null
+      const VALID = new Set(['Friends','Family','Date','Party','Work drinks','Work from office','Used dating apps','Networking'])
       const SHORT = { 'Work drinks': 'W.drinks', 'Work from office': 'Office', 'Used dating apps': 'Apps', 'Networking': 'Network' }
       const seen = new Set()
-      return d.activities.map(a => SHORT[a] ?? a).filter(a => seen.has(a) ? false : seen.add(a))
+      return d.activities.filter(a => VALID.has(a)).map(a => SHORT[a] ?? a).filter(a => seen.has(a) ? false : seen.add(a))
     },
     fields: [
       { key: 'activities', label: 'Events', type: 'multiselect', options: ['Friends','Family','Date','Party','Work drinks','Work from office','Used dating apps','Networking'] },
@@ -274,6 +276,7 @@ const EXERCISE_MODULE = {
 // ── Body module (custom row — weight injected from Fitbit for readonly display)
 const BODY_MODULE = {
   key: 'body', label: 'Body',
+  defaults: { illness: 'None', painkillers: '0' },
   fields: [
     { key: '_weight_kg',  label: 'Weight',             type: 'readonly', unit: 'kg', autosync: true },
     { key: 'period',      label: 'Period',             type: 'toggle',   onLabel: 'Yes', offLabel: 'No' },
@@ -550,7 +553,8 @@ export default function LifeModules({ mobile } = {}) {
             const oldSleep = logs[iso]?.sleep  // backward compat
             const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
             const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
-            const hasFitbit = sleepMin != null
+            const validSleep = sleepMin != null && sleepMin <= 960
+            const hasFitbit = validSleep
             const hasOld    = !hasFitbit && oldSleep?.hours != null
             const bg        = hasFitbit ? sleepColorFromFitbit(sleepMin, inBedMin)
               : hasOld ? sleepColorFromOldData(oldSleep) : null
@@ -576,7 +580,8 @@ export default function LifeModules({ mobile } = {}) {
           const oldSleep = logs[todayIso]?.sleep
           const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
           const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
-          const hasFitbit = sleepMin != null
+          const validSleep = sleepMin != null && sleepMin <= 960
+          const hasFitbit = validSleep
           const hasOld    = !hasFitbit && oldSleep?.hours != null
           const bg     = hasFitbit ? sleepColorFromFitbit(sleepMin, inBedMin) : hasOld ? sleepColorFromOldData(oldSleep) : null
           const hrs    = hasFitbit ? sleepMin / 60 : null
@@ -926,7 +931,7 @@ export default function LifeModules({ mobile } = {}) {
         const oldSleep = logs[sleepOpen]?.sleep
         const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
         const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
-        const hasFitbit = sleepMin != null
+        const hasFitbit = sleepMin != null && sleepMin <= 960
         const eff       = hasFitbit && inBedMin ? Math.round(sleepMin / inBedMin * 100) : null
         const effLabel  = sleepEffLabel(sleepMin, inBedMin)
         const effColor  = effLabel === 'Good' ? '#16a34a' : effLabel === 'Fair' ? '#ca8a04' : '#dc2626'

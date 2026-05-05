@@ -11,6 +11,7 @@ function readJson(key) {
 }
 
 export function buildCheckinContext() {
+  const today = new Date().toISOString().slice(0, 10)
   const logs = readJson('lifetracker-life-logs')
   const tracksRaw = readJson('lifetracker-tracks-v3')
   const tracks = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
@@ -53,7 +54,13 @@ export function buildCheckinContext() {
         ? t.status_history[t.status_history.length - 1].status
         : t.status
       const lastNote = t.notes_log?.[0]?.text
-      lines.push(`  "${t.name}" - status: ${status}${lastNote ? ` | last note: "${lastNote.slice(0, 80)}"` : ''}`)
+      const upcoming = (t.milestones ?? [])
+        .filter(m => m.date >= today)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(0, 2)
+        .map(m => `${m.label} on ${m.date}`)
+        .join(', ')
+      lines.push(`  "${t.name}" - status: ${status}${lastNote ? ` | last note: "${lastNote.slice(0, 80)}"` : ''}${upcoming ? ` | upcoming: ${upcoming}` : ''}`)
     }
   }
 
