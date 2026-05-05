@@ -254,7 +254,7 @@ const Insights = forwardRef(function Insights(_, ref) {
     let tracksChanged = false
     const updatedTracks = tracks.map(t => {
       if (t.archived) return t
-      const upcomingMs = (t.milestones ?? []).filter(m => m.date >= today && m.date <= cutoffIso)
+      const upcomingMs = (t.milestones ?? []).filter(m => m.date > today && m.date <= cutoffIso)
       if (!upcomingMs.length) return t
       const hist   = t.status_history
       const status = hist?.length ? hist[hist.length - 1].status : t.status
@@ -280,7 +280,7 @@ const Insights = forwardRef(function Insights(_, ref) {
       for (const t of tracks) {
         if (t.archived) continue
         for (const ms of (t.milestones ?? [])) {
-          if (ms.date < today || ms.date > cutoffIso) continue
+          if (ms.date <= today || ms.date > cutoffIso) continue
           const msId = `ms-${t.id}-${ms.id}`
           if (existingMsIds.has(msId)) continue
           const daysUntil = Math.round((new Date(ms.date) - new Date(today)) / 86400000)
