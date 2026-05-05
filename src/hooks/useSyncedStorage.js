@@ -19,9 +19,30 @@ export function useSyncedStorage(key, initialValue) {
   const lastWriteRef = useRef(Number(localStorage.getItem(`${key}:lwt`) ?? 0))
 
   // How long after a local write we trust localStorage over Supabase.
-  // Prevents Supabase pulls (on mount or tab-switch) from overwriting data
-  // the user just saved before the async dbWrite has completed in Supabase.
-  const SYNC_GRACE_MS = 5 * 60 * 1000  // 5 minutes
+  const SYNC_GRACE_MS = 30 * 60 * 1000  // 30 minutes
+
+  // ── Serial write queue ────────────────────────────────────────────────────
+  // Prevents a slow older write from overwriting a newer one in Supabase.
+  // At most one write is in-flight at a time; the latest pending value wins.
+  const inflightRef = useRef(false)
+  const pendingRef  = useRef(null) // { value } of next write to send
+
+  async function scheduleWrite(toStore) {
+    pendingRef.current = { value: toStore }
+    if (inflightRef.current) return // in-flight write will pick up pending on completion
+    inflightRef.current = true
+    while (pendingRef.current !== null) {
+      const { value: toWrite } = pendingRef.current
+      pendingRef.current = null
+      try {
+        await dbWrite(key, toWrite)
+      } catch (err) {
+        console.error('[useSyncedStorage] write error', key, err)
+      }
+    }
+    inflightRef.current = false
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function pullFromSupabase(cancelled = { current: false }) {
     // If we wrote recently, local storage is authoritative — skip the pull.
@@ -61,7 +82,7 @@ export function useSyncedStorage(key, initialValue) {
     localStorage.setItem(`${key}:lwt`, String(ts))
     setValue_(toStore)
     localStorage.setItem(key, JSON.stringify(toStore))
-    dbWrite(key, toStore).catch(err => console.error('[useSyncedStorage] write error', key, err))
+    scheduleWrite(toStore)
     if (key === 'lifetracker-life-logs')  window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
     if (key === 'lifetracker-tracks-v3') window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
   }

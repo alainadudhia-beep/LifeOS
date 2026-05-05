@@ -114,25 +114,19 @@ export default function MobileTodayModules() {
   const bodyData = todayLog.body ?? {}
   const period   = bodyData.period ?? !!todayLog.period
   const illness  = bodyData.illness
-  // carry forward last known weight and pill
-  const kg = (() => {
+  // carry forward last known weight (returns value + staleness flag)
+  const { kg, kgStaleM } = (() => {
     const d = new Date(today)
     for (let i = 0; i < 90; i++) {
       const w = fitbitRaw[d.toISOString().slice(0, 10)]?.weight_kg
-      if (w != null) return w
+      if (w != null) return { kg: w, kgStaleM: i > 0 }
       d.setDate(d.getDate() - 1)
     }
-    return null
+    return { kg: null, kgStaleM: false }
   })()
-  const pillFwd = bodyData.pill != null ? bodyData.pill : (() => {
-    const d = new Date(today); d.setDate(d.getDate() - 1)
-    for (let i = 0; i < 60; i++) {
-      const v = logs[d.toISOString().slice(0, 10)]?.body?.pill
-      if (v != null) return v
-      d.setDate(d.getDate() - 1)
-    }
-    return null
-  })()
+  const yBodyM   = (() => { const d = new Date(today); d.setDate(d.getDate() - 1); return logs[d.toISOString().slice(0, 10)]?.body ?? {} })()
+  const pillFwd  = bodyData.pill   != null ? bodyData.pill   : yBodyM.pill   ?? null
+  const periodFwdM = bodyData.period != null ? bodyData.period : yBodyM.period ?? null
   const bodyBg   = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kg != null ? '#f1f5f9' : null
 
   // ── Exercise ──────────────────────────────────────────────────────────────
@@ -180,7 +174,7 @@ export default function MobileTodayModules() {
 
   function getFieldValue(mod, field) {
     if (mod.key === 'body') {
-      const full = { ...bodyData, pill: pillFwd, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null }
+      const full = { ...bodyData, pill: pillFwd, period: periodFwdM, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null, _weight_kg_stale: kgStaleM }
       return full[field.key] ?? null
     }
     if (mod.key === 'exercise') {
@@ -330,17 +324,23 @@ export default function MobileTodayModules() {
               <button className="mlm-sheet-close" onClick={() => setActiveModule(null)}>✕</button>
             </div>
             <div className="mlm-sheet-fields">
-              {activeMod.fields.map(field => (
-                <PopoverField
-                  key={field.key}
-                  field={field}
-                  value={getFieldValue(activeMod, field)}
-                  onSet={v => {
-                    if (activeMod.key === 'body' && field.key.startsWith('_')) return
-                    setFieldValue(activeMod.key, field.key, v)
-                  }}
-                />
-              ))}
+              {activeMod.fields.map(field => {
+                const fullData = activeMod.key === 'body'
+                  ? { ...bodyData, pill: pillFwd, period: periodFwdM, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null, _weight_kg_stale: kgStaleM }
+                  : null
+                return (
+                  <PopoverField
+                    key={field.key}
+                    field={field}
+                    value={getFieldValue(activeMod, field)}
+                    stale={fullData?.[`_${field.key}_stale`] ?? false}
+                    onSet={v => {
+                      if (activeMod.key === 'body' && field.key.startsWith('_')) return
+                      setFieldValue(activeMod.key, field.key, v)
+                    }}
+                  />
+                )
+              })}
             </div>
           </div>
         </>,

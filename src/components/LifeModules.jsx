@@ -323,27 +323,22 @@ export default function LifeModules({ mobile } = {}) {
   const [sleepOpen,  setSleepOpen]  = useState(null)   // iso date
   const [stepsOpen,  setStepsOpen]  = useState(null)   // iso date
 
-  // Carry forward last known values for display in the popover
+  // Carry forward last known weight — walks back to last Fitbit sync (up to 90 days)
   function lastKnownWeight(iso) {
     const d = new Date(iso)
     for (let i = 0; i < 90; i++) {
       const key = d.toISOString().slice(0, 10)
       const w = fitbitRaw[key]?.weight_kg
-      if (w != null) return w
+      if (w != null) return { value: w, isStale: i > 0 }
       d.setDate(d.getDate() - 1)
     }
-    return null
+    return { value: null, isStale: false }
   }
-  function lastKnownPill(iso) {
+  // Carry forward pill and period from yesterday only
+  function yesterdayBody(iso) {
     const d = new Date(iso)
-    d.setDate(d.getDate() - 1) // start from day before so today's null doesn't block
-    for (let i = 0; i < 60; i++) {
-      const key = d.toISOString().slice(0, 10)
-      const v = logs[key]?.body?.pill
-      if (v != null) return v
-      d.setDate(d.getDate() - 1)
-    }
-    return null
+    d.setDate(d.getDate() - 1)
+    return logs[d.toISOString().slice(0, 10)]?.body ?? {}
   }
 
   const popoverRef     = useRef(null)
@@ -783,7 +778,7 @@ export default function LifeModules({ mobile } = {}) {
             const bodyData = logs[iso]?.body ?? {}
             const period   = bodyData.period ?? !!logs[iso]?.period  // backward compat
             const illness  = bodyData.illness
-            const kg       = lastKnownWeight(iso)
+            const { value: kg, isStale: kgStale } = lastKnownWeight(iso)
             const bg       = illness && illness !== 'None' ? '#fee2e2'
               : period ? '#fce7f3'
               : kg != null ? '#f1f5f9'
@@ -791,7 +786,9 @@ export default function LifeModules({ mobile } = {}) {
             const open     = activeCell?.moduleKey === 'body' && activeCell?.date === iso
             const isFuture = iso > todayIso
             const fmtKg    = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
-            const pillFwd  = bodyData.pill != null ? bodyData.pill : lastKnownPill(iso)
+            const yBody    = yesterdayBody(iso)
+            const pillFwd  = bodyData.pill  != null ? bodyData.pill  : yBody.pill  ?? null
+            const periodFwd= bodyData.period != null ? bodyData.period : yBody.period ?? null
             return (
               <div
                 key={iso}
@@ -805,7 +802,7 @@ export default function LifeModules({ mobile } = {}) {
                     ref={popoverRef}
                     mod={BODY_MODULE}
                     date={iso}
-                    dayData={{ ...bodyData, pill: pillFwd, _weight_kg: fmtKg }}
+                    dayData={{ ...bodyData, pill: pillFwd, period: periodFwd, _weight_kg: fmtKg, _weight_kg_stale: kgStale }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', iso, fk, v) }}
                   />
                 )}
@@ -817,11 +814,13 @@ export default function LifeModules({ mobile } = {}) {
           const bodyData = logs[todayIso]?.body ?? {}
           const period   = bodyData.period ?? !!logs[todayIso]?.period
           const illness  = bodyData.illness
-          const kg       = lastKnownWeight(todayIso)
-          const bg       = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kg != null ? '#f1f5f9' : null
+          const { value: kgT, isStale: kgStaleT } = lastKnownWeight(todayIso)
+          const bg       = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kgT != null ? '#f1f5f9' : null
           const open     = activeCell?.moduleKey === 'body' && activeCell?.date === todayIso
-          const fmtKgT   = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
-          const pillFwdT = bodyData.pill != null ? bodyData.pill : lastKnownPill(todayIso)
+          const fmtKgT   = kgT != null ? (kgT % 1 === 0 ? String(kgT) : kgT.toFixed(1)) : null
+          const yBodyT   = yesterdayBody(todayIso)
+          const pillFwdT = bodyData.pill   != null ? bodyData.pill   : yBodyT.pill   ?? null
+          const periodFwdT = bodyData.period != null ? bodyData.period : yBodyT.period ?? null
           return (
             <div className="lm-today-col">
               <div
@@ -835,7 +834,7 @@ export default function LifeModules({ mobile } = {}) {
                     ref={popoverRef}
                     mod={BODY_MODULE}
                     date={todayIso}
-                    dayData={{ ...bodyData, pill: pillFwdT, _weight_kg: fmtKgT }}
+                    dayData={{ ...bodyData, pill: pillFwdT, period: periodFwdT, _weight_kg: fmtKgT, _weight_kg_stale: kgStaleT }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', todayIso, fk, v) }}
                   />
                 )}
@@ -1119,6 +1118,7 @@ const Popover = forwardRef(function Popover({ mod, date, dayData, onSet }, ref) 
           key={field.key}
           field={field}
           value={dayData[field.key] ?? null}
+          stale={dayData[`_${field.key}_stale`] ?? false}
           onSet={v => onSet(field.key, v)}
         />
       ))}
@@ -1128,7 +1128,7 @@ const Popover = forwardRef(function Popover({ mod, date, dayData, onSet }, ref) 
 
 // ─── PopoverField ─────────────────────────────────────────────────────────────
 
-function PopoverField({ field, value, onSet }) {
+function PopoverField({ field, value, stale, onSet }) {
   if (field.type === 'readonly') {
     if (value == null) return null
     const display = field.unit ? `${value} ${field.unit}` : String(value)
@@ -1139,7 +1139,10 @@ function PopoverField({ field, value, onSet }) {
           {field.autosync && <AutosyncTag />}
         </span>
         <div className="lm-pf-controls">
-          <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{display}</span>
+          <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>
+            {display}
+            {stale && <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 4 }}>*</span>}
+          </span>
         </div>
       </div>
     )
