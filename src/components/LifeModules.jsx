@@ -291,7 +291,6 @@ const COMPLETE_CHECK = {
   water:    d => d?.glasses != null,
   alcohol:  d => d?.level != null,
   diet:     d => d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
-  exercise: d => d?.activities != null || d?.energy != null,
 }
 
 // ─── derived data ─────────────────────────────────────────────────────────────

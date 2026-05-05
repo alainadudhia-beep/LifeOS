@@ -142,23 +142,24 @@ export default async function handler(req, res) {
     .single()
 
   const raw = rawRow?.value ?? {}
-  raw[date] = {
-    ...(raw[date] ?? {}),
-    steps,
-    active_energy_kcal,
-    resting_energy_kcal,
-    exercise_minutes,
-    sleep_minutes,
-    in_bed_minutes,
-    resting_hr,
-    hrv,
-    respiratory_rate,
-    spo2,
-    skin_temp_deviation,
-    weight_kg,
-    workouts,
-    synced_at: new Date().toISOString(),
-  }
+  // Only overwrite existing values with non-null data so re-imports
+  // never wipe fields (e.g. weight or sleep) that a previous import set.
+  const patch = {}
+  if (steps              != null) patch.steps               = steps
+  if (active_energy_kcal  != null) patch.active_energy_kcal  = active_energy_kcal
+  if (resting_energy_kcal != null) patch.resting_energy_kcal = resting_energy_kcal
+  if (exercise_minutes   != null) patch.exercise_minutes    = exercise_minutes
+  if (sleep_minutes      != null) patch.sleep_minutes       = sleep_minutes
+  if (in_bed_minutes     != null) patch.in_bed_minutes      = in_bed_minutes
+  if (resting_hr         != null) patch.resting_hr          = resting_hr
+  if (hrv                != null) patch.hrv                 = hrv
+  if (respiratory_rate   != null) patch.respiratory_rate    = respiratory_rate
+  if (spo2               != null) patch.spo2                = spo2
+  if (skin_temp_deviation!= null) patch.skin_temp_deviation = skin_temp_deviation
+  if (weight_kg          != null) patch.weight_kg           = weight_kg
+  if (workouts?.length)           patch.workouts            = workouts
+  patch.synced_at = new Date().toISOString()
+  raw[date] = { ...(raw[date] ?? {}), ...patch }
   await supabase
     .from('user_data')
     .upsert(

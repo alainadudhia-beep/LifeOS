@@ -241,7 +241,7 @@ export default function MobileTodayModules() {
 
         {/* 8. Exercise */}
         <button
-          className={`mlm-card ${activeModule === 'exercise' ? 'mlm-card--active' : ''} ${!COMPLETE_CHECK.exercise?.(exData) ? 'mlm-card--incomplete' : ''}`}
+          className={`mlm-card ${activeModule === 'exercise' ? 'mlm-card--active' : ''}`}
           style={exerciseBg ? { background: exerciseBg } : undefined}
           onClick={() => openModule('exercise')}
         >

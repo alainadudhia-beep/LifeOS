@@ -37,6 +37,32 @@ async function migrateFruitVeg() {
   }
 }
 
+// One-time migration: copy logs[date].exercise.steps → fitbitRaw[date].steps
+// for historical dates where steps lived in life-logs before the fitbit-raw store existed.
+async function migrateHistoricalSteps() {
+  try {
+    const rawLogs    = localStorage.getItem('lifetracker-life-logs')
+    const rawFitbit  = localStorage.getItem('lifetracker-fitbit-raw')
+    if (!rawLogs) return
+    const logs   = JSON.parse(rawLogs)
+    const fitbit = rawFitbit ? JSON.parse(rawFitbit) : {}
+    let changed = false
+    for (const date of Object.keys(logs)) {
+      const steps = logs[date]?.exercise?.steps
+      if (steps != null && fitbit[date]?.steps == null) {
+        fitbit[date] = { ...(fitbit[date] ?? {}), steps }
+        changed = true
+      }
+    }
+    if (!changed) return
+    localStorage.setItem('lifetracker-fitbit-raw', JSON.stringify(fitbit))
+    await dbWrite('lifetracker-fitbit-raw', fitbit)
+    console.log('[migrateHistoricalSteps] backfilled steps into fitbit-raw')
+  } catch (e) {
+    console.error('[migrateHistoricalSteps]', e)
+  }
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   useEffect(() => {
@@ -61,7 +87,7 @@ export default function App() {
   const todayRef       = useRef(null)
   const thisWeekRef    = useRef(null)
 
-  useEffect(() => { migrateFruitVeg() }, [])
+  useEffect(() => { migrateFruitVeg(); migrateHistoricalSteps() }, [])
 
   useEffect(() => {
     if (mobileTab !== 'life') return
