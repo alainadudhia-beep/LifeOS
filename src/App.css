@@ -327,7 +327,8 @@ body {
   gap: 6px;
 }
 .app-mobile-content .tl-label-col,
-.app-mobile-content .tr-label {
+.app-mobile-content .tr-label,
+.app-mobile-content .group-header-label {
   width: 160px;
   min-width: 160px;
 }
