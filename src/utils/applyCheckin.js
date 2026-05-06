@@ -151,6 +151,14 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
 
   logs[today] = todayLog
   writeJson(LIFE_LOGS_KEY, logs)
+  // Update lwt so useSyncedStorage's Supabase pull doesn't overwrite this write
+  localStorage.setItem(`${LIFE_LOGS_KEY}:lwt`, String(Date.now()))
+  // Mark pending so next-mount retry fires if the page closes before dbWrite completes
+  try {
+    const p = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
+    p[LIFE_LOGS_KEY] = true
+    localStorage.setItem('lifetracker-pending-writes', JSON.stringify(p))
+  } catch {}
   dbWrite(LIFE_LOGS_KEY, logs)
   window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
 

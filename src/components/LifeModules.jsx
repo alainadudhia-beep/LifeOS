@@ -154,6 +154,7 @@ const MODULES = [
       { key: 'gut_symptoms',      label: 'Gut Symptoms',      type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
       { key: 'wrist_nerve_pain',  label: 'Wrist Nerve Pain',  type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
       { key: 'dryness',       label: 'Dryness',           type: 'multiselect', options: ['Eyes','Skin','Lips'] },
+      { key: 'steroid_cream', label: 'Steroid Cream',     type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
       { key: 'note',              label: 'Note',              type: 'text' },
     ],
   },
@@ -317,7 +318,7 @@ export default function LifeModules({ mobile } = {}) {
     : allDays
   const gridWidth = gridDays.length * DAY_WIDTH
 
-  const [logs, setLogs] = useLocalStorage('lifetracker-life-logs', {})
+  const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]     = useLocalStorage('lifetracker-fitbit-raw', {})
 
   const [activeCell, setActiveCell] = useState(null)
@@ -356,12 +357,7 @@ export default function LifeModules({ mobile } = {}) {
 
   // Sync from voice check-in writes
   useEffect(() => {
-    function onLogsUpdated() {
-      try {
-        const raw = localStorage.getItem('lifetracker-life-logs')
-        if (raw) setLogs(JSON.parse(raw))
-      } catch { /* ignore */ }
-    }
+    function onLogsUpdated() { refreshLogs() }
     window.addEventListener('lifetracker-logs-updated', onLogsUpdated)
     return () => window.removeEventListener('lifetracker-logs-updated', onLogsUpdated)
   }, []) // eslint-disable-line

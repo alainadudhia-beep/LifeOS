@@ -123,5 +123,18 @@ export function useSyncedStorage(key, initialValue) {
     if (key === 'lifetracker-tracks-v3') window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
   }
 
-  return [value, setValue]
+  // Refresh state from localStorage (e.g. after an external write by applyCheckin)
+  // without scheduling a redundant Supabase write. Updates valueRef immediately so
+  // any subsequent functional setters see the fresh value as their base.
+  function refreshFromStorage() {
+    try {
+      const raw = localStorage.getItem(key)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      valueRef.current = parsed
+      setValue_(parsed)
+    } catch {}
+  }
+
+  return [value, setValue, refreshFromStorage]
 }

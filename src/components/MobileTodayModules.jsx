@@ -21,18 +21,13 @@ function fmtDate(iso) {
 }
 
 export default function MobileTodayModules() {
-  const [logs, setLogs]       = useLocalStorage('lifetracker-life-logs', {})
+  const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]           = useLocalStorage('lifetracker-fitbit-raw', {})
   const [activeModule, setActiveModule] = useState(null)
   const [gratEdit, setGratEdit]         = useState(false)
 
   useEffect(() => {
-    function onLogsUpdated() {
-      try {
-        const raw = localStorage.getItem('lifetracker-life-logs')
-        if (raw) setLogs(JSON.parse(raw))
-      } catch {}
-    }
+    function onLogsUpdated() { refreshLogs() }
     window.addEventListener('lifetracker-logs-updated', onLogsUpdated)
     return () => window.removeEventListener('lifetracker-logs-updated', onLogsUpdated)
   }, []) // eslint-disable-line

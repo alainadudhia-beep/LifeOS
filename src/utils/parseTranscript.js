@@ -15,6 +15,7 @@ health.eczema_location: array from ["Eyes","Under mouth","Neck","Back of neck","
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.antihistamines: "None" | "1" | "2" | "3" | null
 health.dryness: array from ["Eyes","Skin","Lips"] - only if dry/dehydrated symptoms mentioned
+health.steroid_cream: true | false | null
 diet.sugar: "None" | "Low" | "Med" | "High" | null
 diet.protein: "Low" | "Med" | "High" | null
 diet.fruit_veg: "1" | "2" | "3" | "4" | "5" | "6+" | null (individual portions as string)
@@ -23,6 +24,7 @@ diet.snacking: "Low" | "Med" | "High" | null
 diet.allergens: array from ["Dairy","Gluten","Soy","Wheat","Yeast"]
 diet.caffeine: "0" | "1" | "2" | "3" | "4" | "5" | "6+" | null (cups/shots as string; 1 matcha = 0.5 units, so 2 matchas = "1")
 diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitamin D","Biotin","Adaptogenic Mushrooms"] - "all my supplements" or "all of them" → all 7
+diet.note: string | null - free-text note of specific foods eaten (e.g. "salmon and veg for dinner, granola for breakfast")
 alcohol.level: "None" | "1" | "2" | "3" | "4" | "5+" | null (number of drinks as string)
 alcohol.type: array from ["Wine","Beer","Spirits"]
 water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8+" | null (exact number of glasses as string)
@@ -70,7 +72,9 @@ Mapping guidance:
 - "a good portion of salad and coleslaw" → diet.fruit_veg: "3" (count individual veg portions conservatively)
 - Career track names may be abbreviated - match loosely
 - A berry smoothie counts as 1 fruit portion. Be conservative with fruit_veg estimates.
-- dry/gritty/irritated eyes without hayfever context → health.dehydration: ["Eyes"]
+- dry/gritty/irritated eyes without hayfever context → health.dryness: ["Eyes"]
+- mentions applying steroid cream / hydrocortisone → health.steroid_cream: true
+- mentions specific foods eaten → populate diet.note with a brief summary
 
 If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.
 

@@ -18,6 +18,31 @@ export function buildCheckinContext() {
 
   const lines = []
 
+  // ── Today so far (so Claude doesn't claim things are unlogged) ──
+  const todayLog = logs[today]
+  if (todayLog) {
+    const parts = []
+    if (todayLog.water?.glasses != null) parts.push(`water: ${todayLog.water.glasses} glasses`)
+    if (todayLog.diet) {
+      const d = todayLog.diet
+      const dp = []
+      if (d.fruit_veg) dp.push(`fruit/veg: ${d.fruit_veg}`)
+      if (d.protein)   dp.push(`protein: ${d.protein}`)
+      if (d.sugar)     dp.push(`sugar: ${d.sugar}`)
+      if (d.caffeine)  dp.push(`caffeine: ${d.caffeine}`)
+      if (dp.length)   parts.push(`diet: ${dp.join(', ')}`)
+    }
+    if (todayLog.exercise?.activities?.length) parts.push(`exercise: ${todayLog.exercise.activities.join(', ')}`)
+    if (todayLog.mood) {
+      const scores = ['work','life','energy','focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
+      if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
+    }
+    if (todayLog.sleep?.hours) parts.push(`sleep: ${todayLog.sleep.hours}hrs`)
+    if (parts.length) {
+      lines.push('Logged today so far: ' + parts.join(' | '))
+    }
+  }
+
   // ── Recent life logs (last 7 days, excluding today) ──
   const recentDays = []
   for (let i = 1; i <= 7; i++) {
