@@ -191,12 +191,16 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
       if (!match) continue
       if (update.status) {
         const hist = match.status_history || []
-        const closed = hist.map((seg, i) =>
-          i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
-        )
-        const newSeg = { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }
-        match.status_history = [...closed, newSeg]
-        match.updated_at = new Date().toISOString()
+        const openSeg = hist.length ? hist[hist.length - 1] : null
+        const alreadySameStatus = openSeg && !openSeg.end_date && openSeg.status === update.status
+        if (!alreadySameStatus) {
+          const closed = hist.map((seg, i) =>
+            i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
+          )
+          const newSeg = { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }
+          match.status_history = [...closed, newSeg]
+          match.updated_at = new Date().toISOString()
+        }
       }
       if (update.note) {
         const noteText = update.note.replace(/—/g, '-').replace(/–/g, '-')

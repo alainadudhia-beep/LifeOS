@@ -326,7 +326,8 @@ body {
   flex-wrap: wrap;
   gap: 6px;
 }
-.app-mobile-content .tl-label-col {
+.app-mobile-content .tl-label-col,
+.app-mobile-content .tr-label {
   width: 120px;
   min-width: 120px;
 }
