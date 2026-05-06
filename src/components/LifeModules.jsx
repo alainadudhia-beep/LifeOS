@@ -294,6 +294,7 @@ const COMPLETE_CHECK = {
   water:    d => d?.glasses != null,
   alcohol:  d => d?.level != null,
   diet:     d => d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
+  exercise: d => d?.energy != null,
 }
 
 // ─── derived data ─────────────────────────────────────────────────────────────
@@ -709,7 +710,7 @@ export default function LifeModules({ mobile } = {}) {
             const open     = activeCell?.moduleKey === 'exercise' && activeCell?.date === iso
             const isFuture = iso > todayIso
             const isRecent = iso === todayIso || iso === yesterdayIso
-            const incomplete = false
+            const incomplete = isRecent && !COMPLETE_CHECK.exercise(exData ?? {})
             return (
               <div
                 key={iso}
@@ -744,7 +745,7 @@ export default function LifeModules({ mobile } = {}) {
           const acts    = exData?.activities
           const labels  = acts?.length ? acts.map(a => EXERCISE_SHORT[a] ?? a) : null
           const open    = activeCell?.moduleKey === 'exercise' && activeCell?.date === todayIso
-          const incomplete = false
+          const incomplete = !COMPLETE_CHECK.exercise(exData ?? {})
           return (
             <div className="lm-today-col">
               <div

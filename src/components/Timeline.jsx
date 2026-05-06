@@ -123,6 +123,7 @@ function buildRenderList(tracks) {
 }
 
 export default function Timeline({ mobile } = {}) {
+  const labelWidth = mobile ? 160 : 240
   const [storedTracks, setTracks] = useLocalStorage('lifetracker-tracks-v3', null)
   const tracks = (storedTracks ?? INITIAL_TRACKS).map(migrateTrack)
   const [commitments, setCommitments] = useLocalStorage('lifetracker-commitments', INITIAL_COMMITMENTS)
@@ -289,7 +290,7 @@ export default function Timeline({ mobile } = {}) {
       </div>
 
       <div className="tl-scroll" ref={scrollRef}>
-        <div className="tl-inner" style={{ minWidth: TIMELINE_WIDTH + 240 }}>
+        <div className="tl-inner" style={{ minWidth: TIMELINE_WIDTH + labelWidth }}>
 
           {/* ── commitment title row ── */}
           <div className="tl-commitment-row">
@@ -347,14 +348,14 @@ export default function Timeline({ mobile } = {}) {
 
           {/* ── track rows ── */}
           <div className="tl-body">
-            <div className="tl-grid-lines" style={{ left: 240, width: TIMELINE_WIDTH }}>
+            <div className="tl-grid-lines" style={{ left: labelWidth, width: TIMELINE_WIDTH }}>
               {days.map((d, i) =>
                 d.getDay() === 1 ? <div key={i} className="grid-week-line" style={{ left: i * DAY_WIDTH }} /> : null
               )}
               <DecisionLine />
             </div>
 
-            <div className="tl-commitment-layer" style={{ left: 240, width: TIMELINE_WIDTH }}>
+            <div className="tl-commitment-layer" style={{ left: labelWidth, width: TIMELINE_WIDTH }}>
               {commitments.map(c => {
                 const { left, width } = commitmentGeometry(c)
                 return <div key={c.id} className="commitment-band" style={{ left, width }} />
