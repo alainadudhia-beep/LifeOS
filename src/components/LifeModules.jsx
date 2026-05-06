@@ -242,7 +242,7 @@ const MODULES = [
       { key: 'carbs',       label: 'Carbs',       type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#dcfce7', High: '#fef9c3' } },
       { key: 'snacking',    label: 'Snacking',    type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#bbf7d0', Med: '#fef9c3', High: '#fee2e2' } },
       { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast'] },
-      { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin C','Biotin','Adaptogenic Mushrooms'] },
+      { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin D','Biotin','Adaptogenic Mushrooms'] },
       { key: 'note',        label: 'Notes',       type: 'text' },
     ],
   },

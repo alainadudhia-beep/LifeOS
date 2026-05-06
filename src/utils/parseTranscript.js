@@ -22,7 +22,7 @@ diet.carbs: "Low" | "Med" | "High" | null
 diet.snacking: "Low" | "Med" | "High" | null
 diet.allergens: array from ["Dairy","Gluten","Soy","Wheat","Yeast"]
 diet.caffeine: "0" | "1" | "2" | "3" | "4" | "5" | "6+" | null (cups/shots as string; 1 matcha = 0.5 units, so 2 matchas = "1")
-diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitamin C","Biotin","Adaptogenic Mushrooms"] - "all my supplements" or "all of them" → all 7
+diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitamin D","Biotin","Adaptogenic Mushrooms"] - "all my supplements" or "all of them" → all 7
 alcohol.level: "None" | "1" | "2" | "3" | "4" | "5+" | null (number of drinks as string)
 alcohol.type: array from ["Wine","Beer","Spirits"]
 water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8+" | null (exact number of glasses as string)
