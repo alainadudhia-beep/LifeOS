@@ -47,7 +47,8 @@ new_tracks: array of { name: string, group: string | null, status: string, note:
 daily_win: string in "Topic - one warm but not sycophantic observation" format (e.g. "Zoe application - got it done and off your plate") | null
 missing_important: array of field keys absent and important - default important set: ["mood"]; add "career_updates" if any work topic is mentioned
 insights: array of { text: string, positive: boolean, actionable: boolean }
-  - ALWAYS format text as "Topic - description" where Topic is the main subject (Sleep, Water, Capsa, PM Role at Zoe, etc.) — this enables bolding in the UI
+  - ALWAYS format text as "Topic - description" where Topic is the main subject (Sleep, Water, Alcohol, Eczema, Capsa, PM Role at Zoe, etc.) — this enables bolding in the UI
+  - Always capitalise Topic: "Alcohol" not "alcohol", "Eczema" not "eczema", "Water" not "water", "Sleep" not "sleep"
   - positive: true = celebrating something good ("Sleep - solid week, 7hrs+ most nights")
   - positive: false = gentle neutral observation or nudge ("Water - has been low this week")
   - actionable: true = user needs to do something specific (follow up, contact someone, apply, log data)

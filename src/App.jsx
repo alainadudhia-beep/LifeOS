@@ -247,12 +247,11 @@ export default function App() {
           </header>
 
           <div className="app-mobile-content">
-            {mobileTab === 'today' && (
-              <div className="app-mobile-scroll">
-                <MobileTodayModules />
-                <Insights ref={thisWeekRef} />
-              </div>
-            )}
+            {/* Always mounted so thisWeekRef stays valid during check-in on any tab */}
+            <div className="app-mobile-scroll" style={{ display: mobileTab === 'today' ? undefined : 'none' }}>
+              <MobileTodayModules />
+              <Insights ref={thisWeekRef} />
+            </div>
             {mobileTab === 'life' && (
               <div className="app-mobile-gantt-scroll" ref={lifeScrollRef}>
                 <LifeModules mobile />

@@ -458,9 +458,10 @@ const Insights = forwardRef(function Insights(_, ref) {
     return best
   }
   function mentionsTrack(text) {
+    const topic = insightTopic(text)
     const t = text.toLowerCase()
     return tracks.some(track =>
-      t.includes(track.name.toLowerCase()) || topicsOverlap(text, track.name)
+      t.includes(track.name.toLowerCase()) || topicsOverlap(topic, track.name)
     )
   }
 
