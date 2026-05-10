@@ -149,7 +149,7 @@ const MODULES = [
       { key: 'eczema',            label: 'Eczema',            type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
       { key: 'eczema_location',   label: 'Location',          type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'hayfever',          label: 'Hayfever',          type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose'] },
+      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose','Puffy eyes'] },
       { key: 'gut',               label: 'Gut',               type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
       { key: 'gut_symptoms',      label: 'Gut Symptoms',      type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
       { key: 'wrist_nerve_pain',  label: 'Wrist Nerve Pain',  type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
