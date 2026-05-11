@@ -479,7 +479,7 @@ export default function LifeModules({ mobile } = {}) {
     const isWeekStart = i != null ? new Date(iso).getDay() === 1 : false
     const style = i != null
       ? { left: i * dayW + 1, width: dayW - 2, background: bg || undefined }
-      : { left: 1, width: dayW - 2, background: bg || undefined }
+      : { left: 1, right: 1, background: bg || undefined }
     return (
       <div
         key={iso}
