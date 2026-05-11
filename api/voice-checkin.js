@@ -329,7 +329,10 @@ export default async function handler(req, res) {
   if (!body) body = {}
 
   const transcript = body.transcript
-  const date       = body.date ?? new Date().toISOString().slice(0, 10)
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+  const date = (typeof body.date === 'string' && ISO_DATE.test(body.date))
+    ? body.date
+    : new Date().toISOString().slice(0, 10)
 
   if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
     return res.status(400).json({ error: 'transcript required' })
@@ -357,7 +360,9 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Parse failed', detail: err.message })
   }
 
-  const today = parsed.log_date ?? date
+  const today = (typeof parsed.log_date === 'string' && ISO_DATE.test(parsed.log_date))
+    ? parsed.log_date
+    : date
   const todayLog = { ...(logs[today] ?? {}) }
 
   // Store raw transcript
