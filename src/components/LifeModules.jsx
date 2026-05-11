@@ -48,7 +48,7 @@ function sleepColorFromOldData(d) {
 function sleepEffLabel(sleepMin, inBedMin) {
   if (!sleepMin || !inBedMin) return null
   const eff = sleepMin / inBedMin
-  return eff >= 0.85 ? 'Good' : eff >= 0.70 ? 'Fair' : 'Poor'
+  return eff >= 0.90 ? 'Great' : eff >= 0.82 ? 'Good' : eff >= 0.70 ? 'Fair' : 'Poor'
 }
 
 function fmtMins(mins, round = 5) {
@@ -676,7 +676,7 @@ export default function LifeModules({ mobile } = {}) {
 
       {/* ── 3. Screen Time (autosync) ── */}
       <div className="lm-row">
-        <div className="lm-label"><span className="lm-label-emoji">📱</span> Screen<AutosyncTag /></div>
+        <div className="lm-label"><span className="lm-label-emoji">📱</span> Screen Time<AutosyncTag /></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
           <WeekLines days={gridDays} />
           {gridDays.map((d, i) => {

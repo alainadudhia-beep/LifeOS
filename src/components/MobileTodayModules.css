@@ -1,21 +1,109 @@
 .mlm-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.mlm-header-row {
+/* ── Main layout: autosync left + manual grid right ── */
+.mlm-layout {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+/* ── Autosync left column ── */
+.mlm-autosync-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.mlm-sync-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: #f1f5f9;
+  cursor: pointer;
+  min-height: 52px;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.mlm-sync-card:active { opacity: 0.8; }
+.mlm-sync-card:disabled { cursor: default; opacity: 1; }
+.mlm-sync-card--active { border-color: #94a3b8; }
+
+.mlm-sync-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mlm-sync-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e293b;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.mlm-sync-sub {
+  font-size: 10px;
+  color: #475569;
+  text-align: center;
+}
+
+.mlm-sync-time {
+  font-size: 9.5px;
+  color: #94a3b8;
+  text-align: center;
+  padding-top: 2px;
+}
+
+/* ── Manual modules grid (2×4) ── */
+.mlm-manual-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.mlm-manual-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: #f1f5f9;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.mlm-section-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+.mlm-manual-card:active { opacity: 0.8; }
+
+.mlm-manual-card--active { border-color: #94a3b8; }
+
+.mlm-manual-card--incomplete { border-color: #fca5a5; }
+
+.mlm-manual-emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* ── Footer ── */
+.mlm-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .mlm-journal-link {
@@ -30,69 +118,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 .mlm-journal-link:active { opacity: 0.6; }
-
-/* ── Card grid ── */
-.mlm-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-}
-
-.mlm-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  border-radius: 10px;
-  border: 1.5px solid transparent;
-  background: #f1f5f9;
-  cursor: pointer;
-  min-height: 62px;
-  transition: background 0.15s, border-color 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  font-family: inherit;
-}
-
-.mlm-card:active {
-  opacity: 0.8;
-}
-
-.mlm-card--active {
-  border-color: #94a3b8;
-}
-
-.mlm-card--incomplete {
-  border-color: #fca5a5;
-}
-
-.mlm-card--period {
-  background: #fce7f3;
-}
-
-.mlm-card-emoji {
-  font-size: 16px;
-  line-height: 1;
-}
-
-.mlm-card-name {
-  font-size: 10px;
-  font-weight: 600;
-  color: #475569;
-  letter-spacing: 0.01em;
-}
-
-.mlm-card-value {
-  font-size: 10px;
-  color: #1e293b;
-  text-align: center;
-  line-height: 1.2;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* ── Gratitude ── */
 .mlm-gratitude {
@@ -195,16 +220,11 @@
   padding: 2px 4px;
 }
 
-/* ── Popover fields (reused from LifeModules.css via class names) ── */
+/* ── Popover fields ── */
 .mlm-sheet-fields {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.mlm-card--has-journal {
-  background: #f8fafc;
-  border-color: #cbd5e1;
 }
 
 /* ── Compact sheet (sleep/steps detail) ── */

@@ -20,6 +20,11 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
 }
 
+function fmtSyncTime(isoStr) {
+  if (!isoStr) return null
+  return new Date(isoStr).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 export default function MobileTodayModules() {
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]           = useLocalStorage('lifetracker-fitbit-raw', {})
@@ -63,7 +68,7 @@ export default function MobileTodayModules() {
     setActiveModule(key)
   }
 
-  // ── Water / Alcohol tap-increment ─────────────────────────────────────────
+  // ── Water tap-increment ───────────────────────────────────────────────────
 
   function incrementWater() {
     const current = todayLog.water?.glasses
@@ -86,14 +91,15 @@ export default function MobileTodayModules() {
   const sleepLabel = hasFitbitSleep
     ? fmtMins(sleepMin)
     : hasOldSleep ? oldSleep.hours : null
+  const sleepEff   = hasFitbitSleep ? sleepEffLabel(sleepMin, inBedMin) : null
   const hasSleepData = hasFitbitSleep || hasOldSleep
 
   // ── Fitbit: steps ─────────────────────────────────────────────────────────
 
-  const steps      = fitbitToday.steps
+  const steps        = fitbitToday.steps
   const stepsActive  = fitbitToday.active_energy_kcal
   const stepsResting = fitbitToday.resting_energy_kcal
-  const stepsBg    = steps == null ? null
+  const stepsBg      = steps == null ? null
     : steps < 4000  ? '#fee2e2'
     : steps < 6000  ? '#fde8c8'
     : steps < 8000  ? '#fef9c3'
@@ -102,6 +108,17 @@ export default function MobileTodayModules() {
     : '#86efac'
   const stepsLabel   = steps != null ? (steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : String(steps)) : null
   const hasStepsData = steps != null || stepsActive != null
+
+  // ── Fitbit: calories ──────────────────────────────────────────────────────
+
+  const calsTotal = (stepsActive != null || stepsResting != null)
+    ? Math.round((stepsActive ?? 0) + (stepsResting ?? 0))
+    : null
+  const calsLabel = calsTotal != null ? `${calsTotal.toLocaleString()} kcal` : null
+  const calsBg    = stepsActive == null ? null
+    : stepsActive < 200 ? '#fef9c3'
+    : stepsActive < 400 ? '#bbf7d0'
+    : '#86efac'
 
   // ── Fitbit: screen time ───────────────────────────────────────────────────
 
@@ -114,12 +131,15 @@ export default function MobileTodayModules() {
     : '#fee2e2'
   const screenLabel = screenMins != null ? fmtMins(screenMins) : null
 
+  // ── Sync time ─────────────────────────────────────────────────────────────
+
+  const syncTime = fmtSyncTime(fitbitToday.synced_at)
+
   // ── Body ──────────────────────────────────────────────────────────────────
 
   const bodyData = todayLog.body ?? {}
   const period   = bodyData.period ?? !!todayLog.period
   const illness  = bodyData.illness
-  // carry forward last known weight (returns value + staleness flag)
   const { kg, kgStaleM } = (() => {
     const d = new Date(today)
     for (let i = 0; i < 90; i++) {
@@ -136,11 +156,9 @@ export default function MobileTodayModules() {
 
   // ── Exercise ──────────────────────────────────────────────────────────────
 
-  const exData    = todayLog.exercise ?? null
-  const energy    = exData?.energy ?? todayLog.mood?.energy ?? null
+  const exData     = todayLog.exercise ?? null
+  const energy     = exData?.energy ?? todayLog.mood?.energy ?? null
   const exerciseBg = energy != null ? (H5[energy] ?? null) : null
-  const exActs    = exData?.activities
-  const exLabel   = exActs?.length ? exActs.slice(0, 2).join(' · ') : null
 
   // ── Module refs ───────────────────────────────────────────────────────────
 
@@ -151,31 +169,25 @@ export default function MobileTodayModules() {
   const dietMod   = MODULES.find(m => m.key === 'diet')
   const socialMod = MODULES.find(m => m.key === 'social')
 
+  const moodBg       = moodMod.cellColor(todayLog.mood ?? null)
+  const moodIncomplete  = COMPLETE_CHECK.mood && !COMPLETE_CHECK.mood(todayLog.mood ?? null)
+  const healthBg     = healthMod.cellColor(todayLog.health ?? null)
+  const healthIncomplete = COMPLETE_CHECK.health && !COMPLETE_CHECK.health(todayLog.health ?? null)
+  const waterBg      = waterMod.cellColor(todayLog.water ?? null)
+  const waterIncomplete  = COMPLETE_CHECK.water && !COMPLETE_CHECK.water(todayLog.water ?? null)
+  const alcoholBg    = alcoholMod.cellColor(todayLog.alcohol ?? null)
+  const alcoholIncomplete = COMPLETE_CHECK.alcohol && !COMPLETE_CHECK.alcohol(todayLog.alcohol ?? null)
+  const dietBg       = dietMod.cellColor(todayLog.diet ?? null)
+  const dietIncomplete   = COMPLETE_CHECK.diet && !COMPLETE_CHECK.diet(todayLog.diet ?? null)
+  const exIncomplete    = COMPLETE_CHECK.exercise && !COMPLETE_CHECK.exercise(todayLog.exercise ?? null)
+  const bodyIncomplete  = COMPLETE_CHECK.body && !COMPLETE_CHECK.body(todayLog.body ?? null)
+  const socialBg     = socialMod.cellColor(todayLog.social ?? null)
+  const socialIncomplete = COMPLETE_CHECK.social && !COMPLETE_CHECK.social(todayLog.social ?? null)
+
   // Which sheet to show
   const activeMod = activeModule && !['sleep', 'steps', 'journal'].includes(activeModule)
     ? [...MODULES, EXERCISE_MODULE, BODY_MODULE].find(m => m.key === activeModule)
     : null
-
-  // ── Render helpers ────────────────────────────────────────────────────────
-
-  function renderModCard(mod, dayData, onClick) {
-    const bg       = mod.cellColor(dayData)
-    const rawLabel = mod.cellLabel(dayData)
-    const label    = Array.isArray(rawLabel) ? rawLabel.slice(0, 2).join(' · ') : rawLabel
-    const incomplete = COMPLETE_CHECK[mod.key] && !COMPLETE_CHECK[mod.key](dayData)
-    return (
-      <button
-        key={mod.key}
-        className={`mlm-card ${incomplete ? 'mlm-card--incomplete' : ''} ${activeModule === mod.key ? 'mlm-card--active' : ''}`}
-        style={bg ? { background: bg } : undefined}
-        onClick={onClick}
-      >
-        <span className="mlm-card-emoji">{MODULE_EMOJI[mod.key] ?? '•'}</span>
-        <span className="mlm-card-name">{mod.label}</span>
-        {label != null && <span className="mlm-card-value">{label}</span>}
-      </button>
-    )
-  }
 
   function getFieldValue(mod, field) {
     if (mod.key === 'body') {
@@ -192,107 +204,145 @@ export default function MobileTodayModules() {
 
   return (
     <div className="mlm-panel">
-      <div className="mlm-header-row">
-        <div className="mlm-section-label">Today's log</div>
-        {transcripts.length > 0 && (
+
+      {/* ── Main layout: autosync left + manual grid right ── */}
+      <div className="mlm-layout">
+
+        {/* Left: autosync column */}
+        <div className="mlm-autosync-col">
+
+          {/* Sleep */}
+          <button
+            className={`mlm-sync-card ${activeModule === 'sleep' ? 'mlm-sync-card--active' : ''}`}
+            style={sleepBg ? { background: sleepBg } : undefined}
+            onClick={() => hasSleepData && setActiveModule('sleep')}
+          >
+            <span className="mlm-sync-emoji">😴</span>
+            {sleepLabel && <span className="mlm-sync-value">{sleepLabel}</span>}
+            {sleepEff && <span className="mlm-sync-sub">{sleepEff}</span>}
+          </button>
+
+          {/* Steps */}
+          <button
+            className={`mlm-sync-card ${activeModule === 'steps' ? 'mlm-sync-card--active' : ''}`}
+            style={stepsBg ? { background: stepsBg } : undefined}
+            onClick={() => hasStepsData && setActiveModule('steps')}
+          >
+            <span className="mlm-sync-emoji">👟</span>
+            {stepsLabel && <span className="mlm-sync-value">{stepsLabel}</span>}
+          </button>
+
+          {/* Calories */}
+          <button
+            className="mlm-sync-card"
+            style={calsBg ? { background: calsBg } : undefined}
+            onClick={() => hasStepsData && setActiveModule('steps')}
+            disabled={calsTotal == null}
+          >
+            <span className="mlm-sync-emoji">🔥</span>
+            {calsLabel && <span className="mlm-sync-value">{calsLabel}</span>}
+          </button>
+
+          {/* Screen Time */}
+          <button
+            className="mlm-sync-card"
+            style={screenBg ? { background: screenBg } : undefined}
+            disabled
+          >
+            <span className="mlm-sync-emoji">📱</span>
+            {screenLabel && <span className="mlm-sync-value">{screenLabel}</span>}
+          </button>
+
+          {syncTime && <div className="mlm-sync-time">Synced {syncTime}</div>}
+
+        </div>
+
+        {/* Right: manual modules (emoji only) */}
+        <div className="mlm-manual-grid">
+
+          {/* 🧠 Mood */}
+          <button
+            className={`mlm-manual-card ${moodIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'mood' ? 'mlm-manual-card--active' : ''}`}
+            style={moodBg ? { background: moodBg } : undefined}
+            onClick={() => openModule('mood')}
+          >
+            <span className="mlm-manual-emoji">🧠</span>
+          </button>
+
+          {/* 💊 Inflammation */}
+          <button
+            className={`mlm-manual-card ${healthIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'health' ? 'mlm-manual-card--active' : ''}`}
+            style={healthBg ? { background: healthBg } : undefined}
+            onClick={() => openModule('health')}
+          >
+            <span className="mlm-manual-emoji">💊</span>
+          </button>
+
+          {/* 💧 Water */}
+          <button
+            className={`mlm-manual-card ${waterIncomplete ? 'mlm-manual-card--incomplete' : ''}`}
+            style={waterBg ? { background: waterBg } : undefined}
+            onClick={incrementWater}
+          >
+            <span className="mlm-manual-emoji">💧</span>
+          </button>
+
+          {/* 🍷 Alcohol */}
+          <button
+            className={`mlm-manual-card ${alcoholIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'alcohol' ? 'mlm-manual-card--active' : ''}`}
+            style={alcoholBg ? { background: alcoholBg } : undefined}
+            onClick={() => openModule('alcohol')}
+          >
+            <span className="mlm-manual-emoji">🍷</span>
+          </button>
+
+          {/* 🥗 Diet */}
+          <button
+            className={`mlm-manual-card ${dietIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'diet' ? 'mlm-manual-card--active' : ''}`}
+            style={dietBg ? { background: dietBg } : undefined}
+            onClick={() => openModule('diet')}
+          >
+            <span className="mlm-manual-emoji">🥗</span>
+          </button>
+
+          {/* 🏃 Exercise */}
+          <button
+            className={`mlm-manual-card ${exIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'exercise' ? 'mlm-manual-card--active' : ''}`}
+            style={exerciseBg ? { background: exerciseBg } : undefined}
+            onClick={() => openModule('exercise')}
+          >
+            <span className="mlm-manual-emoji">🏃</span>
+          </button>
+
+          {/* 🌸 Body */}
+          <button
+            className={`mlm-manual-card ${bodyIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'body' ? 'mlm-manual-card--active' : ''}`}
+            style={bodyBg ? { background: bodyBg } : undefined}
+            onClick={() => openModule('body')}
+          >
+            <span className="mlm-manual-emoji">🌸</span>
+          </button>
+
+          {/* 👥 Social */}
+          <button
+            className={`mlm-manual-card ${socialIncomplete ? 'mlm-manual-card--incomplete' : ''} ${activeModule === 'social' ? 'mlm-manual-card--active' : ''}`}
+            style={socialBg ? { background: socialBg } : undefined}
+            onClick={() => openModule('social')}
+          >
+            <span className="mlm-manual-emoji">👥</span>
+          </button>
+
+        </div>
+      </div>
+
+      {/* Footer: journal link (right-aligned) */}
+      {transcripts.length > 0 && (
+        <div className="mlm-footer">
           <button className="mlm-journal-link" onClick={() => setActiveModule('journal')}>
             📝 Journal
           </button>
-        )}
-      </div>
-
-      <div className="mlm-grid">
-
-        {/* 1. Sleep — readonly Fitbit display */}
-        <button
-          className={`mlm-card ${activeModule === 'sleep' ? 'mlm-card--active' : ''}`}
-          style={sleepBg ? { background: sleepBg } : undefined}
-          onClick={() => hasSleepData && setActiveModule('sleep')}
-        >
-          <span className="mlm-card-emoji">😴</span>
-          <span className="mlm-card-name">Sleep</span>
-          {sleepLabel && <span className="mlm-card-value">{sleepLabel}</span>}
-        </button>
-
-        {/* 2. Steps — readonly Fitbit display */}
-        <button
-          className={`mlm-card ${activeModule === 'steps' ? 'mlm-card--active' : ''}`}
-          style={stepsBg ? { background: stepsBg } : undefined}
-          onClick={() => hasStepsData && setActiveModule('steps')}
-        >
-          <span className="mlm-card-emoji">👟</span>
-          <span className="mlm-card-name">Steps</span>
-          {stepsLabel && <span className="mlm-card-value">{stepsLabel}</span>}
-        </button>
-
-        {/* 3. Screen Time — readonly Fitbit display */}
-        <button
-          className="mlm-card"
-          style={screenBg ? { background: screenBg } : undefined}
-          disabled
-        >
-          <span className="mlm-card-emoji">📱</span>
-          <span className="mlm-card-name">Screen</span>
-          {screenLabel && <span className="mlm-card-value">{screenLabel}</span>}
-        </button>
-
-        {/* 4. Mind */}
-        {renderModCard(moodMod, todayLog.mood ?? null, () => openModule('mood'))}
-
-        {/* 4. Inflammation */}
-        {renderModCard(healthMod, todayLog.health ?? null, () => openModule('health'))}
-
-        {/* 5. Water — tap to increment */}
-        {(() => {
-          const dayData = todayLog.water ?? null
-          const bg      = waterMod.cellColor(dayData)
-          const label   = dayData?.glasses != null ? String(dayData.glasses) : null
-          const incomplete = COMPLETE_CHECK.water && !COMPLETE_CHECK.water(dayData)
-          return (
-            <button
-              className={`mlm-card ${incomplete ? 'mlm-card--incomplete' : ''}`}
-              style={bg ? { background: bg } : undefined}
-              onClick={incrementWater}
-            >
-              <span className="mlm-card-emoji">💧</span>
-              <span className="mlm-card-name">Water</span>
-              {label && <span className="mlm-card-value">{label}</span>}
-            </button>
-          )
-        })()}
-
-        {/* 6. Alcohol */}
-        {renderModCard(alcoholMod, todayLog.alcohol ?? null, () => openModule('alcohol'))}
-
-        {/* 7. Diet */}
-        {renderModCard(dietMod, todayLog.diet ?? null, () => openModule('diet'))}
-
-        {/* 8. Exercise */}
-        <button
-          className={`mlm-card ${activeModule === 'exercise' ? 'mlm-card--active' : ''}`}
-          style={exerciseBg ? { background: exerciseBg } : undefined}
-          onClick={() => openModule('exercise')}
-        >
-          <span className="mlm-card-emoji">🏃</span>
-          <span className="mlm-card-name">Exercise</span>
-          {exLabel && <span className="mlm-card-value">{exLabel}</span>}
-        </button>
-
-        {/* 9. Body (replaces Cycle) */}
-        <button
-          className={`mlm-card ${activeModule === 'body' ? 'mlm-card--active' : ''}`}
-          style={bodyBg ? { background: bodyBg } : undefined}
-          onClick={() => openModule('body')}
-        >
-          <span className="mlm-card-emoji">🌸</span>
-          <span className="mlm-card-name">Body</span>
-          {period && <span className="mlm-card-value">Period</span>}
-        </button>
-
-        {/* 10. Social */}
-        {renderModCard(socialMod, todayLog.social ?? null, () => openModule('social'))}
-
-      </div>
+        </div>
+      )}
 
       {/* Gratitude */}
       <div className="mlm-gratitude">
@@ -331,8 +381,9 @@ export default function MobileTodayModules() {
             <div className="mlm-sheet-handle" />
             <div className="mlm-sheet-header">
               <span className="mlm-sheet-title">
-                {activeMod.key === 'body' || activeMod.key === 'exercise'
-                  ? { body: '🌸', exercise: '🏃' }[activeMod.key]
+                {activeMod.key === 'body' ? '🌸'
+                  : activeMod.key === 'exercise' ? '🏃'
+                  : activeMod.key === 'health' ? '💊'
                   : MODULE_EMOJI[activeMod.key] ?? ''
                 } {activeMod.label}
               </span>
