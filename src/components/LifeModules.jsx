@@ -51,10 +51,11 @@ function sleepEffLabel(sleepMin, inBedMin) {
   return eff >= 0.85 ? 'Good' : eff >= 0.70 ? 'Fair' : 'Poor'
 }
 
-function fmtMins(mins) {
+function fmtMins(mins, round = 5) {
   if (mins == null) return '—'
-  const h = Math.floor(mins / 60)
-  const m = Math.round(mins % 60)
+  const rounded = Math.round(mins / round) * round
+  const h = Math.floor(rounded / 60)
+  const m = rounded % 60
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
@@ -575,8 +576,7 @@ export default function LifeModules({ mobile } = {}) {
             const hasOld    = !hasFitbit && oldSleep?.hours != null
             const bg        = hasFitbit ? sleepColorFromFitbit(sleepMin, inBedMin)
               : hasOld ? sleepColorFromOldData(oldSleep) : null
-            const hrs    = hasFitbit ? sleepMin / 60 : null
-            const label  = hasFitbit ? `${hrs.toFixed(1)}h` : (hasOld ? oldSleep.hours : null)
+            const label  = hasFitbit ? fmtMins(sleepMin) : (hasOld ? oldSleep.hours : null)
             const isOpen = sleepOpen === iso
             const hasData = hasFitbit || hasOld
             return (
@@ -668,6 +668,52 @@ export default function LifeModules({ mobile } = {}) {
                 onClick={hasData ? () => setStepsOpen(isOpen ? null : todayIso) : undefined}
               >
                 {steps != null && <span className="lm-cell-label">{steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps}</span>}
+              </div>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* ── 3. Screen Time (autosync) ── */}
+      <div className="lm-row">
+        <div className="lm-label"><span className="lm-label-emoji">📱</span> Screen<AutosyncTag /></div>
+        <div className="lm-day-grid" style={{ width: gridWidth }}>
+          <WeekLines days={gridDays} />
+          {gridDays.map((d, i) => {
+            const iso = d.toISOString().slice(0, 10)
+            const mins = fitbitRaw[iso]?.screen_time_minutes ?? null
+            const bg = mins == null ? null
+              : mins < 120 ? '#86efac'
+              : mins < 180 ? '#bbf7d0'
+              : mins < 240 ? '#fef9c3'
+              : mins < 300 ? '#fde8c8'
+              : '#fee2e2'
+            return (
+              <div
+                key={iso}
+                className={`lm-cell ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
+                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+              >
+                {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
+              </div>
+            )
+          })}
+        </div>
+        {mobile && (() => {
+          const mins = fitbitRaw[todayIso]?.screen_time_minutes ?? null
+          const bg = mins == null ? null
+            : mins < 120 ? '#86efac'
+            : mins < 180 ? '#bbf7d0'
+            : mins < 240 ? '#fef9c3'
+            : mins < 300 ? '#fde8c8'
+            : '#fee2e2'
+          return (
+            <div className="lm-today-col">
+              <div
+                className="lm-cell"
+                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+              >
+                {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
               </div>
             </div>
           )

@@ -69,8 +69,9 @@ export default async function handler(req, res) {
   const hrv                = num(body.hrv)
   const respiratory_rate   = num(body.respiratory_rate)
   const spo2               = num(body.spo2)
-  const skin_temp_deviation = num(body.skin_temp_deviation)
-  const weight_kg          = num(body.weight_kg)
+  const skin_temp_deviation  = num(body.skin_temp_deviation)
+  const weight_kg            = num(body.weight_kg)
+  const screen_time_minutes  = num(body.screen_time_minutes)
 
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
 
@@ -156,8 +157,9 @@ export default async function handler(req, res) {
   if (respiratory_rate   != null) patch.respiratory_rate    = respiratory_rate
   if (spo2               != null) patch.spo2                = spo2
   if (skin_temp_deviation!= null) patch.skin_temp_deviation = skin_temp_deviation
-  if (weight_kg          != null) patch.weight_kg           = weight_kg
-  if (workouts?.length)           patch.workouts            = workouts
+  if (weight_kg            != null) patch.weight_kg            = weight_kg
+  if (screen_time_minutes  != null) patch.screen_time_minutes  = screen_time_minutes
+  if (workouts?.length)             patch.workouts             = workouts
   patch.synced_at = new Date().toISOString()
   raw[date] = { ...(raw[date] ?? {}), ...patch }
   await supabase

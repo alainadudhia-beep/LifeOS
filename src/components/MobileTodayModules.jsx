@@ -84,7 +84,7 @@ export default function MobileTodayModules() {
     ? sleepColorFromFitbit(sleepMin, inBedMin)
     : hasOldSleep ? sleepColorFromOldData(oldSleep) : null
   const sleepLabel = hasFitbitSleep
-    ? `${(sleepMin / 60).toFixed(1)}h`
+    ? fmtMins(sleepMin)
     : hasOldSleep ? oldSleep.hours : null
   const hasSleepData = hasFitbitSleep || hasOldSleep
 
@@ -102,6 +102,17 @@ export default function MobileTodayModules() {
     : '#86efac'
   const stepsLabel   = steps != null ? (steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : String(steps)) : null
   const hasStepsData = steps != null || stepsActive != null
+
+  // ── Fitbit: screen time ───────────────────────────────────────────────────
+
+  const screenMins = fitbitToday.screen_time_minutes ?? null
+  const screenBg   = screenMins == null ? null
+    : screenMins < 120 ? '#86efac'
+    : screenMins < 180 ? '#bbf7d0'
+    : screenMins < 240 ? '#fef9c3'
+    : screenMins < 300 ? '#fde8c8'
+    : '#fee2e2'
+  const screenLabel = screenMins != null ? fmtMins(screenMins) : null
 
   // ── Body ──────────────────────────────────────────────────────────────────
 
@@ -214,7 +225,18 @@ export default function MobileTodayModules() {
           {stepsLabel && <span className="mlm-card-value">{stepsLabel}</span>}
         </button>
 
-        {/* 3. Mind */}
+        {/* 3. Screen Time — readonly Fitbit display */}
+        <button
+          className="mlm-card"
+          style={screenBg ? { background: screenBg } : undefined}
+          disabled
+        >
+          <span className="mlm-card-emoji">📱</span>
+          <span className="mlm-card-name">Screen</span>
+          {screenLabel && <span className="mlm-card-value">{screenLabel}</span>}
+        </button>
+
+        {/* 4. Mind */}
         {renderModCard(moodMod, todayLog.mood ?? null, () => openModule('mood'))}
 
         {/* 4. Inflammation */}
