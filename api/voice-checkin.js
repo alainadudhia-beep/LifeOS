@@ -268,7 +268,7 @@ function buildContext(today, logs, tracksArr) {
 
 // ── Claude API call ───────────────────────────────────────────────────────────
 
-async function callClaude(transcript, systemPrompt) {
+async function callClaude(transcript, dynamicContext) {
   const apiKey = process.env.VITE_ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('VITE_ANTHROPIC_API_KEY not set')
 
@@ -277,12 +277,16 @@ async function callClaude(transcript, systemPrompt) {
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'prompt-caching-2024-07-31',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: systemPrompt,
+      system: [
+        { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: dynamicContext },
+      ],
       messages: [{ role: 'user', content: transcript }],
     }),
   })
@@ -338,24 +342,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'transcript required' })
   }
 
-  // Read current logs + tracks from Supabase
-  const [logsRow, tracksRow] = await Promise.all([
+  // Read logs, tracks, and insights in parallel
+  const [logsRow, tracksRow, insightsRow] = await Promise.all([
     supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', userId).single(),
     supabase.from('user_data').select('value').eq('key', TRACKS_KEY).eq('user_id', userId).single(),
+    supabase.from('user_data').select('value').eq('key', 'lifetracker-insights').eq('user_id', userId).single(),
   ])
 
-  const logs      = logsRow.data?.value ?? {}
-  const tracksRaw = tracksRow.data?.value ?? {}
-  const tracksArr = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
+  const logs         = logsRow.data?.value ?? {}
+  const tracksRaw    = tracksRow.data?.value ?? {}
+  const tracksArr    = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
+  const insightsStore = insightsRow.data?.value ?? {}
 
-  const trackNames = tracksArr.map(t => t.name).filter(Boolean)
-  const context    = buildContext(date, logs, tracksArr)
-  const trackCtx   = trackNames.length ? `\n\nKnown career tracks: ${trackNames.join(', ')}` : ''
+  const trackNames    = tracksArr.map(t => t.name).filter(Boolean)
+  const dynamicContext = (trackNames.length ? `\n\nKnown career tracks: ${trackNames.join(', ')}` : '')
+    + buildContext(date, logs, tracksArr)
 
-  // Parse transcript with Claude
+  // Parse transcript with Claude (static system prompt is cached server-side)
   let parsed
   try {
-    parsed = await callClaude(transcript, SYSTEM_PROMPT + trackCtx + context)
+    parsed = await callClaude(transcript, dynamicContext)
   } catch (err) {
     return res.status(500).json({ error: 'Parse failed', detail: err.message })
   }
@@ -383,29 +389,31 @@ export default async function handler(req, res) {
   if (parsed.cycle != null)    todayLog.cycle    = { period: parsed.cycle }
   if (parsed.gratitude != null) todayLog.gratitude = parsed.gratitude
 
-  // Store Claude insights so the app picks them up
+  // Write logs + insights in parallel
+  logs[today] = todayLog
+  const writes = [
+    supabase.from('user_data').upsert(
+      { key: LIFE_LOGS_KEY, user_id: userId, value: logs, updated_at: new Date().toISOString() },
+      { onConflict: 'key,user_id' }
+    ),
+  ]
+
   if (parsed.insights?.length) {
-    const insightsRaw = await supabase
-      .from('user_data').select('value').eq('key', 'lifetracker-insights').eq('user_id', userId).single()
-    const insightsStore = insightsRaw.data?.value ?? {}
     insightsStore[today] = {
-      items:       parsed.insights,
-      daily_win:   parsed.daily_win ?? null,
+      items:        parsed.insights,
+      daily_win:    parsed.daily_win ?? null,
       generated_at: new Date().toISOString(),
     }
-    await supabase.from('user_data').upsert(
-      { key: 'lifetracker-insights', user_id: userId, value: insightsStore, updated_at: new Date().toISOString() },
-      { onConflict: 'key,user_id' }
+    writes.push(
+      supabase.from('user_data').upsert(
+        { key: 'lifetracker-insights', user_id: userId, value: insightsStore, updated_at: new Date().toISOString() },
+        { onConflict: 'key,user_id' }
+      )
     )
   }
 
-  // Write updated logs
-  logs[today] = todayLog
-  const { error: logsError } = await supabase.from('user_data').upsert(
-    { key: LIFE_LOGS_KEY, user_id: userId, value: logs, updated_at: new Date().toISOString() },
-    { onConflict: 'key,user_id' }
-  )
-  if (logsError) return res.status(500).json({ error: 'Failed to write logs', detail: logsError.message })
+  const [logsResult] = await Promise.all(writes)
+  if (logsResult.error) return res.status(500).json({ error: 'Failed to write logs', detail: logsResult.error.message })
 
   // Apply career track updates
   if (parsed.career_updates?.length || parsed.new_tracks?.length) {
