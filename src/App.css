@@ -274,6 +274,8 @@ body {
   -webkit-overflow-scrolling: touch;
   background: #fff;
   border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Bottom tab bar ── */
@@ -341,12 +343,8 @@ body {
   overflow: hidden;
 }
 
-/* Life grid: taller rows + fill full container height/width */
-.app-mobile-gantt-scroll .lm-row         { height: 46px; }
-.app-mobile-gantt-scroll .lm-section-header { height: 34px; }
-.app-mobile-gantt-scroll .lm-mobile-container { min-height: 100%; }
-.app-mobile-gantt-scroll .lm-row,
-.app-mobile-gantt-scroll .lm-autosync-divider { min-width: 100%; }
+/* Life grid: fill full container height */
+.app-mobile-gantt-scroll .lm-mobile-container { flex: 1; background: #fff; }
 
 /* ── Mobile overrides for TrackEditModal ── */
 @media (max-width: 767px) {
