@@ -686,19 +686,4 @@
   font-weight: 700;
 }
 
-/* Popovers: fixed to viewport so they clear scroll container overflow */
-.app-mobile-gantt-scroll .lm-popover,
-.app-mobile-gantt-scroll .lm-grat-popover {
-  position: fixed;
-  bottom: 90px;
-  left: 12px;
-  right: 12px;
-  top: auto;
-  transform: none;
-  z-index: 1000;
-  max-width: none;
-}
-.app-mobile-gantt-scroll .lm-popover::after,
-.app-mobile-gantt-scroll .lm-grat-popover::after {
-  display: none;
-}
+/* Popovers on mobile render via createPortal so no scroll-container CSS needed */

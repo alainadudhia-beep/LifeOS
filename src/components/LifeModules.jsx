@@ -503,6 +503,8 @@ export default function LifeModules({ mobile } = {}) {
             date={iso}
             dayData={dayData ?? {}}
             onSet={(fieldKey, value) => setFieldValue(mod.key, iso, fieldKey, value)}
+            mobile={mobile}
+            onClose={() => setActiveCell(null)}
           />
         )}
       </div>
@@ -808,7 +810,7 @@ export default function LifeModules({ mobile } = {}) {
                   </div>
                 )}
                 {open && (
-                  <Popover ref={popoverRef} mod={EXERCISE_MODULE} date={todayIso} dayData={{ ...(exData ?? {}), energy: exData?.energy ?? logs[todayIso]?.mood?.energy ?? undefined }} onSet={(fk, v) => setFieldValue('exercise', todayIso, fk, v)} />
+                  <Popover ref={popoverRef} mod={EXERCISE_MODULE} date={todayIso} dayData={{ ...(exData ?? {}), energy: exData?.energy ?? logs[todayIso]?.mood?.energy ?? undefined }} onSet={(fk, v) => setFieldValue('exercise', todayIso, fk, v)} mobile={mobile} onClose={() => setActiveCell(null)} />
                 )}
               </div>
             </div>
@@ -852,6 +854,8 @@ export default function LifeModules({ mobile } = {}) {
                     date={iso}
                     dayData={{ ...bodyData, pill: pillFwd, period: periodFwd, _weight_kg: fmtKg, _weight_kg_stale: kgStale }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', iso, fk, v) }}
+                    mobile={mobile}
+                    onClose={() => setActiveCell(null)}
                   />
                 )}
               </div>
@@ -884,6 +888,8 @@ export default function LifeModules({ mobile } = {}) {
                     date={todayIso}
                     dayData={{ ...bodyData, pill: pillFwdT, period: periodFwdT, _weight_kg: fmtKgT, _weight_kg_stale: kgStaleT }}
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', todayIso, fk, v) }}
+                    mobile={mobile}
+                    onClose={() => setActiveCell(null)}
                   />
                 )}
               </div>
@@ -912,7 +918,7 @@ export default function LifeModules({ mobile } = {}) {
                 style={{ left: i * dayW + 1, width: dayW - 2 }}
                 onClick={isFuture ? undefined : () => { if (!isEditing) setGratEdit({ date: iso, value: text ?? '' }) }}
               >
-                {isEditing ? (
+                {isEditing && !mobile ? (
                   <div className="lm-grat-popover" ref={gratRef} onClick={e => e.stopPropagation()}>
                     <input
                       className="lm-grat-input" autoFocus placeholder="What are you grateful for?"
@@ -937,7 +943,7 @@ export default function LifeModules({ mobile } = {}) {
                 style={{ left: 1, width: dayW - 2 }}
                 onClick={() => { if (!isEditing) setGratEdit({ date: todayIso, value: text ?? '' }) }}
               >
-                {isEditing ? (
+                {isEditing && !mobile ? (
                   <div className="lm-grat-popover" ref={gratRef} onClick={e => e.stopPropagation()}>
                     <input
                       className="lm-grat-input" autoFocus placeholder="What are you grateful for?"
@@ -1124,6 +1130,30 @@ export default function LifeModules({ mobile } = {}) {
           document.body
         )
       })()}
+
+      {/* ── Mobile gratitude portal ── */}
+      {mobile && gratEdit && createPortal(
+        <div
+          ref={gratRef}
+          onClick={e => e.stopPropagation()}
+          style={{ position: 'fixed', bottom: 90, left: 12, right: 12, zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Gratitude · {fmtDate(gratEdit.date)}</span>
+            <button onClick={saveGratitude} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}>×</button>
+          </div>
+          <input
+            className="lm-grat-input"
+            autoFocus
+            placeholder="What are you grateful for?"
+            value={gratEdit.value}
+            onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
+            onBlur={saveGratitude}
+            onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
+          />
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
@@ -1154,9 +1184,12 @@ function WeekLines({ days, dayW }) {
 
 // ─── Popover ──────────────────────────────────────────────────────────────────
 
-const Popover = forwardRef(function Popover({ mod, date, dayData, onSet }, ref) {
-  return (
-    <div className="lm-popover" ref={ref} onClick={e => e.stopPropagation()}>
+const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none' }
+
+const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose }, ref) {
+  const content = (
+    <div className="lm-popover" ref={ref} onClick={e => e.stopPropagation()} style={mobile ? POPOVER_MOBILE_STYLE : undefined}>
+      {mobile && <button onClick={onClose} style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}>×</button>}
       <div className="lm-popover-title">
         <span className="lm-popover-module">{mod.label}</span>
         <span className="lm-popover-date">{fmtDate(date)}</span>
@@ -1172,6 +1205,7 @@ const Popover = forwardRef(function Popover({ mod, date, dayData, onSet }, ref) 
       ))}
     </div>
   )
+  return mobile ? createPortal(content, document.body) : content
 })
 
 // ─── PopoverField ─────────────────────────────────────────────────────────────
