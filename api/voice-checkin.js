@@ -494,16 +494,15 @@ export default async function handler(req, res) {
   }).map(k => MODULE_LABELS[k])
 
   // Check specific important fields against today's merged log (not just this transcript)
+  // One-time-per-day fields only (diet/water are ongoing so excluded)
   const IMPORTANT_FIELDS = [
-    { module: 'mood',   field: 'work',      label: 'work mood' },
-    { module: 'mood',   field: 'life',      label: 'life mood' },
-    { module: 'mood',   field: 'energy',    label: 'energy' },
-    { module: 'health', field: 'eczema',    label: 'eczema' },
-    { module: 'health', field: 'hayfever',  label: 'hayfever' },
-    { module: 'health', field: 'gut',       label: 'gut' },
-    { module: 'diet',   field: 'protein',   label: 'protein' },
-    { module: 'diet',   field: 'fruit_veg', label: 'fruit & veg' },
-    { module: 'sleep',  field: 'hours',     label: 'sleep' },
+    { module: 'mood',   field: 'work',     label: 'work mood' },
+    { module: 'mood',   field: 'life',     label: 'life mood' },
+    { module: 'mood',   field: 'energy',   label: 'energy' },
+    { module: 'health', field: 'eczema',   label: 'eczema' },
+    { module: 'health', field: 'hayfever', label: 'hayfever' },
+    { module: 'health', field: 'gut',      label: 'gut' },
+    { module: 'sleep',  field: 'hours',    label: 'sleep' },
   ]
   const missingFields = IMPORTANT_FIELDS
     .filter(({ module, field }) => {
@@ -515,11 +514,12 @@ export default async function handler(req, res) {
   const notifParts = []
   if (logged.length) notifParts.push(`Saved: ${logged.join(', ')}`)
   if (missingFields.length) notifParts.push(`Still need: ${missingFields.join(', ')}`)
+  else notifParts.push('All key info logged')
 
   return res.status(200).json({
     ok: true,
     date: today,
-    notification_text: notifParts.join('\n') || 'Saved',
+    notification_text: notifParts.join('\n'),
     missing: missingFields,
   })
 }
