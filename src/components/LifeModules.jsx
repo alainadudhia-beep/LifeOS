@@ -317,7 +317,7 @@ export default function LifeModules({ mobile } = {}) {
   const gridDays  = mobile
     ? allDays.filter(d => d.toISOString().slice(0, 10) < todayIso)
     : allDays
-  const dayW      = mobile ? 46 : DAY_WIDTH
+  const dayW      = DAY_WIDTH
   const gridWidth = gridDays.length * dayW
 
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
@@ -533,33 +533,29 @@ export default function LifeModules({ mobile } = {}) {
 
   return (
     <div className={mobile ? 'lm-mobile-container' : undefined}>
-      {!mobile && (
-        <div className="lm-section-header">
-          <div className="lm-section-label">Life</div>
-          <div style={{ width: gridWidth, flexShrink: 0 }} />
+      {/* Date header row */}
+      <div className="lm-row lm-row--date-header">
+        {mobile
+          ? <div className="lm-label" />
+          : <div className="lm-section-label">Life</div>
+        }
+        <div className="lm-day-grid" style={{ width: gridWidth }}>
+          {gridDays.map((d, i) => (
+            <div key={i} className="lm-date-cell" style={{ left: i * dayW, width: dayW }}>
+              <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
+              <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
+              <span className="lm-date-cell-num">{d.getDate()}</span>
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Date header row — mobile only */}
-      {mobile && (
-        <div className="lm-row lm-row--date-header">
-          <div className="lm-label" />
-          <div className="lm-day-grid" style={{ width: gridWidth }}>
-            {gridDays.map((d, i) => (
-              <div key={i} className="lm-date-cell" style={{ left: i * dayW, width: dayW }}>
-                <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
-                <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
-                <span className="lm-date-cell-num">{d.getDate()}</span>
-              </div>
-            ))}
-          </div>
+        {mobile && (
           <div className="lm-today-col lm-today-col--header">
             <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[new Date(todayIso).getMonth()]}</span>
             <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[new Date(todayIso).getDay()]}</span>
             <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── 1. Sleep (autosync + old manual fallback, click for detail) ── */}
       <div className="lm-row">
