@@ -352,6 +352,8 @@ export default function LifeModules({ mobile } = {}) {
   const stepsCellRefs  = useRef({})
   const gratRef        = useRef(null)
   const transcriptRef  = useRef(null)
+  const containerRef   = useRef(null)
+  const todayColRef    = useRef(null)
 
   const [gratEdit,       setGratEdit]       = useState(null)
   const [transcriptOpen, setTranscriptOpen] = useState(null)
@@ -411,6 +413,25 @@ export default function LifeModules({ mobile } = {}) {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [transcriptOpen])
+
+  // Mobile: fill bottom gap by matching container min-height to scroll parent
+  useEffect(() => {
+    if (!mobile || !containerRef.current) return
+    const parent = containerRef.current.parentElement
+    if (!parent) return
+    const obs = new ResizeObserver(([entry]) => {
+      if (containerRef.current)
+        containerRef.current.style.minHeight = entry.contentRect.height + 'px'
+    })
+    obs.observe(parent)
+    return () => obs.disconnect()
+  }, [mobile])
+
+  // Mobile: scroll so today column is at right edge on mount
+  useEffect(() => {
+    if (!mobile || !todayColRef.current) return
+    todayColRef.current.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'end' })
+  }, [mobile])
 
   function saveGratitude() {
     if (!gratEdit) return
@@ -532,7 +553,7 @@ export default function LifeModules({ mobile } = {}) {
   // ─── JSX ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div className={mobile ? 'lm-mobile-container' : undefined}>
+    <div className={mobile ? 'lm-mobile-container' : undefined} ref={mobile ? containerRef : undefined}>
       {!mobile && (
         <div className="lm-section-header">
           <div className="lm-section-label">Life</div>
@@ -553,7 +574,7 @@ export default function LifeModules({ mobile } = {}) {
               </div>
             ))}
           </div>
-          <div className="lm-today-col lm-today-col--header">
+          <div className="lm-today-col lm-today-col--header" ref={todayColRef}>
             <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[new Date(todayIso).getMonth()]}</span>
             <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[new Date(todayIso).getDay()]}</span>
             <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>
