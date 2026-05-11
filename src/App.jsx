@@ -119,14 +119,15 @@ export default function App() {
 
   useEffect(() => {
     if (mobileTab !== 'life') return
-    // rAF ensures LifeModules has rendered its data before we measure
-    requestAnimationFrame(() => {
+    // setTimeout gives LifeModules time to render data and browser to complete layout
+    const t = setTimeout(() => {
       const el = lifeScrollRef.current
       if (!el) return
       el.scrollLeft = el.scrollWidth
       const inner = el.querySelector('.lm-mobile-container')
       if (inner) inner.style.minHeight = el.clientHeight + 'px'
-    })
+    }, 50)
+    return () => clearTimeout(t)
   }, [mobileTab])
 
   const [checkinStatus, setCheckinStatus] = useState('idle')

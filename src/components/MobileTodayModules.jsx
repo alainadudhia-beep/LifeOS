@@ -112,12 +112,16 @@ export default function MobileTodayModules() {
     ? Math.round((stepsActive ?? 0) + (stepsResting ?? 0))
     : null
   const calsLabel = calsTotal != null ? `${calsTotal.toLocaleString()}` : null
-  const calsBg    = calsTotal == null ? null
-    : calsTotal < 1750 ? '#fee2e2'
-    : calsTotal < 2000 ? '#fde8c8'
-    : calsTotal < 2250 ? '#fef9c3'
-    : calsTotal < 2500 ? '#bbf7d0'
-    : '#86efac'
+  const calsBg = (() => {
+    if (calsTotal == null) return null
+    const h = new Date().getHours() + new Date().getMinutes() / 60
+    const projected = h > 0 ? calsTotal / h * 24 : calsTotal
+    return projected < 1750 ? '#fee2e2'
+      : projected < 2000 ? '#fde8c8'
+      : projected < 2250 ? '#fef9c3'
+      : projected < 2500 ? '#bbf7d0'
+      : '#86efac'
+  })()
 
   // ── Fitbit: screen time ───────────────────────────────────────────────────
 
@@ -235,9 +239,9 @@ export default function MobileTodayModules() {
 
         {/* Row 1 col 1: Sleep */}
         <button
-          className={`mlm-card mlm-card--sync ${activeModule === 'sleep' ? 'mlm-card--active' : ''}`}
+          className="mlm-card mlm-card--sync"
           style={sleepBg ? { background: sleepBg } : undefined}
-          onClick={() => hasSleepData && setActiveModule('sleep')}
+          disabled
         >
           <span className="mlm-card-emoji">😴</span>
           {sleepLabel && <span className="mlm-card-value">{sleepLabel}</span>}
@@ -245,9 +249,9 @@ export default function MobileTodayModules() {
 
         {/* Row 1 col 2: Steps */}
         <button
-          className={`mlm-card mlm-card--sync ${activeModule === 'steps' ? 'mlm-card--active' : ''}`}
+          className="mlm-card mlm-card--sync"
           style={stepsBg ? { background: stepsBg } : undefined}
-          onClick={() => hasStepsData && setActiveModule('steps')}
+          disabled
         >
           <span className="mlm-card-emoji">👟</span>
           {stepsLabel && <span className="mlm-card-value">{stepsLabel}</span>}
@@ -295,10 +299,9 @@ export default function MobileTodayModules() {
 
         {/* Row 2 col 1: Calories */}
         <button
-          className={`mlm-card mlm-card--sync`}
+          className="mlm-card mlm-card--sync"
           style={calsBg ? { background: calsBg } : undefined}
-          onClick={() => hasStepsData && setActiveModule('steps')}
-          disabled={calsTotal == null}
+          disabled
         >
           <span className="mlm-card-emoji">🔥</span>
           {calsLabel && <span className="mlm-card-value">{calsLabel}</span>}
