@@ -512,9 +512,9 @@ export default async function handler(req, res) {
     .map(({ label }) => label)
 
   const notifParts = []
-  if (logged.length) notifParts.push(`💾 ${logged.join(', ')}`)
-  if (missingFields.length) notifParts.push(`✗ ${missingFields.join(', ')}`)
-  else notifParts.push('✓ All key info logged')
+  if (logged.length) notifParts.push(`✅ Updated: ${logged.join(', ')}`)
+  if (missingFields.length) notifParts.push(`❓ Awaiting: ${missingFields.join(', ')}`)
+  else notifParts.push('⭐ All key info logged')
 
   return res.status(200).json({
     ok: true,
