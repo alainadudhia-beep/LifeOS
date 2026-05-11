@@ -44,6 +44,10 @@ sleep.hours: "<5" | "5" | "6" | "7" | "8" | "9+" | null
 sleep.quality: "Poor" | "Fair" | "Good" | null
 social.activities: array from ["Friends","Family","Date","Party","Work drinks","Work from office","Used dating apps","Networking"]
 log_date: ISO date string (YYYY-MM-DD) | null - only set if the user explicitly states the log is for a different day (e.g. "this is for yesterday", "logging Thursday"); otherwise null
+day_phase: "morning" | "midday" | "afternoon" | "evening" | "late" | null
+  - Extract from transcript content when the user references a time of day: "this morning" → morning, "at lunch" / "lunchtime" → midday, "this afternoon" → afternoon, "this evening" / "tonight" → evening, "late" / "before bed" → late
+  - If multiple phases mentioned (e.g. "ok this morning but bad this evening"), use the LATEST phase mentioned and reflect that phase's values in the health/mood fields (e.g. hayfever should be "Bad" if the evening reading was bad)
+  - Return null if no time reference is made — a timestamp-based fallback will be applied
 cycle: true | false | null (true = period day)
 gratitude: string | null
 career_updates: array of { track_name: string, status: string | null, note: string | null, milestone: { date: "YYYY-MM-DD", label: string } | null }
@@ -307,6 +311,24 @@ async function callClaude(transcript, dynamicContext) {
   }
 }
 
+// ── Day phase helpers ─────────────────────────────────────────────────────────
+
+function ukHour() {
+  const now = new Date()
+  const m = now.getUTCMonth() // 0-indexed; BST = last Sun Mar → last Sun Oct
+  const offset = (m >= 2 && m <= 9) ? 1 : 0
+  return (now.getUTCHours() + offset) % 24
+}
+
+function phaseFromHour(h) {
+  if (h >= 7  && h < 11) return 'morning'
+  if (h >= 11 && h < 14) return 'midday'
+  if (h >= 14 && h < 17) return 'afternoon'
+  if (h >= 17 && h < 20) return 'evening'
+  if (h >= 20 || h < 4)  return 'late'
+  return null
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -397,8 +419,9 @@ export default async function handler(req, res) {
     }
   }
   if (Object.keys(snapshot).length) {
+    const phase = (parsed.day_phase ?? phaseFromHour(ukHour())) ?? undefined
     todayLog.checkins = [
-      { timestamp: new Date().toISOString(), source: 'shortcut', data: snapshot },
+      { timestamp: new Date().toISOString(), source: 'shortcut', ...(phase ? { day_phase: phase } : {}), data: snapshot },
       ...(todayLog.checkins ?? []),
     ]
   }

@@ -34,6 +34,10 @@ sleep.hours: "<5" | "5" | "6" | "7" | "8" | "9+" | null
 sleep.quality: "Poor" | "Fair" | "Good" | null
 social.activities: array from ["Friends","Family","Date","Party","Work drinks","Work from office","Used dating apps","Networking"]
 log_date: ISO date string (YYYY-MM-DD) | null - only set if the user explicitly states the log is for a different day (e.g. "this is for yesterday", "logging Thursday"); otherwise null
+day_phase: "morning" | "midday" | "afternoon" | "evening" | "late" | null
+  - Extract from transcript content when the user references a time of day: "this morning" → morning, "at lunch" / "lunchtime" → midday, "this afternoon" → afternoon, "this evening" / "tonight" → evening, "late" / "before bed" → late
+  - If multiple phases mentioned (e.g. "ok this morning but bad this evening"), use the LATEST phase mentioned and reflect that phase's values in the health/mood fields (e.g. hayfever should be "Bad" if the evening reading was bad)
+  - Return null if no time reference is made — a timestamp-based fallback will be applied
 cycle: true | false | null (true = period day)
 gratitude: string | null
 career_updates: array of { track_name: string, status: string | null, note: string | null, milestone: { date: "YYYY-MM-DD", label: string } | null }

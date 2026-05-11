@@ -157,8 +157,11 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
     }
   }
   if (Object.keys(snapshot).length) {
+    const h = new Date().getHours()
+    const phaseFromHour = h >= 7 && h < 11 ? 'morning' : h >= 11 && h < 14 ? 'midday' : h >= 14 && h < 17 ? 'afternoon' : h >= 17 && h < 20 ? 'evening' : h >= 20 || h < 4 ? 'late' : null
+    const phase = parsed.day_phase ?? phaseFromHour
     todayLog.checkins = [
-      { timestamp: new Date().toISOString(), source: 'voice', data: snapshot },
+      { timestamp: new Date().toISOString(), source: 'voice', ...(phase ? { day_phase: phase } : {}), data: snapshot },
       ...(todayLog.checkins ?? []),
     ]
   }
