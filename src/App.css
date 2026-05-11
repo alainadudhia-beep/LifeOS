@@ -274,8 +274,6 @@ body {
   -webkit-overflow-scrolling: touch;
   background: #fff;
   border-top: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
 }
 
 /* ── Bottom tab bar ── */
@@ -343,8 +341,12 @@ body {
   overflow: hidden;
 }
 
-/* Life grid: fill full container height */
-.app-mobile-gantt-scroll .lm-mobile-container { flex: 1; background: #fff; }
+/* Life grid: fill full container height.
+   CSS dvh is a fallback; JS in App.jsx sets the precise value. */
+.app-mobile-gantt-scroll .lm-mobile-container {
+  background: #fff;
+  min-height: calc(100dvh - 140px);
+}
 
 /* ── Mobile overrides for TrackEditModal ── */
 @media (max-width: 767px) {

@@ -123,9 +123,9 @@ export default function App() {
     const t = setTimeout(() => {
       const el = lifeScrollRef.current
       if (!el) return
-      el.scrollLeft = el.scrollWidth
+      el.scrollLeft = 999999
       const inner = el.querySelector('.lm-mobile-container')
-      if (inner) inner.style.minHeight = el.clientHeight + 'px'
+      if (inner) inner.style.minHeight = el.getBoundingClientRect().height + 'px'
     }, 50)
     return () => clearTimeout(t)
   }, [mobileTab])
