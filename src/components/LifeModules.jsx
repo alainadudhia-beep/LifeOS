@@ -562,7 +562,7 @@ export default function LifeModules({ mobile } = {}) {
 
       {/* ── 1. Sleep (autosync + old manual fallback, click for detail) ── */}
       <div className="lm-row">
-        <div className="lm-label"><span className="lm-label-emoji">😴</span> Sleep<AutosyncTag /></div>
+        <div className="lm-label"><span className="lm-label-emoji">😴</span> <em>Sleep</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
           <WeekLines days={gridDays} />
           {gridDays.map((d, i) => {
@@ -622,7 +622,7 @@ export default function LifeModules({ mobile } = {}) {
 
       {/* ── 2. Steps + Calories (autosync, click for detail) ── */}
       <div className="lm-row">
-        <div className="lm-label"><span className="lm-label-emoji">👟</span> Steps<AutosyncTag /></div>
+        <div className="lm-label"><span className="lm-label-emoji">👟</span> <em>Steps</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
           <WeekLines days={gridDays} />
           {gridDays.map((d, i) => {
@@ -676,7 +676,7 @@ export default function LifeModules({ mobile } = {}) {
 
       {/* ── 3. Screen Time (autosync) ── */}
       <div className="lm-row">
-        <div className="lm-label"><span className="lm-label-emoji">📱</span> Screen Time<AutosyncTag /></div>
+        <div className="lm-label"><span className="lm-label-emoji">📱</span> <em>Screen Time</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
           <WeekLines days={gridDays} />
           {gridDays.map((d, i) => {

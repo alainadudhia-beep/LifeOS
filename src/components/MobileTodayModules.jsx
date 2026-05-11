@@ -89,7 +89,6 @@ export default function MobileTodayModules() {
   const sleepLabel = hasFitbitSleep
     ? fmtMins(sleepMin)
     : hasOldSleep ? oldSleep.hours : null
-  const sleepEff   = hasFitbitSleep ? sleepEffLabel(sleepMin, inBedMin) : null
   const hasSleepData = hasFitbitSleep || hasOldSleep
 
   // ── Fitbit: steps ─────────────────────────────────────────────────────────
@@ -113,9 +112,11 @@ export default function MobileTodayModules() {
     ? Math.round((stepsActive ?? 0) + (stepsResting ?? 0))
     : null
   const calsLabel = calsTotal != null ? `${calsTotal.toLocaleString()}` : null
-  const calsBg    = stepsActive == null ? null
-    : stepsActive < 200 ? '#fef9c3'
-    : stepsActive < 400 ? '#bbf7d0'
+  const calsBg    = calsTotal == null ? null
+    : calsTotal < 1750 ? '#fee2e2'
+    : calsTotal < 2000 ? '#fde8c8'
+    : calsTotal < 2250 ? '#fef9c3'
+    : calsTotal < 2500 ? '#bbf7d0'
     : '#86efac'
 
   // ── Fitbit: screen time ───────────────────────────────────────────────────
@@ -156,8 +157,10 @@ export default function MobileTodayModules() {
   const exData     = todayLog.exercise ?? null
   const energy     = exData?.energy ?? todayLog.mood?.energy ?? null
   const exerciseBg = energy != null ? (H5[energy] ?? null) : null
-  const exActs     = exData?.activities
-  const exLabel    = exActs?.length ? exActs.slice(0, 1).join('') : null
+  const exActs  = exData?.activities
+  const exLabel = exActs?.length
+    ? exActs.length === 1 ? exActs[0] : `${exActs[0]} +${exActs.length - 1}`
+    : null
 
   // ── Module refs ───────────────────────────────────────────────────────────
 
@@ -171,8 +174,12 @@ export default function MobileTodayModules() {
   // Compact cell labels for manual cards (value only, no name)
   function compactLabel(mod, dayData) {
     const raw = mod.cellLabel(dayData)
-    const label = Array.isArray(raw) ? raw.slice(0, 1).join('') : raw
-    return label ?? null
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) return null
+      if (raw.length === 1) return raw[0]
+      return `${raw[0]} +${raw.length - 1}`
+    }
+    return raw ?? null
   }
 
   const moodBg          = moodMod.cellColor(todayLog.mood ?? null)
@@ -234,7 +241,6 @@ export default function MobileTodayModules() {
         >
           <span className="mlm-card-emoji">😴</span>
           {sleepLabel && <span className="mlm-card-value">{sleepLabel}</span>}
-          {sleepEff   && <span className="mlm-card-sub">{sleepEff}</span>}
         </button>
 
         {/* Row 1 col 2: Steps */}

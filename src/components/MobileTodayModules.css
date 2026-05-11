@@ -10,6 +10,21 @@
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 6px;
+  position: relative;
+}
+
+/* Thin vertical divider between autosync (cols 1-2) and manual (cols 3-6) */
+.mlm-grid::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Centre of the 6px gap between col 2 and col 3:
+     2 cols + 2 gaps = (100% - 30px)/3 + 12px, minus 3px to centre in gap */
+  left: calc((100% - 30px) / 3 + 9px);
+  width: 1px;
+  background: #e2e8f0;
+  pointer-events: none;
 }
 
 .mlm-card {
@@ -17,8 +32,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 7px 3px;
+  gap: 5px;
+  padding: 8px 3px;
   border-radius: 10px;
   border: 1.5px solid transparent;
   background: #f1f5f9;
@@ -55,12 +70,6 @@
   white-space: nowrap;
 }
 
-.mlm-card-sub {
-  font-size: 9px;
-  color: #475569;
-  text-align: center;
-  line-height: 1.2;
-}
 
 /* ── Footer ── */
 .mlm-footer {
