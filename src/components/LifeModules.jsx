@@ -514,7 +514,7 @@ export default function LifeModules({ mobile } = {}) {
           {MODULE_EMOJI[mod.key] && <span className="lm-label-emoji">{MODULE_EMOJI[mod.key]}</span>} {mod.label}
         </div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso = d.toISOString().slice(0, 10)
             return renderCell(mod, iso, i, logs[iso]?.[mod.key] ?? null)
@@ -565,7 +565,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">😴</span> <em>Sleep</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const raw      = fitbitRaw[iso]
@@ -625,7 +625,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">👟</span> <em>Steps</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso    = d.toISOString().slice(0, 10)
             const raw    = fitbitRaw[iso]
@@ -679,7 +679,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">📱</span> <em>Screen Time</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso = d.toISOString().slice(0, 10)
             const mins = fitbitRaw[iso]?.screen_time_minutes ?? null
@@ -743,7 +743,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">🏃</span> Exercise</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso     = d.toISOString().slice(0, 10)
             const exData  = logs[iso]?.exercise ?? null
@@ -818,7 +818,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row">
         <div className="lm-label"><span className="lm-label-emoji">🌸</span> Body</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
             const bodyData = logs[iso]?.body ?? {}
@@ -897,7 +897,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row lm-row--gratitude">
         <div className="lm-label"><span className="lm-label-emoji">🙏</span> Gratitude</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso       = d.toISOString().slice(0, 10)
             const text      = logs[iso]?.gratitude ?? null
@@ -956,7 +956,7 @@ export default function LifeModules({ mobile } = {}) {
       <div className="lm-row lm-row--transcript">
         <div className="lm-label"><span className="lm-label-emoji">📝</span> Journal</div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
-          <WeekLines days={gridDays} />
+          <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso         = d.toISOString().slice(0, 10)
             const transcripts = logs[iso]?.transcripts ?? []
@@ -1142,7 +1142,7 @@ function TranscriptTextarea({ initialText, onSave }) {
 
 // ─── WeekLines ────────────────────────────────────────────────────────────────
 
-function WeekLines({ days }) {
+function WeekLines({ days, dayW }) {
   return days.map((d, i) =>
     d.getDay() === 1
       ? <div key={i} className="lm-week-line" style={{ left: i * dayW }} />
