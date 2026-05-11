@@ -333,6 +333,14 @@ body {
   min-width: 160px;
 }
 
+/* Life grid: narrow label column on mobile so more date columns are visible */
+.app-mobile-gantt-scroll .lm-label,
+.app-mobile-gantt-scroll .lm-section-label {
+  width: 110px;
+  min-width: 110px;
+  overflow: hidden;
+}
+
 /* ── Mobile overrides for TrackEditModal ── */
 @media (max-width: 767px) {
   .modal { padding: 0; }
