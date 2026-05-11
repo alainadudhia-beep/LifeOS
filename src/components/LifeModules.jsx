@@ -414,23 +414,16 @@ export default function LifeModules({ mobile } = {}) {
     return () => document.removeEventListener('mousedown', onDown)
   }, [transcriptOpen])
 
-  // Mobile: fill bottom gap by matching container min-height to scroll parent
+  // Mobile: fill bottom gap + scroll to today on mount
   useEffect(() => {
     if (!mobile || !containerRef.current) return
     const parent = containerRef.current.parentElement
     if (!parent) return
-    const obs = new ResizeObserver(([entry]) => {
-      if (containerRef.current)
-        containerRef.current.style.minHeight = entry.contentRect.height + 'px'
-    })
-    obs.observe(parent)
-    return () => obs.disconnect()
-  }, [mobile])
-
-  // Mobile: scroll so today column is at right edge on mount
-  useEffect(() => {
-    if (!mobile || !todayColRef.current) return
-    todayColRef.current.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'end' })
+    // Fill bottom gap
+    const h = parent.getBoundingClientRect().height
+    if (h > 0) containerRef.current.style.minHeight = h + 'px'
+    // Right gap: scroll so today column is pinned at right edge
+    parent.scrollLeft = parent.scrollWidth
   }, [mobile])
 
   function saveGratitude() {
