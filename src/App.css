@@ -275,6 +275,7 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   background: #fff;
   border-top: 1px solid #e2e8f0;
   direction: rtl;
