@@ -482,14 +482,27 @@ export default async function handler(req, res) {
     }
   }
 
-  // Build notification text for the Shortcut to display
-  const insightLines = (parsed.insights ?? []).map(i => i.text)
-  const nudge = parsed.next_time_nudge ?? null
+  // Build concise notification text for the Shortcut
+  const MODULE_LABELS = {
+    mood: 'mood', health: 'inflammation', diet: 'diet',
+    alcohol: 'alcohol', water: 'water', exercise: 'exercise',
+    sleep: 'sleep', social: 'social',
+  }
+  const logged = Object.keys(MODULE_LABELS).filter(k => {
+    const m = parsed[k]
+    if (!m || typeof m !== 'object') return false
+    return Object.values(m).some(v => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))
+  }).map(k => MODULE_LABELS[k])
+
+  const missing = parsed.missing_important ?? []
+  const notifParts = []
+  if (logged.length) notifParts.push(`Saved: ${logged.join(', ')}`)
+  if (missing.length) notifParts.push(`Missing: ${missing.join(', ')}`)
 
   return res.status(200).json({
     ok: true,
     date: today,
-    insight_text: insightLines.join('\n') + (nudge ? '\n\n' + nudge : ''),
-    missing: parsed.missing_important ?? [],
+    notification_text: notifParts.join('\n') || 'Saved',
+    missing,
   })
 }
