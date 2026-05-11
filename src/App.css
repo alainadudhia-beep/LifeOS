@@ -272,7 +272,8 @@ body {
 /* display:flex + flex-direction:column lets .lm-mobile-container use flex-grow to fill height */
 .app-mobile-gantt-scroll {
   flex: 1;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   background: #fff;
   border-top: 1px solid #e2e8f0;

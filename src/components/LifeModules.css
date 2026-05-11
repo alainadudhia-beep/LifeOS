@@ -598,11 +598,11 @@
   height: 44px;
 }
 
-/* Date header stays visible during vertical overscroll */
-.app-mobile-gantt-scroll .lm-row--date-header {
-  position: sticky;
-  top: 0;
-  z-index: 8;
+/* All cells in the today column fill the full column width regardless of inline styles */
+.app-mobile-gantt-scroll .lm-today-col .lm-cell {
+  left: 1px !important;
+  right: 1px !important;
+  width: auto !important;
 }
 
 .lm-today-col--header {
@@ -686,8 +686,9 @@
   font-weight: 700;
 }
 
-/* Popover: fixed to viewport so it clears the sticky today column and scroll overflow */
-.app-mobile-gantt-scroll .lm-popover {
+/* Popovers: fixed to viewport so they clear scroll container overflow */
+.app-mobile-gantt-scroll .lm-popover,
+.app-mobile-gantt-scroll .lm-grat-popover {
   position: fixed;
   bottom: 90px;
   left: 12px;
@@ -697,6 +698,7 @@
   z-index: 1000;
   max-width: none;
 }
-.app-mobile-gantt-scroll .lm-popover::after {
+.app-mobile-gantt-scroll .lm-popover::after,
+.app-mobile-gantt-scroll .lm-grat-popover::after {
   display: none;
 }
