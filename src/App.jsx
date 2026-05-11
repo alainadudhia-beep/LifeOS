@@ -110,27 +110,13 @@ const NUDGE_TEXT = {
 export default function App() {
   const isMobile       = useIsMobile()
   const [mobileTab, setMobileTab] = useState('today')
-  const lifeScrollRef  = useRef(null)
   const importRef      = useRef(null)
   const todayRef       = useRef(null)
   const thisWeekRef    = useRef(null)
 
   useEffect(() => { migrateFruitVeg(); migrateHistoricalSteps(); migrateDryEyes() }, [])
 
-  useEffect(() => {
-    if (mobileTab !== 'life') return
-    // setTimeout gives LifeModules time to render data and browser to complete layout
-    const t = setTimeout(() => {
-      const el = lifeScrollRef.current
-      if (!el) return
-      el.scrollLeft = 999999
-      const inner = el.querySelector('.lm-mobile-container')
-      if (inner) inner.style.minHeight = el.getBoundingClientRect().height + 'px'
-    }, 50)
-    return () => clearTimeout(t)
-  }, [mobileTab])
-
-  const [checkinStatus, setCheckinStatus] = useState('idle')
+const [checkinStatus, setCheckinStatus] = useState('idle')
   const [errorMsg, setErrorMsg] = useState(null)
 
   const [leftWidth, setLeftWidth] = useState(() => {
@@ -258,7 +244,7 @@ export default function App() {
               <Insights ref={thisWeekRef} />
             </div>
             {mobileTab === 'life' && (
-              <div className="app-mobile-gantt-scroll" ref={lifeScrollRef}>
+              <div className="app-mobile-gantt-scroll">
                 <LifeModules mobile />
               </div>
             )}

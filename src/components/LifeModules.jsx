@@ -345,6 +345,19 @@ export default function LifeModules({ mobile } = {}) {
     return logs[d.toISOString().slice(0, 10)]?.body ?? {}
   }
 
+  const containerRef   = useRef(null)
+
+  useEffect(() => {
+    if (!mobile || !containerRef.current) return
+    const parent = containerRef.current.parentElement
+    if (!parent) return
+    let f1, f2
+    f1 = requestAnimationFrame(() => {
+      f2 = requestAnimationFrame(() => { parent.scrollLeft = parent.scrollWidth })
+    })
+    return () => { cancelAnimationFrame(f1); cancelAnimationFrame(f2) }
+  }, [mobile])
+
   const popoverRef     = useRef(null)
   const sleepRef       = useRef(null)
   const sleepCellRefs  = useRef({})
@@ -533,7 +546,7 @@ export default function LifeModules({ mobile } = {}) {
   // ─── JSX ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div className={mobile ? 'lm-mobile-container' : undefined}>
+    <div ref={mobile ? containerRef : undefined} className={mobile ? 'lm-mobile-container' : undefined}>
       {!mobile && (
         <div className="lm-section-header">
           <div className="lm-section-label">Life</div>
