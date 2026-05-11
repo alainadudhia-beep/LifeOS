@@ -15,6 +15,51 @@ function writeJson(key, val) {
   localStorage.setItem(key, JSON.stringify(val))
 }
 
+// ── Phase matrix merge ────────────────────────────────────────────────────────
+
+const PHASE_UNION = {
+  diet:     new Set(['allergens']),
+  health:   new Set(['eczema_location', 'dryness']),
+  mood:     new Set(['symptoms']),
+  exercise: new Set(['activities']),
+}
+
+const PHASE_FIRST_MENTION = {
+  diet: new Set(['supplements']),
+}
+
+function applyPhaseData(existingPhases, phaseData) {
+  if (!phaseData || typeof phaseData !== 'object') return existingPhases
+  const phases = { ...existingPhases }
+
+  for (const [phase, modules] of Object.entries(phaseData)) {
+    if (!modules || typeof modules !== 'object') continue
+    if (!phases[phase]) phases[phase] = {}
+
+    for (const [moduleKey, fields] of Object.entries(modules)) {
+      if (!fields || typeof fields !== 'object') continue
+      if (!phases[phase][moduleKey]) phases[phase][moduleKey] = {}
+
+      for (const [fieldKey, value] of Object.entries(fields)) {
+        if (value === null || value === undefined) continue
+
+        if (PHASE_UNION[moduleKey]?.has(fieldKey)) {
+          if (Array.isArray(value) && value.length > 0) {
+            const prev = Array.isArray(phases[phase][moduleKey][fieldKey]) ? phases[phase][moduleKey][fieldKey] : []
+            phases[phase][moduleKey][fieldKey] = [...new Set([...prev, ...value])]
+          }
+        } else if (PHASE_FIRST_MENTION[moduleKey]?.has(fieldKey)) {
+          if (phases[phase][moduleKey][fieldKey] == null) phases[phase][moduleKey][fieldKey] = value
+        } else {
+          phases[phase][moduleKey][fieldKey] = value
+        }
+      }
+    }
+  }
+
+  return phases
+}
+
 // ── Field merge strategies ────────────────────────────────────────────────────
 
 // Mood scores: running average across check-ins
@@ -164,6 +209,12 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
       { timestamp: new Date().toISOString(), source: 'voice', ...(phase ? { day_phase: phase } : {}), data: snapshot },
       ...(todayLog.checkins ?? []),
     ]
+
+    // Populate phase matrix — use Claude's phase_data if provided, else synthesise from snapshot + phase
+    const phaseDataToApply = parsed.phase_data ?? (phase ? { [phase]: snapshot } : null)
+    if (phaseDataToApply) {
+      todayLog.phases = applyPhaseData(todayLog.phases ?? {}, phaseDataToApply)
+    }
   }
 
   logs[today] = todayLog

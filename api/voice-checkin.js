@@ -48,6 +48,16 @@ day_phase: "morning" | "midday" | "afternoon" | "evening" | "late" | null
   - Extract from transcript content when the user references a time of day: "this morning" → morning, "at lunch" / "lunchtime" → midday, "this afternoon" → afternoon, "this evening" / "tonight" → evening, "late" / "before bed" → late
   - If multiple phases mentioned (e.g. "ok this morning but bad this evening"), use the LATEST phase mentioned and reflect that phase's values in the health/mood fields (e.g. hayfever should be "Bad" if the evening reading was bad)
   - Return null if no time reference is made — a timestamp-based fallback will be applied
+phase_data: object | null - populate when the user references specific times of day, especially multiple different periods
+  - Keys are phase names: "morning" | "midday" | "afternoon" | "evening" | "late"
+  - Values mirror the module structure: { mood: {}, health: {}, diet: {}, water: {}, alcohol: {}, exercise: {} }
+  - Only include fields actually mentioned for each phase — omit null fields
+  - "hayfever was fine this morning but bad this evening" → { "morning": { "health": { "hayfever": "None" } }, "evening": { "health": { "hayfever": "Bad" } } }
+  - "had pizza for lunch, wine with dinner" → { "midday": { "diet": { "allergens": ["Gluten"], "carbs": "High" } }, "evening": { "alcohol": { "level": "1", "type": ["Wine"] } } }
+  - "2 glasses of water this morning, 3 at lunch" → { "morning": { "water": { "glasses": "2" } }, "midday": { "water": { "glasses": "3" } } }
+  - For single-phase check-ins with an explicit time reference, still populate phase_data with that one phase
+  - If no time references at all, return null — a fallback will be applied from day_phase and timestamp
+  - IMPORTANT: the flat fields (health.hayfever, water.glasses etc.) must still be populated as normal using the latest/dominant phase value
 cycle: true | false | null (true = period day)
 gratitude: string | null
 career_updates: array of { track_name: string, status: string | null, note: string | null, milestone: { date: "YYYY-MM-DD", label: string } | null }
@@ -311,6 +321,51 @@ async function callClaude(transcript, dynamicContext) {
   }
 }
 
+// ── Phase matrix merge ────────────────────────────────────────────────────────
+
+const PHASE_UNION = {
+  diet:     new Set(['allergens']),
+  health:   new Set(['eczema_location', 'dryness']),
+  mood:     new Set(['symptoms']),
+  exercise: new Set(['activities']),
+}
+
+const PHASE_FIRST_MENTION = {
+  diet: new Set(['supplements']),
+}
+
+function applyPhaseData(existingPhases, phaseData) {
+  if (!phaseData || typeof phaseData !== 'object') return existingPhases
+  const phases = { ...existingPhases }
+
+  for (const [phase, modules] of Object.entries(phaseData)) {
+    if (!modules || typeof modules !== 'object') continue
+    if (!phases[phase]) phases[phase] = {}
+
+    for (const [moduleKey, fields] of Object.entries(modules)) {
+      if (!fields || typeof fields !== 'object') continue
+      if (!phases[phase][moduleKey]) phases[phase][moduleKey] = {}
+
+      for (const [fieldKey, value] of Object.entries(fields)) {
+        if (value === null || value === undefined) continue
+
+        if (PHASE_UNION[moduleKey]?.has(fieldKey)) {
+          if (Array.isArray(value) && value.length > 0) {
+            const prev = Array.isArray(phases[phase][moduleKey][fieldKey]) ? phases[phase][moduleKey][fieldKey] : []
+            phases[phase][moduleKey][fieldKey] = [...new Set([...prev, ...value])]
+          }
+        } else if (PHASE_FIRST_MENTION[moduleKey]?.has(fieldKey)) {
+          if (phases[phase][moduleKey][fieldKey] == null) phases[phase][moduleKey][fieldKey] = value
+        } else {
+          phases[phase][moduleKey][fieldKey] = value
+        }
+      }
+    }
+  }
+
+  return phases
+}
+
 // ── Day phase helpers ─────────────────────────────────────────────────────────
 
 function ukHour() {
@@ -424,6 +479,12 @@ export default async function handler(req, res) {
       { timestamp: new Date().toISOString(), source: 'shortcut', ...(phase ? { day_phase: phase } : {}), data: snapshot },
       ...(todayLog.checkins ?? []),
     ]
+
+    // Populate phase matrix
+    const phaseDataToApply = parsed.phase_data ?? (phase ? { [phase]: snapshot } : null)
+    if (phaseDataToApply) {
+      todayLog.phases = applyPhaseData(todayLog.phases ?? {}, phaseDataToApply)
+    }
   }
 
   // Write logs + insights in parallel
