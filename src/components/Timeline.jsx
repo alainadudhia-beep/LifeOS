@@ -151,11 +151,16 @@ export default function Timeline({ mobile } = {}) {
   }
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (scrollRef.current)
-        scrollRef.current.scrollLeft = Math.max(0, dateToPx(todayIso) - 200)
-    }, 150)
-    return () => clearTimeout(t)
+    let f1, f2
+    f1 = requestAnimationFrame(() => {
+      f2 = requestAnimationFrame(() => {
+        const el = scrollRef.current
+        if (!el) return
+        const halfGrid = Math.floor((el.clientWidth - labelWidth) / 2)
+        el.scrollLeft = Math.max(0, dateToPx(todayIso) - halfGrid)
+      })
+    })
+    return () => { cancelAnimationFrame(f1); cancelAnimationFrame(f2) }
   }, []) // eslint-disable-line
 
   useEffect(() => {

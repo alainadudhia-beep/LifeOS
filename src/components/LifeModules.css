@@ -591,7 +591,11 @@
 }
 
 .app-mobile-gantt-scroll .lm-today-col {
-  width: 46px;
+  width: 60px;
+}
+
+.app-mobile-gantt-scroll .lm-row {
+  height: 40px;
 }
 
 .lm-today-col--header {
