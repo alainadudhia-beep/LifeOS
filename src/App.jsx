@@ -119,9 +119,13 @@ export default function App() {
 
   useEffect(() => {
     if (mobileTab !== 'life') return
+    // rAF ensures LifeModules has rendered its data before we measure
     requestAnimationFrame(() => {
-      if (lifeScrollRef.current)
-        lifeScrollRef.current.scrollLeft = lifeScrollRef.current.scrollWidth
+      const el = lifeScrollRef.current
+      if (!el) return
+      el.scrollLeft = el.scrollWidth
+      const inner = el.querySelector('.lm-mobile-container')
+      if (inner) inner.style.minHeight = el.clientHeight + 'px'
     })
   }, [mobileTab])
 

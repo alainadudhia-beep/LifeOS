@@ -352,8 +352,6 @@ export default function LifeModules({ mobile } = {}) {
   const stepsCellRefs  = useRef({})
   const gratRef        = useRef(null)
   const transcriptRef  = useRef(null)
-  const containerRef   = useRef(null)
-  const todayColRef    = useRef(null)
 
   const [gratEdit,       setGratEdit]       = useState(null)
   const [transcriptOpen, setTranscriptOpen] = useState(null)
@@ -414,17 +412,6 @@ export default function LifeModules({ mobile } = {}) {
     return () => document.removeEventListener('mousedown', onDown)
   }, [transcriptOpen])
 
-  // Mobile: fill bottom gap + scroll to today on mount
-  useEffect(() => {
-    if (!mobile || !containerRef.current) return
-    const parent = containerRef.current.parentElement
-    if (!parent) return
-    // Fill bottom gap
-    const h = parent.getBoundingClientRect().height
-    if (h > 0) containerRef.current.style.minHeight = h + 'px'
-    // Right gap: scroll so today column is pinned at right edge
-    parent.scrollLeft = parent.scrollWidth
-  }, [mobile])
 
   function saveGratitude() {
     if (!gratEdit) return
@@ -546,7 +533,7 @@ export default function LifeModules({ mobile } = {}) {
   // ─── JSX ─────────────────────────────────────────────────────────────────────
 
   return (
-    <div className={mobile ? 'lm-mobile-container' : undefined} ref={mobile ? containerRef : undefined}>
+    <div className={mobile ? 'lm-mobile-container' : undefined}>
       {!mobile && (
         <div className="lm-section-header">
           <div className="lm-section-label">Life</div>
@@ -567,7 +554,7 @@ export default function LifeModules({ mobile } = {}) {
               </div>
             ))}
           </div>
-          <div className="lm-today-col lm-today-col--header" ref={todayColRef}>
+          <div className="lm-today-col lm-today-col--header">
             <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[new Date(todayIso).getMonth()]}</span>
             <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[new Date(todayIso).getDay()]}</span>
             <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>

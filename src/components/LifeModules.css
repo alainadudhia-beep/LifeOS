@@ -585,9 +585,13 @@
   right: 0;
   z-index: 4;
   flex-shrink: 0;
-  width: 38px; /* DAY_WIDTH */
+  width: 38px;
   background: #fff;
   border-left: 2px solid #334155;
+}
+
+.app-mobile-gantt-scroll .lm-today-col {
+  width: 46px;
 }
 
 .lm-today-col--header {
