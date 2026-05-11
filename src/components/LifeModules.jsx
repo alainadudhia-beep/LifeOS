@@ -421,16 +421,18 @@ export default function LifeModules({ mobile } = {}) {
   }
 
   function setFieldValue(moduleKey, date, fieldKey, value) {
-    setLogs(prev => ({
-      ...prev,
-      [date]: {
-        ...(prev[date] ?? {}),
-        [moduleKey]: {
-          ...((prev[date] ?? {})[moduleKey] ?? {}),
-          [fieldKey]: value,
-        },
-      },
-    }))
+    const today = new Date().toISOString().slice(0, 10)
+    setLogs(prev => {
+      const updatedModule = { ...((prev[date] ?? {})[moduleKey] ?? {}), [fieldKey]: value }
+      const updatedDay = { ...(prev[date] ?? {}), [moduleKey]: updatedModule }
+      if (date === today) {
+        updatedDay.checkins = [
+          { timestamp: new Date().toISOString(), source: 'manual', module: moduleKey, field: fieldKey, value },
+          ...(updatedDay.checkins ?? []),
+        ]
+      }
+      return { ...prev, [date]: updatedDay }
+    })
   }
 
   function markLogged(moduleKey, date) {

@@ -1,0 +1,23 @@
+.commitment-actions {
+  justify-content: space-between !important;
+}
+
+.modal-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-btn-danger {
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: 1px solid #fecaca;
+  background: none;
+  font-size: 13px;
+  color: #ef4444;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modal-btn-danger:hover {
+  background: #fef2f2;
+}

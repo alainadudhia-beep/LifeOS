@@ -1,0 +1,228 @@
+.tw-panel {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ── header ── */
+.tw-header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.tw-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.tw-range {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* ── sections ── */
+.tw-section {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tw-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 0 12px;
+}
+
+.tw-suggested-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+/* ── items ── */
+.tw-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.tw-item:hover { background: #f8fafc; }
+.tw-item:hover .tw-delete { opacity: 1; }
+
+.tw-item--done .tw-item-text {
+  text-decoration: line-through;
+  color: #cbd5e1;
+}
+
+.tw-item--suggested .tw-item-text {
+  font-style: italic;
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* ── checkbox ── */
+.tw-check {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.1s;
+  position: relative;
+}
+
+.tw-check:hover { border-color: #94a3b8; }
+
+.tw-check--done {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.tw-check--done::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 7px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+/* ── item body ── */
+.tw-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tw-item-text {
+  font-size: 12.5px;
+  color: #1e293b;
+  font-weight: 500;
+  line-height: 1.4;
+  word-break: break-word;
+  cursor: default;
+}
+
+.tw-item--suggested .tw-check {
+  border-color: #e2e8f0;
+}
+
+/* ── carry-forward badge ── */
+.tw-carry-badge {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #f59e0b;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 1px 5px;
+  align-self: flex-start;
+}
+
+/* ── done section ── */
+.tw-done-section {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── delete btn ── */
+.tw-delete {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #e2e8f0;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  flex-shrink: 0;
+}
+
+.tw-delete:hover { color: #ef4444; }
+
+/* ── add row ── */
+.tw-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tw-add-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: #1e293b;
+  outline: none;
+  padding: 4px 4px;
+  border-radius: 5px;
+}
+
+.tw-add-input::placeholder { color: #cbd5e1; }
+.tw-add-input:focus::placeholder { color: #e2e8f0; }
+.tw-add-input--suggested::placeholder { color: #e2e8f0; font-style: italic; }
+
+.tw-add-btn {
+  font-size: 11px;
+  font-family: inherit;
+  color: #94a3b8;
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tw-add-btn:hover { color: #475569; border-color: #94a3b8; }
+
+/* ── edit input ── */
+.tw-edit-input {
+  font-size: 12.5px;
+  font-family: inherit;
+  font-weight: 500;
+  color: #1e293b;
+  border: 1px solid #94a3b8;
+  border-radius: 5px;
+  padding: 2px 6px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+}

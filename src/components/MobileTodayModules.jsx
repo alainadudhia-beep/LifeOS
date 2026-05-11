@@ -37,16 +37,15 @@ export default function MobileTodayModules() {
   const transcripts = todayLog.transcripts ?? []
 
   function setFieldValue(moduleKey, fieldKey, value) {
-    setLogs(prev => ({
-      ...prev,
-      [today]: {
-        ...(prev[today] ?? {}),
-        [moduleKey]: {
-          ...((prev[today] ?? {})[moduleKey] ?? {}),
-          [fieldKey]: value,
-        },
-      },
-    }))
+    setLogs(prev => {
+      const updatedModule = { ...((prev[today] ?? {})[moduleKey] ?? {}), [fieldKey]: value }
+      const updatedDay = { ...(prev[today] ?? {}), [moduleKey]: updatedModule }
+      updatedDay.checkins = [
+        { timestamp: new Date().toISOString(), source: 'manual', module: moduleKey, field: fieldKey, value },
+        ...(updatedDay.checkins ?? []),
+      ]
+      return { ...prev, [today]: updatedDay }
+    })
   }
 
   function openModule(key) {

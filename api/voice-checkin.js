@@ -389,6 +389,20 @@ export default async function handler(req, res) {
   if (parsed.cycle != null)    todayLog.cycle    = { period: parsed.cycle }
   if (parsed.gratitude != null) todayLog.gratitude = parsed.gratitude
 
+  // Store timestamped snapshot for future time-of-day analysis
+  const snapshot = {}
+  for (const key of moduleKeys) {
+    if (parsed[key] && Object.values(parsed[key]).some(v => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))) {
+      snapshot[key] = parsed[key]
+    }
+  }
+  if (Object.keys(snapshot).length) {
+    todayLog.checkins = [
+      { timestamp: new Date().toISOString(), source: 'shortcut', data: snapshot },
+      ...(todayLog.checkins ?? []),
+    ]
+  }
+
   // Write logs + insights in parallel
   logs[today] = todayLog
   const writes = [

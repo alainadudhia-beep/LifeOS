@@ -1,0 +1,752 @@
+{
+  "lifetracker-tracks-v3": [
+    {
+      "id": "dvs",
+      "name": "DVS Contract",
+      "status_history": [
+        {
+          "id": "sh-dvs-1",
+          "status": "in_progress",
+          "start_date": "2026-04-14",
+          "end_date": "2026-04-29"
+        },
+        {
+          "id": "sh-dvs-1777455465130",
+          "status": "secured",
+          "start_date": "2026-04-29",
+          "end_date": null
+        }
+      ],
+      "start_date": "2026-04-14",
+      "end_date": null,
+      "group": "AI Workflows",
+      "priority": "high",
+      "milestones": [
+        {
+          "id": "m-dvs-1",
+          "date": "2026-04-28",
+          "label": "Meeting with DVS"
+        }
+      ],
+      "notes_log": [
+        {
+          "id": "n-1777455514315",
+          "text": "Signed flexible daily contract with David at £800/day, start on Tuesday 5th May.",
+          "timestamp": "2026-04-29T09:38:34.315Z"
+        },
+        {
+          "id": "n1",
+          "text": "Discovery started. £800/day. Confirm flexibility and case study rights.",
+          "timestamp": "2026-04-28T14:18:43.393Z"
+        }
+      ],
+      "created_at": "2026-04-28T14:18:43.393Z",
+      "updated_at": "2026-04-29T21:31:17.363Z"
+    },
+    {
+      "id": "sentinel",
+      "name": "Sentinel",
+      "status_history": [
+        {
+          "id": "sh-sentinel-1",
+          "status": "waiting",
+          "start_date": "2026-04-28",
+          "end_date": "2026-05-28"
+        },
+        {
+          "id": "sh-1777388052342",
+          "status": "in_progress",
+          "start_date": "2026-04-01",
+          "end_date": "2026-04-28"
+        },
+        {
+          "id": "sh-sentinel-1777388411574",
+          "status": "waiting",
+          "start_date": "2026-04-28",
+          "end_date": null
+        }
+      ],
+      "start_date": "2026-04-01",
+      "end_date": "",
+      "group": "AI Workflows",
+      "priority": "medium",
+      "milestones": [
+        {
+          "id": "m-sentinel-1",
+          "date": "2026-05-28",
+          "label": "Fred Ward meeting"
+        },
+        {
+          "id": "m-1777455662560",
+          "date": "2026-05-14",
+          "label": "CIL staffing manager chat"
+        }
+      ],
+      "notes_log": [
+        {
+          "id": "n2",
+          "text": "Fred Ward meeting end of May. Optional: build knowledge layer prototype before then\nCIL Staffing Tool in exploration, asked mentor for intro.",
+          "timestamp": "2026-04-28T14:18:43.393Z"
+        }
+      ],
+      "created_at": "2026-04-28T14:18:43.393Z",
+      "updated_at": "2026-04-28T15:01:57.300Z"
+    },
+    {
+      "id": "cvc",
+      "name": "PE Contract Work",
+      "status_history": [
+        {
+          "id": "sh-cvc-1",
+          "status": "waiting",
+          "start_date": "2026-04-15",
+          "end_date": "2026-05-08"
+        }
+      ],
+      "start_date": "2026-04-02",
+      "end_date": "2026-10-05",
+      "group": "AI Workflows",
+      "priority": "medium",
+      "milestones": [],
+      "notes_log": [
+        {
+          "id": "n3",
+          "text": "Waiting on recruiter re CVC and Hg. Chase if no update by Thursday.",
+          "timestamp": "2026-04-28T14:18:43.393Z"
+        }
+      ],
+      "created_at": "2026-04-28T14:18:43.393Z",
+      "updated_at": "2026-04-29T17:56:51.526Z"
+    },
+    {
+      "id": "cos",
+      "name": "Chief of Staff search",
+      "status_history": [
+        {
+          "id": "sh-cos-1",
+          "status": "in_progress",
+          "start_date": "2026-04-20",
+          "end_date": null
+        }
+      ],
+      "start_date": "2026-04-20",
+      "end_date": "",
+      "group": "Senior Startup Roles",
+      "priority": "medium",
+      "milestones": [],
+      "notes_log": [
+        {
+          "id": "n5",
+          "text": "Running in background. Target £90-110k base plus equity.",
+          "timestamp": "2026-04-28T14:18:43.394Z"
+        }
+      ],
+      "created_at": "2026-04-28T14:18:43.394Z",
+      "updated_at": "2026-04-29T09:45:15.612Z"
+    },
+    {
+      "id": "australia",
+      "name": "Australia Working Holiday Visa",
+      "status_history": [
+        {
+          "id": "sh-aus-1",
+          "status": "on_hold",
+          "start_date": "2026-04-01",
+          "end_date": null
+        }
+      ],
+      "start_date": "2026-04-01",
+      "end_date": "",
+      "group": "Australia",
+      "priority": "low",
+      "milestones": [],
+      "notes_log": [
+        {
+          "id": "n7",
+          "text": "Working holiday visa available. Contingent on other tracks resolving. Decision point August.",
+          "timestamp": "2026-04-28T14:18:43.394Z"
+        }
+      ],
+      "created_at": "2026-04-28T14:18:43.394Z",
+      "updated_at": "2026-04-29T09:45:04.145Z"
+    },
+    {
+      "id": "track-1777453987899",
+      "name": "Capsa AI Consultant",
+      "status_history": [
+        {
+          "id": "sh-new-1777453987899",
+          "status": "action_required",
+          "start_date": "2026-04-29",
+          "end_date": "2026-04-30"
+        },
+        {
+          "id": "sh-track-1777453987899-1777541532670",
+          "status": "waiting",
+          "start_date": "2026-04-30",
+          "end_date": null
+        }
+      ],
+      "priority": "medium",
+      "group": "AI Workflows",
+      "start_date": "2026-04-09",
+      "end_date": null,
+      "milestones": [],
+      "notes_log": [
+        {
+          "id": 1777541532671.7065,
+          "text": "Mentor spoke to founder intro still pending — waiting for mentor to make the introduction to the founder directly.",
+          "timestamp": "2026-04-30T09:32:12.671Z"
+        },
+        {
+          "id": 1777540829711.8806,
+          "text": "Mentor spoke to her yesterday and agreed to forward profile to the founder directly — waiting on her to send it.",
+          "timestamp": "2026-04-30T09:20:29.711Z"
+        },
+        {
+          "id": "n-1777454023230",
+          "text": "Drafted application, waiting to speak to Sarah",
+          "timestamp": "2026-04-29T09:13:43.230Z"
+        }
+      ],
+      "created_at": "2026-04-29T09:13:07.899Z",
+      "updated_at": "2026-04-30T09:32:12.671Z",
+      "status": "waiting"
+    }
+  ],
+  "lifetracker-commitments": [
+    {
+      "id": "c1",
+      "name": "Copenhagen trip",
+      "start_date": "2026-05-07",
+      "end_date": "2026-05-11"
+    },
+    {
+      "id": "c2",
+      "name": "Laura's hen",
+      "start_date": "2026-05-15",
+      "end_date": "2026-05-17"
+    },
+    {
+      "id": "c3",
+      "name": "Mum's surgery",
+      "start_date": "2026-05-26",
+      "end_date": "2026-05-26"
+    },
+    {
+      "id": "c4",
+      "name": "Kamla hen",
+      "start_date": "2026-05-29",
+      "end_date": "2026-06-01"
+    },
+    {
+      "id": "c5",
+      "name": "Portugal hold",
+      "start_date": "2026-06-02",
+      "end_date": "2026-06-04"
+    },
+    {
+      "id": "c6",
+      "name": "Dad's 60th",
+      "start_date": "2026-06-05",
+      "end_date": "2026-06-05"
+    },
+    {
+      "id": "c7",
+      "name": "Laura's wedding",
+      "start_date": "2026-06-19",
+      "end_date": "2026-06-19"
+    },
+    {
+      "id": "c8",
+      "name": "Emi leaving party",
+      "start_date": "2026-06-20",
+      "end_date": "2026-06-20"
+    },
+    {
+      "id": "c9",
+      "name": "Alex's wedding",
+      "start_date": "2026-06-21",
+      "end_date": "2026-06-23"
+    },
+    {
+      "id": "c10",
+      "name": "Kamla's wedding",
+      "start_date": "2026-07-10",
+      "end_date": "2026-07-12"
+    },
+    {
+      "id": "c11",
+      "name": "New York hold",
+      "start_date": "2026-07-29",
+      "end_date": "2026-08-03"
+    },
+    {
+      "id": "c12",
+      "name": "Amaara's 30th",
+      "start_date": "2026-08-01",
+      "end_date": "2026-08-01"
+    }
+  ],
+  "lifetracker-life-logs": {
+    "2026-04-29": {
+      "period": true,
+      "exercise": {
+        "activities": [
+          "Long walk"
+        ],
+        "steps": 7182
+      },
+      "social": {
+        "friends": null,
+        "date": null,
+        "apps": null,
+        "activities": null
+      },
+      "mood": {
+        "energy": 3,
+        "work": 4,
+        "life": 4,
+        "focus": 3,
+        "note": "A bit hungover"
+      },
+      "health": {
+        "eczema": "Low",
+        "symptoms": [
+          "Headache"
+        ],
+        "meds": null
+      },
+      "diet": {
+        "alcohol": "None",
+        "sugar": "Low",
+        "protein": "Med",
+        "fruit_veg": "1-2",
+        "carbs": "Low",
+        "water": null,
+        "snacking": "Low",
+        "caffeine": "2",
+        "note": "2 matcha, 1 coffee\n"
+      },
+      "sleep": {
+        "hours": "9+",
+        "quality": "Fair"
+      },
+      "gratitude": "Made progress on life OS",
+      "alcohol": {
+        "level": "None"
+      },
+      "water": {
+        "level": "4-6"
+      }
+    },
+    "2026-04-28": {
+      "period": true,
+      "health": {
+        "alcohol": 2,
+        "meds": null,
+        "water": 1,
+        "eczema": "Low",
+        "symptoms": null
+      },
+      "food": {
+        "water_gl": null
+      },
+      "diet": {
+        "allergens": [
+          "Gluten",
+          "Wheat",
+          "Yeast"
+        ],
+        "carbs": "Med",
+        "fruit_veg": "3-4",
+        "protein": "Low",
+        "sugar": "Low",
+        "alcohol": "Med",
+        "water": "4-6",
+        "snacking": "Low",
+        "caffeine": "2",
+        "note": "2 matcha, 1 coffee"
+      },
+      "exercise": {
+        "activities": [
+          "Long walk"
+        ],
+        "steps": 10000
+      },
+      "sleep": {
+        "hours": "8",
+        "quality": "Good",
+        "melatonin": null
+      },
+      "social": {
+        "friends": 0,
+        "apps": 0,
+        "date": 2,
+        "activities": [
+          "Date",
+          "Friends"
+        ]
+      },
+      "mood": {
+        "energy": 4,
+        "work": 4,
+        "life": 4,
+        "focus": 4
+      },
+      "gratitude": "Saw Dominik, was so nice",
+      "alcohol": {
+        "level": "1-2",
+        "type": [
+          "Beer"
+        ]
+      },
+      "water": {
+        "level": "4-6"
+      }
+    },
+    "2026-04-27": {
+      "period": true,
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "exercise": {
+        "activities": [
+          "Long walk",
+          "Yoga"
+        ],
+        "steps": 8539
+      },
+      "diet": {
+        "alcohol": "None",
+        "sugar": "Low",
+        "fruit_veg": "3-4",
+        "protein": "Med",
+        "carbs": "Low",
+        "snacking": "Low",
+        "caffeine": "2",
+        "note": "2 matcha, 1 coffee"
+      },
+      "health": {
+        "eczema": "Med"
+      },
+      "gratitude": "Set up Claude Coach project, came up with my Life OS idea and started building!",
+      "alcohol": {
+        "level": "None"
+      },
+      "mood": {
+        "work": 4,
+        "life": 3,
+        "energy": 4,
+        "focus": 5
+      },
+      "water": {
+        "level": "4-6"
+      },
+      "social": {
+        "activities": [
+          "Apps",
+          "Dating Apps"
+        ]
+      }
+    },
+    "2026-04-26": {
+      "sleep": {
+        "hours": "8",
+        "quality": "Good"
+      },
+      "exercise": {
+        "activities": [
+          "Long walk"
+        ],
+        "steps": 9460
+      },
+      "diet": {
+        "alcohol": "None",
+        "sugar": "Low"
+      },
+      "alcohol": {
+        "level": "None"
+      },
+      "period": false,
+      "social": {}
+    },
+    "2026-04-25": {
+      "sleep": {
+        "hours": "5",
+        "quality": "Poor"
+      },
+      "exercise": {
+        "activities": [
+          "Pilates"
+        ],
+        "steps": 5474
+      },
+      "diet": {
+        "alcohol": "None",
+        "carbs": "Med",
+        "protein": "Med",
+        "sugar": "Med",
+        "fruit_veg": "5+",
+        "snacking": "Low"
+      },
+      "alcohol": {
+        "level": "None"
+      },
+      "gratitude": null,
+      "social": {}
+    },
+    "2026-04-24": {
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 7081
+      },
+      "diet": {
+        "alcohol": "None",
+        "snacking": "Low",
+        "fruit_veg": "3-4",
+        "carbs": "Med",
+        "protein": "Med",
+        "sugar": "Low"
+      },
+      "alcohol": {
+        "level": "None"
+      },
+      "period": false,
+      "social": {}
+    },
+    "2026-04-23": {
+      "sleep": {
+        "hours": "8",
+        "quality": "Fair"
+      },
+      "exercise": {
+        "steps": 9787,
+        "activities": [
+          "Long walk"
+        ]
+      },
+      "diet": {
+        "alcohol": "None",
+        "water": "4-6",
+        "sugar": "Low",
+        "protein": "Low",
+        "fruit_veg": "5+",
+        "carbs": "Low",
+        "snacking": "Low"
+      },
+      "alcohol": {
+        "level": "None",
+        "type": [
+          "Beer"
+        ]
+      },
+      "period": false,
+      "social": {}
+    },
+    "2026-04-22": {
+      "sleep": {
+        "hours": "6",
+        "quality": "Fair"
+      },
+      "exercise": {
+        "activities": [
+          "Pilates",
+          "Long walk"
+        ],
+        "steps": 10568
+      },
+      "diet": {
+        "alcohol": "Low",
+        "water": "4-6",
+        "sugar": "Low",
+        "snacking": "Med",
+        "carbs": "High",
+        "fruit_veg": "1-2",
+        "protein": "Low",
+        "allergens": [
+          "Dairy",
+          "Gluten"
+        ]
+      },
+      "alcohol": {
+        "level": "1-2",
+        "type": [
+          "Beer"
+        ]
+      },
+      "social": {
+        "activities": [
+          "Work",
+          "Friends"
+        ]
+      }
+    },
+    "2026-04-21": {
+      "sleep": {
+        "hours": "8",
+        "quality": "Fair"
+      },
+      "exercise": {
+        "steps": 10520,
+        "activities": [
+          "Long walk"
+        ]
+      },
+      "alcohol": {
+        "level": "None"
+      }
+    },
+    "2026-04-20": {
+      "sleep": {
+        "hours": "8",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 6521
+      },
+      "alcohol": {
+        "level": "None"
+      }
+    },
+    "2026-04-19": {
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 8621
+      }
+    },
+    "2026-04-18": {
+      "sleep": {
+        "hours": "9+",
+        "quality": "Fair"
+      },
+      "exercise": {
+        "steps": 8331
+      }
+    },
+    "2026-04-17": {
+      "sleep": {
+        "hours": "7",
+        "quality": null
+      },
+      "period": false,
+      "exercise": {
+        "steps": 6830,
+        "activities": null
+      }
+    },
+    "2026-04-16": {
+      "sleep": {
+        "hours": "8",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 6309,
+        "activities": null
+      }
+    },
+    "2026-04-15": {
+      "sleep": {
+        "quality": "Fair",
+        "hours": "8"
+      },
+      "exercise": {
+        "steps": 12621,
+        "activities": [
+          "Long walk",
+          "Pilates"
+        ]
+      }
+    },
+    "2026-04-14": {
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 12781,
+        "activities": [
+          "Long walk"
+        ]
+      }
+    },
+    "2026-04-13": {
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "exercise": {
+        "steps": 8786,
+        "activities": [
+          "Long walk"
+        ]
+      }
+    },
+    "2026-04-12": {
+      "exercise": {
+        "activities": [
+          "Pilates"
+        ]
+      }
+    },
+    "2026-04-05": {
+      "health": {}
+    },
+    "2026-04-30": {
+      "diet": {
+        "protein": "Med",
+        "fruit_veg": "3-4",
+        "carbs": "Low",
+        "snacking": "Low",
+        "allergens": [
+          "Dairy"
+        ],
+        "caffeine": "2"
+      },
+      "transcripts": [
+        {
+          "text": "yesterday I spoke to my mentor about the capsa AI consultant job I'm now waiting for her to make an intro to the founder for me",
+          "timestamp": "2026-04-30T09:32:12.661Z"
+        },
+        {
+          "text": "my eczema is pretty good today not zero but not amazing",
+          "timestamp": "2026-04-30T09:30:54.818Z"
+        },
+        {
+          "text": "on my capsa AI consultant application I spoke to my mentor yesterday and she said that she would send my profile onto the founder because she knows him so I'm waiting on her to do that",
+          "timestamp": "2026-04-30T09:20:29.709Z"
+        },
+        {
+          "text": "I slept for eight and a half hours tagged as good in Fitbit I then had for breakfast smoothie with two large handles of mixed berries two large teaspoons of Greek yogurt a small handful of almonds I had one cup of coffee and one matcher which account is like a half coffee and I'm currently feeling good not amazing maybe a four out of five yeah",
+          "timestamp": "2026-04-30T09:14:26.077Z"
+        }
+      ],
+      "mood": {
+        "life": 4
+      },
+      "health": {
+        "eczema": "Low"
+      },
+      "alcohol": {},
+      "water": {},
+      "exercise": {},
+      "sleep": {
+        "hours": "9+",
+        "quality": "Good"
+      },
+      "social": {
+        "activities": [
+          "Work"
+        ]
+      },
+      "period": true
+    }
+  }
+}

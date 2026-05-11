@@ -25,27 +25,26 @@ const AVERAGE_FIELDS = {
 
 // Ordered categories that accumulate across check-ins (berries at breakfast + broccoli at lunch)
 // Maps category → numeric midpoint for arithmetic, then maps back
-// Old bucket strings kept for backward compat with legacy stored values
 const ADDITIVE_MAPS = {
   diet: {
-    fruit_veg: { '1-2': 1.5, '3-4': 3.5, '5+': 6, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6+': 6 },
+    fruit_veg: { '1-2': 1.5, '3-4': 3.5, '5+': 6 },
     sugar:     { 'None': 0, 'Low': 1, 'Med': 2, 'High': 3 },
     protein:   { 'Low': 1, 'Med': 2, 'High': 3 },
     carbs:     { 'Low': 1, 'Med': 2, 'High': 3 },
     snacking:  { 'Low': 1, 'Med': 2, 'High': 3 },
   },
   water: {
-    glasses: { '<3': 1.5, '4-6': 5, '7+': 8, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
+    glasses: { '<3': 1.5, '4-6': 5, '7+': 8 },
   },
   alcohol: {
-    level: { None: 0, '1-2': 1.5, '3-4': 3.5, '1': 1, '2': 2, '3': 3, '4': 4, '5+': 5 },
+    level: { None: 0, '1-2': 1.5, '3-4': 3.5, '5+': 6 },
   },
 }
 
 const ADDITIVE_REVERSE = {
-  fruit_veg: n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
-  glasses:   n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
-  level:     n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
+  fruit_veg: n => n >= 5 ? '5+' : n >= 3 ? '3-4' : '1-2',
+  glasses:   n => n >= 7 ? '7+' : n >= 4 ? '4-6' : '<3',
+  level:     n => n === 0 ? 'None' : n >= 5 ? '5+' : n >= 3 ? '3-4' : '1-2',
   sugar:     n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   carbs:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
@@ -53,7 +52,7 @@ const ADDITIVE_REVERSE = {
 }
 
 // Caffeine is a count string ("0"–"6+") - add numerically
-const CAFFEINE_TO_N = { '0':0,'1':1,'2':2,'3':3,'4':4,'4+':4,'5':5,'6+':6 }
+const CAFFEINE_TO_N = { '0':0,'1':1,'2':2,'3':3,'4':4,'5':5,'6+':6 }
 const N_TO_CAFFEINE = n => n >= 6 ? '6+' : String(Math.round(n))
 
 function mergeModule(existing, parsed, moduleKey) {
@@ -149,30 +148,8 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
   if (parsed.cycle != null) todayLog.cycle = { period: parsed.cycle }
   if (parsed.gratitude != null) todayLog.gratitude = parsed.gratitude
 
-  // Store timestamped snapshot of this check-in for future time-of-day analysis
-  const snapshot = {}
-  for (const key of moduleKeys) {
-    if (parsed[key] && Object.values(parsed[key]).some(v => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))) {
-      snapshot[key] = parsed[key]
-    }
-  }
-  if (Object.keys(snapshot).length) {
-    todayLog.checkins = [
-      { timestamp: new Date().toISOString(), source: 'voice', data: snapshot },
-      ...(todayLog.checkins ?? []),
-    ]
-  }
-
   logs[today] = todayLog
   writeJson(LIFE_LOGS_KEY, logs)
-  // Update lwt so useSyncedStorage's Supabase pull doesn't overwrite this write
-  localStorage.setItem(`${LIFE_LOGS_KEY}:lwt`, String(Date.now()))
-  // Mark pending so next-mount retry fires if the page closes before dbWrite completes
-  try {
-    const p = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
-    p[LIFE_LOGS_KEY] = true
-    localStorage.setItem('lifetracker-pending-writes', JSON.stringify(p))
-  } catch {}
   dbWrite(LIFE_LOGS_KEY, logs)
   window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
 
@@ -213,16 +190,12 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
       if (!match) continue
       if (update.status) {
         const hist = match.status_history || []
-        const openSeg = hist.length ? hist[hist.length - 1] : null
-        const alreadySameStatus = openSeg && !openSeg.end_date && openSeg.status === update.status
-        if (!alreadySameStatus) {
-          const closed = hist.map((seg, i) =>
-            i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
-          )
-          const newSeg = { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }
-          match.status_history = [...closed, newSeg]
-          match.updated_at = new Date().toISOString()
-        }
+        const closed = hist.map((seg, i) =>
+          i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
+        )
+        const newSeg = { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }
+        match.status_history = [...closed, newSeg]
+        match.updated_at = new Date().toISOString()
       }
       if (update.note) {
         const noteText = update.note.replace(/—/g, '-').replace(/–/g, '-')
@@ -230,16 +203,6 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
           { id: Date.now() + Math.random(), text: noteText, timestamp: new Date().toISOString() },
           ...(match.notes_log ?? []),
         ]
-      }
-      if (update.milestone?.date && update.milestone?.label) {
-        const ms = match.milestones ?? []
-        const alreadyExists = ms.some(m => m.date === update.milestone.date && m.label === update.milestone.label)
-        if (!alreadyExists) {
-          match.milestones = [
-            ...ms,
-            { id: `m-${Date.now()}-${Math.random().toString(36).slice(2)}`, date: update.milestone.date, label: update.milestone.label },
-          ]
-        }
       }
       changed = true
     }
