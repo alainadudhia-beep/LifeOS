@@ -308,23 +308,6 @@ export default function Timeline({ mobile } = {}) {
             </div>
           </div>
 
-          {/* ── month row ── */}
-          <div className="tl-month-row">
-            <div className="tl-label-col tl-month-cell" />
-            <div className="tl-month-grid" style={{ width: TIMELINE_WIDTH }}>
-              {months.map((m, i) => {
-                const nextM = new Date(m.getFullYear(), m.getMonth() + 1, 1)
-                const left  = dateToPx(m)
-                const right = TIMELINE_WIDTH - dateToPx(nextM)
-                return (
-                  <div key={i} className="th-month-label" style={{ left: Math.max(0, left), right: Math.max(0, right) }}>
-                    {MONTH_NAMES[m.getMonth()]} {m.getFullYear()}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
           {/* ── day header row ── */}
           <div className="tl-day-row">
             <div className="tl-label-col tl-day-header-cell">
@@ -338,7 +321,8 @@ export default function Timeline({ mobile } = {}) {
                   <div key={i}
                     className={`day-cell ${iso === todayIso ? 'day-today' : ''} ${dayIdx === 0 || dayIdx === 6 ? 'day-weekend' : ''}`}
                     style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}>
-                    <span className="day-name">{DAY_ABBR[dayIdx].slice(0, 1)}</span>
+                    <span className="day-month">{MONTH_NAMES[d.getMonth()]}</span>
+                    <span className="day-name">{DAY_ABBR[dayIdx]}</span>
                     <span className="day-num">{d.getDate()}</span>
                   </div>
                 )

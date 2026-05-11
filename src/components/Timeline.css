@@ -62,58 +62,15 @@
   background: #f8fafc;
 }
 
-/* ─── month row ─── */
-.tl-month-row {
-  display: flex;
-  align-items: stretch;
-  border-bottom: 1px solid #e2e8f0;
-  height: 28px;
-  position: sticky;
-  top: 26px;
-  z-index: 6;
-}
-
-.tl-month-cell {
-  background: #f8fafc;
-  border-right: 1px solid #e2e8f0;
-}
-
-.tl-month-cell:last-child {
-  border-right: none;
-  border-left: 1px solid #e2e8f0;
-}
-
-.tl-month-grid {
-  flex-shrink: 0;
-  position: relative;
-  background: #f8fafc;
-}
-
-.th-month-label {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  padding-left: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  white-space: nowrap;
-  overflow: hidden;
-  border-right: 1px solid #e2e8f0;
-}
 
 /* ─── day header row ─── */
 .tl-day-row {
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid #e2e8f0;
-  height: 44px;
+  height: 42px;
   position: sticky;
-  top: 54px; /* 26 commitment row + 28 month row */
+  top: 26px;
   z-index: 6;
 }
 
@@ -149,8 +106,17 @@
   border-right: 1px solid #f1f5f9;
 }
 
+.day-month {
+  font-size: 8px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
 .day-name {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
@@ -159,7 +125,7 @@
 }
 
 .day-num {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 500;
   color: #64748b;
   line-height: 1;

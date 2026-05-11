@@ -534,17 +534,9 @@ export default function LifeModules({ mobile } = {}) {
   return (
     <div className={mobile ? 'lm-mobile-container' : undefined}>
       {!mobile && (
-        <div className="lm-row lm-row--date-header">
+        <div className="lm-section-header">
           <div className="lm-section-label">Life</div>
-          <div className="lm-day-grid" style={{ width: gridWidth }}>
-            {gridDays.map((d, i) => (
-              <div key={i} className="lm-date-cell" style={{ left: i * dayW, width: dayW }}>
-                <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
-                <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
-                <span className="lm-date-cell-num">{d.getDate()}</span>
-              </div>
-            ))}
-          </div>
+          <div style={{ width: gridWidth, flexShrink: 0 }} />
         </div>
       )}
 
