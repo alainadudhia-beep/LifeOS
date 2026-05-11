@@ -485,8 +485,7 @@ export default async function handler(req, res) {
   // Build concise notification text for the Shortcut
   const MODULE_LABELS = {
     mood: 'mood', health: 'inflammation', diet: 'diet',
-    alcohol: 'alcohol', water: 'water', exercise: 'exercise',
-    sleep: 'sleep', social: 'social',
+    exercise: 'exercise', sleep: 'sleep', social: 'social',
   }
   const logged = Object.keys(MODULE_LABELS).filter(k => {
     const m = parsed[k]
@@ -494,15 +493,33 @@ export default async function handler(req, res) {
     return Object.values(m).some(v => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))
   }).map(k => MODULE_LABELS[k])
 
-  const missing = parsed.missing_important ?? []
+  // Check specific important fields against today's merged log (not just this transcript)
+  const IMPORTANT_FIELDS = [
+    { module: 'mood',   field: 'work',      label: 'work mood' },
+    { module: 'mood',   field: 'life',      label: 'life mood' },
+    { module: 'mood',   field: 'energy',    label: 'energy' },
+    { module: 'health', field: 'eczema',    label: 'eczema' },
+    { module: 'health', field: 'hayfever',  label: 'hayfever' },
+    { module: 'health', field: 'gut',       label: 'gut' },
+    { module: 'diet',   field: 'protein',   label: 'protein' },
+    { module: 'diet',   field: 'fruit_veg', label: 'fruit & veg' },
+    { module: 'sleep',  field: 'hours',     label: 'sleep' },
+  ]
+  const missingFields = IMPORTANT_FIELDS
+    .filter(({ module, field }) => {
+      const val = todayLog[module]?.[field]
+      return val == null || (Array.isArray(val) && val.length === 0)
+    })
+    .map(({ label }) => label)
+
   const notifParts = []
   if (logged.length) notifParts.push(`Saved: ${logged.join(', ')}`)
-  if (missing.length) notifParts.push(`Missing: ${missing.join(', ')}`)
+  if (missingFields.length) notifParts.push(`Still need: ${missingFields.join(', ')}`)
 
   return res.status(200).json({
     ok: true,
     date: today,
     notification_text: notifParts.join('\n') || 'Saved',
-    missing,
+    missing: missingFields,
   })
 }
