@@ -341,6 +341,13 @@ body {
   overflow: hidden;
 }
 
+/* Life grid: taller rows + fill full container height/width */
+.app-mobile-gantt-scroll .lm-row         { height: 46px; }
+.app-mobile-gantt-scroll .lm-section-header { height: 34px; }
+.app-mobile-gantt-scroll .lm-mobile-container { min-height: 100%; }
+.app-mobile-gantt-scroll .lm-row,
+.app-mobile-gantt-scroll .lm-autosync-divider { min-width: 100%; }
+
 /* ── Mobile overrides for TrackEditModal ── */
 @media (max-width: 767px) {
   .modal { padding: 0; }

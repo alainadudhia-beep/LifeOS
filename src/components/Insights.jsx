@@ -4,6 +4,14 @@ import './Insights.css'
 
 const INSIGHTS_KEY = 'lifetracker-insights'
 
+function fmtDateOrdinal(isoStr) {
+  const d = new Date(isoStr + 'T12:00:00')
+  const day = d.getDate()
+  const suffix = [11, 12, 13].includes(day) ? 'th'
+    : day % 10 === 1 ? 'st' : day % 10 === 2 ? 'nd' : day % 10 === 3 ? 'rd' : 'th'
+  return `${day}${suffix} ${d.toLocaleDateString('en-GB', { month: 'long' })}`
+}
+
 function isTodayClaude(it) {
   // Claude insights are daily observations — expire them at midnight
   if (it.type !== 'claude') return true
@@ -290,7 +298,7 @@ const Insights = forwardRef(function Insights(_, ref) {
             ms_id: msId,
             type: 'track',
             track_id: t.id,
-            text: `${t.name} - ${ms.label} ${when} (${ms.date})`,
+            text: `${t.name} - ${ms.label} ${when} (${fmtDateOrdinal(ms.date)})`,
             positive: false,
             completed: false,
             completed_at: null,

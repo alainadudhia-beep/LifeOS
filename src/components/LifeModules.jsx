@@ -317,7 +317,8 @@ export default function LifeModules({ mobile } = {}) {
   const gridDays  = mobile
     ? allDays.filter(d => d.toISOString().slice(0, 10) < todayIso)
     : allDays
-  const gridWidth = gridDays.length * DAY_WIDTH
+  const dayW      = mobile ? 46 : DAY_WIDTH
+  const gridWidth = gridDays.length * dayW
 
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]     = useLocalStorage('lifetracker-fitbit-raw', {})
@@ -475,8 +476,8 @@ export default function LifeModules({ mobile } = {}) {
     const incomplete = isRecent && COMPLETE_CHECK[mod.key] && !COMPLETE_CHECK[mod.key](dayData)
     const isWeekStart = i != null ? new Date(iso).getDay() === 1 : false
     const style = i != null
-      ? { left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }
-      : { left: 1, width: DAY_WIDTH - 2, background: bg || undefined }
+      ? { left: i * dayW + 1, width: dayW - 2, background: bg || undefined }
+      : { left: 1, width: dayW - 2, background: bg || undefined }
     return (
       <div
         key={iso}
@@ -545,7 +546,7 @@ export default function LifeModules({ mobile } = {}) {
           <div className="lm-label" />
           <div className="lm-day-grid" style={{ width: gridWidth }}>
             {gridDays.map((d, i) => (
-              <div key={i} className="lm-date-cell" style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}>
+              <div key={i} className="lm-date-cell" style={{ left: i * dayW, width: dayW }}>
                 <span className="lm-date-cell-month">{MONTH_NAMES[d.getMonth()]}</span>
                 <span className="lm-date-cell-day">{DAY_SHORT[d.getDay()]}</span>
                 <span className="lm-date-cell-num">{d.getDate()}</span>
@@ -584,7 +585,7 @@ export default function LifeModules({ mobile } = {}) {
                 key={iso}
                 ref={el => { sleepCellRefs.current[iso] = el }}
                 className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
                 onClick={hasData ? () => setSleepOpen(isOpen ? null : iso) : undefined}
               >
                 {label && <span className="lm-cell-label">{label}</span>}
@@ -610,7 +611,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 ref={el => { sleepCellRefs.current[todayIso] = el }}
                 className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
                 onClick={hasData ? () => setSleepOpen(isOpen ? null : todayIso) : undefined}
               >
                 {label && <span className="lm-cell-label">{label}</span>}
@@ -644,7 +645,7 @@ export default function LifeModules({ mobile } = {}) {
                 key={iso}
                 ref={el => { stepsCellRefs.current[iso] = el }}
                 className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
                 onClick={hasData ? () => setStepsOpen(isOpen ? null : iso) : undefined}
               >
                 {steps != null && <span className="lm-cell-label">{steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps}</span>}
@@ -664,7 +665,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 ref={el => { stepsCellRefs.current[todayIso] = el }}
                 className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
                 onClick={hasData ? () => setStepsOpen(isOpen ? null : todayIso) : undefined}
               >
                 {steps != null && <span className="lm-cell-label">{steps >= 1000 ? `${(steps / 1000).toFixed(1)}k` : steps}</span>}
@@ -692,7 +693,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 key={iso}
                 className={`lm-cell ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
               >
                 {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
               </div>
@@ -711,7 +712,7 @@ export default function LifeModules({ mobile } = {}) {
             <div className="lm-today-col">
               <div
                 className="lm-cell"
-                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
               >
                 {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
               </div>
@@ -759,7 +760,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 key={iso}
                 className={`lm-cell ${isFuture ? 'lm-cell--future' : 'lm-cell--clickable'} ${open ? 'lm-cell--active' : ''} ${incomplete ? 'lm-cell--incomplete' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
                 onClick={isFuture ? undefined : e => handleCellClick(e, 'exercise', iso)}
               >
                 {labels && (
@@ -794,7 +795,7 @@ export default function LifeModules({ mobile } = {}) {
             <div className="lm-today-col">
               <div
                 className={`lm-cell lm-cell--clickable ${open ? 'lm-cell--active' : ''} ${incomplete ? 'lm-cell--incomplete' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
                 onClick={e => handleCellClick(e, 'exercise', todayIso)}
               >
                 {labels && (
@@ -838,7 +839,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 key={iso}
                 className={`lm-cell ${isFuture ? 'lm-cell--future' : 'lm-cell--clickable'} ${open ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
                 onClick={isFuture ? undefined : e => handleCellClick(e, 'body', iso)}
               >
                 {period && <span className="lm-period-dot" />}
@@ -870,7 +871,7 @@ export default function LifeModules({ mobile } = {}) {
             <div className="lm-today-col">
               <div
                 className={`lm-cell lm-cell--clickable ${open ? 'lm-cell--active' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2, background: bg || undefined }}
+                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
                 onClick={e => handleCellClick(e, 'body', todayIso)}
               >
                 {period && <span className="lm-period-dot" />}
@@ -906,7 +907,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 key={iso}
                 className={`lm-cell ${isFuture ? 'lm-cell--future' : 'lm-cell--clickable'} ${isEditing ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2 }}
+                style={{ left: i * dayW + 1, width: dayW - 2 }}
                 onClick={isFuture ? undefined : () => { if (!isEditing) setGratEdit({ date: iso, value: text ?? '' }) }}
               >
                 {isEditing ? (
@@ -931,7 +932,7 @@ export default function LifeModules({ mobile } = {}) {
             <div className="lm-today-col">
               <div
                 className={`lm-cell lm-cell--clickable ${isEditing ? 'lm-cell--active' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2 }}
+                style={{ left: 1, width: dayW - 2 }}
                 onClick={() => { if (!isEditing) setGratEdit({ date: todayIso, value: text ?? '' }) }}
               >
                 {isEditing ? (
@@ -967,7 +968,7 @@ export default function LifeModules({ mobile } = {}) {
                 key={iso}
                 ref={el => { transcriptCellRefs.current[iso] = el }}
                 className={`lm-cell ${isFuture ? 'lm-cell--future' : hasEntry ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * DAY_WIDTH + 1, width: DAY_WIDTH - 2 }}
+                style={{ left: i * dayW + 1, width: dayW - 2 }}
                 onClick={!isFuture && hasEntry ? () => setTranscriptOpen(isOpen ? null : iso) : undefined}
               >
                 {hasEntry && <span className="lm-transcript-dot" title={`${transcripts.length} entry`}>📝</span>}
@@ -984,7 +985,7 @@ export default function LifeModules({ mobile } = {}) {
               <div
                 ref={el => { transcriptCellRefs.current[todayIso] = el }}
                 className={`lm-cell ${hasEntry ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
-                style={{ left: 1, width: DAY_WIDTH - 2 }}
+                style={{ left: 1, width: dayW - 2 }}
                 onClick={hasEntry ? () => setTranscriptOpen(isOpen ? null : todayIso) : undefined}
               >
                 {hasEntry && <span className="lm-transcript-dot" title={`${transcripts.length} entry`}>📝</span>}
@@ -1144,8 +1145,8 @@ function TranscriptTextarea({ initialText, onSave }) {
 function WeekLines({ days }) {
   return days.map((d, i) =>
     d.getDay() === 1
-      ? <div key={i} className="lm-week-line" style={{ left: i * DAY_WIDTH }} />
-      : <div key={i} className="lm-day-line"  style={{ left: i * DAY_WIDTH }} />
+      ? <div key={i} className="lm-week-line" style={{ left: i * dayW }} />
+      : <div key={i} className="lm-day-line"  style={{ left: i * dayW }} />
   )
 }
 
