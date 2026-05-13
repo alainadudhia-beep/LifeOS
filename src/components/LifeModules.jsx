@@ -50,10 +50,13 @@ function fmtMins(mins, round = 5) {
 
 // ─── scoring ──────────────────────────────────────────────────────────────────
 
+// 5-level scale used by Diet (numeric) and categorical modules
+// Great > Good > Fair > Ok > Poor
 function scoreToSummary(score) {
   if (score >= 2.3) return { label: 'Great', bg: '#86efac' }
   if (score >= 2.0) return { label: 'Good',  bg: '#dcfce7' }
-  if (score >= 1.3) return { label: 'Fair',  bg: '#fef9c3' }
+  if (score >= 1.7) return { label: 'Fair',  bg: '#fef9c3' }
+  if (score >= 1.3) return { label: 'Ok',    bg: '#fde8c8' }
   return { label: 'Poor', bg: '#fee2e2' }
 }
 
@@ -89,10 +92,18 @@ function categoricalRating(severityValues) {
     else if (v === 'Med') meds++
     else if (v === 'Bad') bads++
   }
-  if (bads >= 1 || meds >= 2)                      return { label: 'Poor',  bg: '#fee2e2' }
-  if (meds === 1 || (lows > 0 && nones === 0))     return { label: 'Fair',  bg: '#fef9c3' }
-  if (lows >= 1 && nones >= 1)                     return { label: 'Good',  bg: '#dcfce7' }
-  if (nones > 0)                                   return { label: 'Great', bg: '#86efac' }
+  // Poor:  2+ Med OR any Bad
+  if (bads >= 1 || meds >= 2)                               return { label: 'Poor',  bg: '#fee2e2' }
+  // Ok:    1 Med + at least 1 Low (other things are dragging too)
+  if (meds === 1 && lows >= 1)                              return { label: 'Ok',    bg: '#fde8c8' }
+  // Fair:  all Low (no None) — uniformly mildly off
+  //        OR 1 Med but everything else is None — one moderate thing, otherwise clean
+  if ((lows > 0 && nones === 0 && meds === 0) ||
+      (meds === 1 && lows === 0 && nones > 0))              return { label: 'Fair',  bg: '#fef9c3' }
+  // Good:  mix of Low + None, no Med/Bad
+  if (lows >= 1 && nones >= 1)                              return { label: 'Good',  bg: '#dcfce7' }
+  // Great: all None
+  if (nones > 0)                                            return { label: 'Great', bg: '#86efac' }
   return null
 }
 
