@@ -276,7 +276,7 @@ const MODULES = [
       { key: 'fruit_veg',   label: 'Fruit & Veg', type: 'options',     options: ['1','2','3','4','5','6+'],    colors: { '1': '#fee2e2', '2': '#fde8c8', '3': '#fef9c3', '4': '#dcfce7', '5': '#bbf7d0', '6+': '#86efac' } },
       { key: 'carbs',       label: 'Carbs',       type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#dcfce7', High: '#fef9c3' } },
       { key: 'snacking',    label: 'Snacking',    type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#bbf7d0', Med: '#fef9c3', High: '#fee2e2' } },
-      { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast'] },
+      { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast','Raw Tomato','Avocado','Spinach'] },
       { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin D','Biotin','Adaptogenic Mushrooms'] },
       { key: 'note',        label: 'Notes',       type: 'text' },
     ],

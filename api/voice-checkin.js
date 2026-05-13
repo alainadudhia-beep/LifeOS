@@ -32,7 +32,7 @@ diet.protein: "Low" | "Med" | "High" | null
 diet.fruit_veg: "1" | "2" | "3" | "4" | "5" | "6+" | null (individual portions as string)
 diet.carbs: "Low" | "Med" | "High" | null
 diet.snacking: "Low" | "Med" | "High" | null
-diet.allergens: array from ["Dairy","Gluten","Soy","Wheat","Yeast"]
+diet.allergens: array from ["Dairy","Gluten","Soy","Wheat","Yeast","Raw Tomato","Avocado","Spinach"]
 diet.caffeine: "0" | "1" | "2" | "3" | "4" | "5" | "6+" | null (cups/shots as string; 1 matcha = 0.5 units, so 2 matchas = "1")
 diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitamin D","Biotin","Adaptogenic Mushrooms"] - "all my supplements" or "all of them" → all 7
 diet.note: string | null - free-text note of specific foods eaten (e.g. "salmon and veg for dinner, granola for breakfast")
