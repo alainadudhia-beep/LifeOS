@@ -112,62 +112,70 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    const today    = new Date().toISOString().slice(0, 10)
+    const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1)
+    const tomorrow = tomorrowD.toISOString().slice(0, 10)
 
-    const city       = await resolveLocation(today)
+    const city         = await resolveLocation(today)
     const { lat, lon } = await geocode(city)
 
+    // Fetch 2 days of forecast + air quality in parallel
     const [forecastRes, airByDate] = await Promise.all([
       fetch(
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${lat}&longitude=${lon}` +
         `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max` +
-        `&timezone=auto&forecast_days=1`
+        `&timezone=auto&forecast_days=2`
       ).then(r => { if (!r.ok) throw new Error(`Forecast API error: ${r.status}`); return r.json() }),
-      fetchAirQualityForDates(lat, lon, today, today),
+      fetchAirQualityForDates(lat, lon, today, tomorrow),
     ])
 
-    const d  = forecastRes.daily
-    const a  = airByDate[today] ?? {}
-
-    const gp = a.grass_pollen   ?? null
-    const bp = a.birch_pollen   ?? null
-    const ap = a.alder_pollen   ?? null
-    const aq = a.european_aqi   ?? null
-
-    const weather = {
-      location:           city,
-      temp_max:           d.temperature_2m_max?.[0]  ?? null,
-      temp_min:           d.temperature_2m_min?.[0]  ?? null,
-      precipitation_mm:   d.precipitation_sum?.[0]   ?? null,
-      wind_speed_max:     d.windspeed_10m_max?.[0]   ?? null,
-      uv_index:           d.uv_index_max?.[0]        ?? null,
-      grass_pollen:       gp,
-      grass_pollen_label: grassPollenLabel(gp),
-      birch_pollen:       bp,
-      birch_pollen_label: treePollenLabel(bp),
-      alder_pollen:       ap,
-      alder_pollen_label: treePollenLabel(ap),
-      ragweed_pollen:     a.ragweed_pollen            ?? null,
-      pm10:               a.pm10                      ?? null,
-      pm2_5:              a.pm2_5                     ?? null,
-      aqi:                aq,
-      aqi_label:          aqiLabel(aq),
-      fetched_at:         new Date().toISOString(),
+    function buildDayWeather(dateStr, dayIndex, airByDate) {
+      const d = forecastRes.daily
+      const a = airByDate[dateStr] ?? {}
+      const gp = a.grass_pollen ?? null
+      const bp = a.birch_pollen ?? null
+      const ap = a.alder_pollen ?? null
+      const aq = a.european_aqi ?? null
+      return {
+        location:           city,
+        temp_max:           d.temperature_2m_max?.[dayIndex]  ?? null,
+        temp_min:           d.temperature_2m_min?.[dayIndex]  ?? null,
+        precipitation_mm:   d.precipitation_sum?.[dayIndex]   ?? null,
+        wind_speed_max:     d.windspeed_10m_max?.[dayIndex]   ?? null,
+        uv_index:           d.uv_index_max?.[dayIndex]        ?? null,
+        grass_pollen:       gp,
+        grass_pollen_label: grassPollenLabel(gp),
+        birch_pollen:       bp,
+        birch_pollen_label: treePollenLabel(bp),
+        alder_pollen:       ap,
+        alder_pollen_label: treePollenLabel(ap),
+        ragweed_pollen:     a.ragweed_pollen  ?? null,
+        pm10:               a.pm10            ?? null,
+        pm2_5:              a.pm2_5           ?? null,
+        aqi:                aq,
+        aqi_label:          aqiLabel(aq),
+        fetched_at:         new Date().toISOString(),
+        is_forecast:        true,
+      }
     }
+
+    const todayWeather    = buildDayWeather(today,    0, airByDate)
+    const tomorrowWeather = buildDayWeather(tomorrow, 1, airByDate)
 
     const { data: existing } = await supabase
       .from('user_data').select('value').eq('key', WEATHER_KEY).single()
 
     const allWeather = existing?.value ?? {}
-    allWeather[today] = weather
+    allWeather[today]    = todayWeather
+    allWeather[tomorrow] = tomorrowWeather
 
     await supabase.from('user_data').upsert(
       { key: WEATHER_KEY, user_id: USER_ID, value: allWeather, updated_at: new Date().toISOString() },
       { onConflict: 'key,user_id' }
     )
 
-    return res.status(200).json({ ok: true, date: today, location: city, weather })
+    return res.status(200).json({ ok: true, date: today, location: city, today: todayWeather, tomorrow: tomorrowWeather })
 
   } catch (err) {
     console.error('[weather-fetch]', err)

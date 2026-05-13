@@ -13,7 +13,7 @@ const INSIGHTS_KEY    = 'lifetracker-insights'
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are a personal health and life analyst for a single user. You receive structured daily logs, recent history, and environmental data. Generate thoughtful, specific insights based on the data. Return ONLY valid JSON — no preamble, no markdown, no explanation.
+const SYSTEM_PROMPT = `You are a personal health and life analyst for a single user. You receive structured daily logs, 14-day history, personalised baselines, and environmental data. Generate specific, non-obvious insights. Return ONLY valid JSON — no preamble, no markdown, no explanation.
 
 Return exactly this structure:
 {
@@ -21,34 +21,43 @@ Return exactly this structure:
   "daily_win": string | null
 }
 
-Insight format rules:
-- ALWAYS format text as "Topic - description" (e.g. "Sleep - solid 8hrs last night")
-- Topic is always the main subject, capitalised: "Sleep", "Water", "Hayfever", "Eczema", "Energy", or the exact career track name
-- positive: true = celebrating something genuinely good
-- positive: false = calm, neutral observation or gentle nudge — never guilt-inducing or harsh
-- actionable: true = there is something specific to do
-- actionable: false = observation or celebration
-- Generate 3–6 insights. Quality over quantity — only include ones grounded in the data.
-- Use exact track names from career context — never abbreviate or paraphrase
+Insight format:
+- ALWAYS "Topic - description". Topic capitalised: "Sleep", "Water", "Hayfever", "Eczema", "Energy", or exact career track name.
+- positive: true = genuinely good; false = calm neutral nudge, never guilt-inducing
+- actionable: true = specific thing to do; false = observation
 
-Career track rules (important):
-- Any milestone flagged as [TOMORROW] or [TODAY] must appear as the FIRST insight, actionable: true
-- For any track with status "action_required", always include an actionable insight
-- If a track's last note was written 5+ days ago and it is still active, note "it's been a while since [Track name] - worth a check-in"
-- NEVER repeat relative time phrases from note text (e.g. "tomorrow", "next week", "yesterday") — these were written at an earlier date and will be stale. Describe the situation from today's perspective instead.
+Quality rules — what makes a good insight:
+- Compare today's values to the user's personal baseline averages (provided in context). "Sleep was 5hrs (your average is 7.1hrs)" is useful. "You slept 5hrs" is not.
+- Note deviations from baseline, not just absolute values.
+- Forward-looking: if tomorrow's environment forecast shows High pollen or Strong wind, warn the user tonight so they can pre-empt (take antihistamine, prepare).
+- Patterns across multiple days are more valuable than single-day facts.
+- Generate 3–6 insights. Fewer good ones beat many mediocre ones.
 
-Date formatting:
-- Always write dates as ordinal day + month: "14th May", "3rd June" — never ISO format like "2026-05-14"
+What NOT to include:
+- Commentary on individual foods unless they are a known allergen (dairy, gluten, soy, wheat, yeast) AND the user has logged a related symptom recently
+- Any number restatement without comparison to baseline (e.g. never say "you had 4 glasses of water" — say "water was below your 5.8-glass average")
+- Career track insights for tracks that are in_progress, have no upcoming milestones, and whose last note is recent — silence is better than noise for these
+- Generic health advice not grounded in this user's data
 
-Weather correlations — ONLY note connections that are medically plausible:
-- High pollen or strong wind → hayfever / allergy / eczema flares
+Career track rules:
+- Any milestone flagged [TOMORROW] or [TODAY] → must be FIRST insight, actionable: true
+- action_required tracks → always include an actionable insight
+- If last note was 5+ days ago on an active track → "it's been a while since [Track name] - worth a check-in"
+- NEVER repeat relative time phrases from note text ("tomorrow", "next week") — these are stale. Describe from today's perspective.
+- Prioritise by: imminent deadline > action_required > stalest active track. Skip low-signal in_progress tracks.
+- With N weeks until the September 2026 career decision, flag if key tracks are stalled.
+
+Date formatting: ordinal day + month only. "14th May" not "2026-05-14".
+
+Weather correlations — medically plausible only:
+- High pollen + strong wind → hayfever / eczema pre-emption (especially if tomorrow's forecast)
 - High UV → skin dryness
-- High AQI / PM2.5 → respiratory symptoms
-- Do NOT connect wind, rain, or temperature to brain fog, focus, mood, or energy
+- High AQI → respiratory symptoms
+- Never connect wind/rain/temperature to brain fog, focus, mood, or energy.
 
-daily_win: one warm but not sycophantic observation about something done well today, "Topic - observation" format. Null if nothing clear stands out.
+daily_win: one warm, specific observation about something done well today. "Topic - observation" format. Null if nothing genuine stands out.
 
-IMPORTANT: Use only regular hyphens (-) in all text. Never em dashes (—) or en dashes (–).`
+IMPORTANT: Regular hyphens (-) only. Never em dashes (—) or en dashes (–).`
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -85,6 +94,37 @@ function formatWeatherLine(w) {
   return parts.join(', ')
 }
 
+// ── Rolling baselines (14-day averages, excluding today) ──────────────────────
+
+const SLEEP_TO_N  = { '<5': 4.5, '5': 5, '6': 6, '7': 7, '8': 8, '9+': 9 }
+const WATER_TO_N  = { '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 }
+
+function computeBaselines(today, logs, days = 14) {
+  const sleep = [], water = [], work = [], life = [], focus = [], energy = []
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const log = logs[d.toISOString().slice(0, 10)]
+    if (!log) continue
+    const sv = SLEEP_TO_N[log.sleep?.hours];  if (sv != null) sleep.push(sv)
+    const wv = WATER_TO_N[log.water?.glasses]; if (wv != null) water.push(wv)
+    if (log.mood?.work   != null) work.push(log.mood.work)
+    if (log.mood?.life   != null) life.push(log.mood.life)
+    if (log.mood?.focus  != null) focus.push(log.mood.focus)
+    if (log.mood?.energy != null) energy.push(log.mood.energy)
+  }
+  const avg = arr => arr.length >= 3 ? (arr.reduce((a,b) => a+b,0) / arr.length).toFixed(1) : null
+  return {
+    sleep:  avg(sleep),
+    water:  avg(water),
+    work:   avg(work),
+    life:   avg(life),
+    focus:  avg(focus),
+    energy: avg(energy),
+    n: Math.max(sleep.length, water.length, work.length),
+  }
+}
+
 function buildInsightContext(today, logs, tracksArr, weatherStore) {
   const lines = []
   const tomorrow = new Date(today)
@@ -107,11 +147,33 @@ function buildInsightContext(today, logs, tracksArr, weatherStore) {
     imminent.forEach(l => lines.push('  ' + l))
   }
 
+  // Baselines
+  const baselines = computeBaselines(today, logs)
+  if (baselines.n >= 3) {
+    const parts = []
+    if (baselines.sleep)  parts.push(`sleep ${baselines.sleep}hrs`)
+    if (baselines.water)  parts.push(`water ${baselines.water} glasses`)
+    if (baselines.work)   parts.push(`work mood ${baselines.work}`)
+    if (baselines.life)   parts.push(`life mood ${baselines.life}`)
+    if (baselines.focus)  parts.push(`focus ${baselines.focus}`)
+    if (baselines.energy) parts.push(`energy ${baselines.energy}`)
+    lines.push(`14-day personal averages (${baselines.n} days): ${parts.join(', ')}`)
+  }
+
   // Today's environment
   const todayW = weatherStore[today]
   if (todayW) {
     const wLine = formatWeatherLine(todayW)
     if (wLine) lines.push(`Today's environment (${todayW.location ?? 'London'}): ${wLine}`)
+  }
+
+  // Tomorrow's forecast — for pre-emption nudges
+  const tomorrowD = new Date(today); tomorrowD.setDate(tomorrowD.getDate() + 1)
+  const tomorrowIso2 = tomorrowD.toISOString().slice(0, 10)
+  const tomorrowW = weatherStore[tomorrowIso2]
+  if (tomorrowW) {
+    const wLine = formatWeatherLine(tomorrowW)
+    if (wLine) lines.push(`Tomorrow's forecast (${fmtDate(tomorrowIso2)}): ${wLine}`)
   }
 
   // Today's full log
@@ -183,6 +245,10 @@ function buildInsightContext(today, logs, tracksArr, weatherStore) {
     lines.push('Recent history (last 14 days):')
     lines.push(...recentLines)
   }
+
+  // Career decision deadline
+  const septWeeks = Math.ceil((new Date('2026-09-01') - new Date(today)) / (7 * 86400000))
+  lines.push(`\nKey career decision deadline: 1st September 2026 (${septWeeks} weeks away)`)
 
   // Active career tracks
   const activeTracks = tracksArr.filter(t => {
