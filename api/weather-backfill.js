@@ -10,7 +10,7 @@ const COMMITMENTS_KEY = 'lifetracker-commitments'
 const WEATHER_KEY     = 'lifetracker-weather'
 const DEFAULT_CITY    = 'London'
 
-// ── Helpers (same as weather-fetch.js) ───────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function geocode(city) {
   const res  = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`)
@@ -45,12 +45,10 @@ function aqiLabel(v) {
   return 'Very Poor'
 }
 
-// ── Date utilities ────────────────────────────────────────────────────────────
-
 function dateRange(start, end) {
   const dates = []
-  const cur = new Date(start)
-  const last = new Date(end)
+  const cur   = new Date(start)
+  const last  = new Date(end)
   while (cur <= last) {
     dates.push(cur.toISOString().slice(0, 10))
     cur.setDate(cur.getDate() + 1)
@@ -58,45 +56,68 @@ function dateRange(start, end) {
   return dates
 }
 
-// ── Fetch historical weather for a location over a date range ─────────────────
+// ── Fetch air quality hourly → aggregate to daily max ────────────────────────
 
-async function fetchHistoricalWeather(city, startDate, endDate) {
+async function fetchAirQualityForDates(lat, lon, startDate, endDate) {
+  const res = await fetch(
+    `https://air-quality-api.open-meteo.com/v1/air-quality` +
+    `?latitude=${lat}&longitude=${lon}` +
+    `&hourly=grass_pollen,birch_pollen,alder_pollen,ragweed_pollen,pm10,pm2_5,european_aqi` +
+    `&start_date=${startDate}&end_date=${endDate}` +
+    `&timezone=auto`
+  )
+  if (!res.ok) throw new Error(`Air quality API error: ${res.status}`)
+  const json = await res.json()
+  const h    = json.hourly
+
+  const vars  = ['grass_pollen', 'birch_pollen', 'alder_pollen', 'ragweed_pollen', 'pm10', 'pm2_5', 'european_aqi']
+  const byDate = {}
+  for (let i = 0; i < h.time.length; i++) {
+    const date = h.time[i].slice(0, 10)
+    if (!byDate[date]) byDate[date] = Object.fromEntries(vars.map(v => [v, []]))
+    for (const v of vars) {
+      const val = h[v]?.[i]
+      if (val != null) byDate[date][v].push(val)
+    }
+  }
+
+  const maxOrNull = arr => arr.length ? Math.max(...arr) : null
+  return Object.fromEntries(
+    Object.entries(byDate).map(([date, vals]) => [
+      date,
+      Object.fromEntries(vars.map(v => [v, maxOrNull(vals[v])]))
+    ])
+  )
+}
+
+// ── Fetch a group of dates for one city ──────────────────────────────────────
+
+async function fetchGroupWeather(city, startDate, endDate) {
   const { lat, lon } = await geocode(city)
 
-  const [forecastRes, airRes] = await Promise.all([
+  const [forecastRes, airByDate] = await Promise.all([
     fetch(
       `https://archive-api.open-meteo.com/v1/archive` +
       `?latitude=${lat}&longitude=${lon}` +
       `&start_date=${startDate}&end_date=${endDate}` +
       `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max` +
       `&timezone=auto`
-    ),
-    fetch(
-      `https://air-quality-api.open-meteo.com/v1/air-quality` +
-      `?latitude=${lat}&longitude=${lon}` +
-      `&start_date=${startDate}&end_date=${endDate}` +
-      `&daily=grass_pollen,birch_pollen,alder_pollen,ragweed_pollen,pm10,pm2_5,european_aqi` +
-      `&timezone=auto`
-    ),
+    ).then(r => { if (!r.ok) throw new Error(`Archive API error: ${r.status}`); return r.json() }),
+    fetchAirQualityForDates(lat, lon, startDate, endDate),
   ])
 
-  if (!forecastRes.ok) throw new Error(`Archive API error ${forecastRes.status} for ${city}`)
-  if (!airRes.ok)      throw new Error(`Air quality API error ${airRes.status} for ${city}`)
-
-  const [forecast, air] = await Promise.all([forecastRes.json(), airRes.json()])
-
-  const d = forecast.daily
-  const a = air.daily
-  const dates = d.time  // array of date strings
-
+  const d       = forecastRes.daily
   const results = {}
-  for (let i = 0; i < dates.length; i++) {
-    const gp = a.grass_pollen?.[i]  ?? null
-    const bp = a.birch_pollen?.[i]  ?? null
-    const ap = a.alder_pollen?.[i]  ?? null
-    const aq = a.european_aqi?.[i]  ?? null
 
-    results[dates[i]] = {
+  for (let i = 0; i < d.time.length; i++) {
+    const date = d.time[i]
+    const a    = airByDate[date] ?? {}
+    const gp   = a.grass_pollen ?? null
+    const bp   = a.birch_pollen ?? null
+    const ap   = a.alder_pollen ?? null
+    const aq   = a.european_aqi ?? null
+
+    results[date] = {
       location:           city,
       temp_max:           d.temperature_2m_max?.[i]  ?? null,
       temp_min:           d.temperature_2m_min?.[i]  ?? null,
@@ -109,9 +130,9 @@ async function fetchHistoricalWeather(city, startDate, endDate) {
       birch_pollen_label: treePollenLabel(bp),
       alder_pollen:       ap,
       alder_pollen_label: treePollenLabel(ap),
-      ragweed_pollen:     a.ragweed_pollen?.[i]      ?? null,
-      pm10:               a.pm10?.[i]                ?? null,
-      pm2_5:              a.pm2_5?.[i]               ?? null,
+      ragweed_pollen:     a.ragweed_pollen            ?? null,
+      pm10:               a.pm10                      ?? null,
+      pm2_5:              a.pm2_5                     ?? null,
       aqi:                aq,
       aqi_label:          aqiLabel(aq),
       fetched_at:         new Date().toISOString(),
@@ -125,32 +146,24 @@ async function fetchHistoricalWeather(city, startDate, endDate) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
-  // Auth
   if (process.env.CRON_SECRET) {
-    const authHeader  = req.headers['authorization']
-    const querySecret = req.query?.secret
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && querySecret !== process.env.CRON_SECRET) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
+    const bearerOk = req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`
+    const queryOk  = req.query?.secret === process.env.CRON_SECRET
+    if (!bearerOk && !queryOk) return res.status(401).json({ error: 'Unauthorized' })
   }
 
   try {
-    // Date range — default: 2026-04-13 to yesterday
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     const startDate = req.query.start ?? '2026-04-13'
     const endDate   = req.query.end   ?? yesterday.toISOString().slice(0, 10)
 
-    // Load commitments to resolve travel locations
+    // Load commitments for location resolution
     const { data: commitmentsRow } = await supabase
-      .from('user_data')
-      .select('value')
-      .eq('key', COMMITMENTS_KEY)
-      .single()
-
+      .from('user_data').select('value').eq('key', COMMITMENTS_KEY).single()
     const commitments = commitmentsRow?.value ?? []
 
-    // Build date → city map
+    // Map each date to a city
     const dates = dateRange(startDate, endDate)
     const dateCityMap = {}
     for (const date of dates) {
@@ -160,8 +173,8 @@ export default async function handler(req, res) {
       dateCityMap[date] = active[0]?.location ?? DEFAULT_CITY
     }
 
-    // Group consecutive dates by city to minimise API calls
-    const groups = [] // [{ city, start, end, dates[] }]
+    // Group consecutive dates by city
+    const groups = []
     for (const date of dates) {
       const city = dateCityMap[date]
       const last = groups[groups.length - 1]
@@ -173,37 +186,25 @@ export default async function handler(req, res) {
       }
     }
 
-    // Fetch historical weather per group
+    // Fetch each group and merge results
     const allNewWeather = {}
     for (const group of groups) {
-      const results = await fetchHistoricalWeather(group.city, group.start, group.end)
+      const results = await fetchGroupWeather(group.city, group.start, group.end)
       Object.assign(allNewWeather, results)
     }
 
-    // Merge with existing weather store (don't overwrite already-fetched days)
+    // Merge with existing — existing entries win (already had a live fetch)
     const { data: existing } = await supabase
-      .from('user_data')
-      .select('value')
-      .eq('key', WEATHER_KEY)
-      .single()
+      .from('user_data').select('value').eq('key', WEATHER_KEY).single()
+    const merged = { ...allNewWeather, ...(existing?.value ?? {}) }
 
-    const allWeather = existing?.value ?? {}
-    // New data fills gaps; existing entries win (already had a live fetch)
-    const merged = { ...allNewWeather, ...allWeather }
+    await supabase.from('user_data').upsert(
+      { key: WEATHER_KEY, user_id: USER_ID, value: merged, updated_at: new Date().toISOString() },
+      { onConflict: 'key,user_id' }
+    )
 
-    await supabase
-      .from('user_data')
-      .upsert(
-        { key: WEATHER_KEY, user_id: USER_ID, value: merged, updated_at: new Date().toISOString() },
-        { onConflict: 'key,user_id' }
-      )
-
-    const summary = groups.map(g => `${g.city}: ${g.start} → ${g.end} (${g.dates.length} days)`).join(', ')
-    return res.status(200).json({
-      ok: true,
-      dates_filled: Object.keys(allNewWeather).length,
-      groups: summary,
-    })
+    const summary = groups.map(g => `${g.city}: ${g.start} → ${g.end} (${g.dates.length}d)`).join(' | ')
+    return res.status(200).json({ ok: true, dates_filled: Object.keys(allNewWeather).length, groups: summary })
 
   } catch (err) {
     console.error('[weather-backfill]', err)
