@@ -2,10 +2,22 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   background: #f7f6f4;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Hide scrollbars globally on mobile while keeping scroll functionality */
+@media (max-width: 767px) {
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
 }

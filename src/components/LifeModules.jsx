@@ -781,6 +781,8 @@ export default function LifeModules({ mobile } = {}) {
                     date={iso}
                     dayData={{ ...(exData ?? {}), energy: exData?.energy ?? logs[iso]?.mood?.energy ?? undefined }}
                     onSet={(fk, v) => setFieldValue('exercise', iso, fk, v)}
+                    mobile={mobile}
+                    onClose={() => setActiveCell(null)}
                   />
                 )}
               </div>
@@ -1148,7 +1150,6 @@ export default function LifeModules({ mobile } = {}) {
             placeholder="What are you grateful for?"
             value={gratEdit.value}
             onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
-            onBlur={saveGratitude}
             onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
           />
         </div>,
@@ -1189,10 +1190,12 @@ const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 1
 const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose }, ref) {
   const content = (
     <div className="lm-popover" ref={ref} onClick={e => e.stopPropagation()} style={mobile ? POPOVER_MOBILE_STYLE : undefined}>
-      {mobile && <button onClick={onClose} style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}>×</button>}
       <div className="lm-popover-title">
         <span className="lm-popover-module">{mod.label}</span>
-        <span className="lm-popover-date">{fmtDate(date)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="lm-popover-date">{fmtDate(date)}</span>
+          {mobile && <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 2px', marginRight: -4 }}>×</button>}
+        </div>
       </div>
       {mod.fields.map(field => (
         <PopoverField
