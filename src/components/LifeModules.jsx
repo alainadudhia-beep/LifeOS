@@ -422,12 +422,36 @@ export default function LifeModules({ mobile } = {}) {
       [gratEdit.date]: { ...(prev[gratEdit.date] ?? {}), gratitude: text || null },
     }))
     if (mobile) {
-      // Blur the active element first so iOS starts dismissing the keyboard,
-      // then unmount the modal after the keyboard animation finishes (~300ms).
-      // Without this delay the modal disappears while the viewport is still
-      // animating back to full height, causing the jarring visual glitch.
+      // Blur first so iOS starts dismissing the keyboard
       document.activeElement?.blur()
-      setTimeout(() => setGratEdit(null), 320)
+
+      const vv = window.visualViewport
+      const fullHeight = window.innerHeight
+
+      // If keyboard is not open, close immediately
+      if (!vv || vv.height >= fullHeight * 0.85) {
+        window.scrollTo(0, 0)
+        setGratEdit(null)
+        return
+      }
+
+      // Keyboard IS open — wait for visualViewport to restore to full height,
+      // then reset any iOS-induced page scroll and unmount the modal.
+      // Using a resize listener is more reliable than a fixed timeout because
+      // the keyboard animation duration varies by device and iOS version.
+      let done = false
+      const finish = () => {
+        if (done) return
+        done = true
+        vv.removeEventListener('resize', onResize)
+        clearTimeout(fallback)
+        window.scrollTo(0, 0)
+        // One extra rAF so the scroll settles before React re-renders
+        requestAnimationFrame(() => setGratEdit(null))
+      }
+      const onResize = () => { if (vv.height >= fullHeight * 0.85) finish() }
+      const fallback = setTimeout(finish, 600) // safety net
+      vv.addEventListener('resize', onResize)
     } else {
       setGratEdit(null)
     }
