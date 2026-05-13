@@ -421,7 +421,16 @@ export default function LifeModules({ mobile } = {}) {
       ...prev,
       [gratEdit.date]: { ...(prev[gratEdit.date] ?? {}), gratitude: text || null },
     }))
-    setGratEdit(null)
+    if (mobile) {
+      // Blur the active element first so iOS starts dismissing the keyboard,
+      // then unmount the modal after the keyboard animation finishes (~300ms).
+      // Without this delay the modal disappears while the viewport is still
+      // animating back to full height, causing the jarring visual glitch.
+      document.activeElement?.blur()
+      setTimeout(() => setGratEdit(null), 320)
+    } else {
+      setGratEdit(null)
+    }
   }
 
   function setFieldValue(moduleKey, date, fieldKey, value) {
@@ -1135,24 +1144,30 @@ export default function LifeModules({ mobile } = {}) {
 
       {/* ── Mobile gratitude portal ── */}
       {mobile && gratEdit && createPortal(
-        <div
-          ref={gratRef}
-          onClick={e => e.stopPropagation()}
-          style={{ position: 'fixed', bottom: 90, left: 12, right: 12, zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Gratitude · {fmtDate(gratEdit.date)}</span>
-            <button onClick={saveGratitude} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}>×</button>
-          </div>
-          <input
-            className="lm-grat-input"
-            autoFocus
-            placeholder="What are you grateful for?"
-            value={gratEdit.value}
-            onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
-            onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
+        <>
+          {/* Backdrop — tap anywhere outside to save and close */}
+          <div
+            onClick={saveGratitude}
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
           />
-        </div>,
+          <div
+            ref={gratRef}
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'fixed', bottom: 90, left: 12, right: 12, zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', boxShadow: '0 8px 32px rgba(0,0,0,0.14)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Gratitude · {fmtDate(gratEdit.date)}</span>
+              <button onClick={saveGratitude} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 4px' }}>×</button>
+            </div>
+            <input
+              className="lm-grat-input"
+              placeholder="What are you grateful for?"
+              value={gratEdit.value}
+              onChange={e => setGratEdit(g => ({ ...g, value: e.target.value }))}
+              onKeyDown={e => { if (e.key === 'Enter') saveGratitude(); if (e.key === 'Escape') setGratEdit(null) }}
+            />
+          </div>
+        </>,
         document.body
       )}
     </div>
