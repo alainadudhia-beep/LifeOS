@@ -162,7 +162,7 @@ export default function MobileTodayModules() {
   const periodFwdM = bodyData.period != null ? bodyData.period : yBodyM.period ?? null
   const bodyR      = bodyRating(bodyData)
   const bodyBg     = bodyR != null ? bodyR.bg : null
-  const bodyLabel  = period ? 'Period' : illness && illness !== 'None' ? illness : null
+  const bodyLabel  = period ? 'Period' : illness && illness !== 'None' ? illness : bodyR?.label ?? null
 
   // ── Exercise ──────────────────────────────────────────────────────────────
 
@@ -172,7 +172,7 @@ export default function MobileTodayModules() {
   const exActs  = exData?.activities
   const exLabel = exActs?.length
     ? exActs.length === 1 ? exActs[0] : `${exActs[0]} +${exActs.length - 1}`
-    : null
+    : energy != null ? String(energy) : null
 
   // ── Module refs ───────────────────────────────────────────────────────────
 
