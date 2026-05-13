@@ -541,14 +541,12 @@ const Insights = forwardRef(function Insights(_, ref) {
 
   return (
     <div className="ins-panel">
-      <div className="ins-header">
-        <button
-          className={`ins-refresh-btn${refreshing ? ' ins-refresh-btn--spinning' : ''}`}
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="Refresh insights"
-        >↻</button>
-      </div>
+      <button
+        className={`ins-refresh-btn${refreshing ? ' ins-refresh-btn--spinning' : ''}`}
+        onClick={handleRefresh}
+        disabled={refreshing}
+        title="Refresh insights"
+      >↻</button>
       <Section title="Work Summary" items={workItems}  onDismiss={id => dismiss(id)} />
       <Section title="Life Summary" items={lifeItems}  onDismiss={id => dismiss(id)} />
       {isEmpty && <p className="ins-empty">Log a check-in to get insights</p>}

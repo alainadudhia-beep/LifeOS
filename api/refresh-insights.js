@@ -31,7 +31,7 @@ Insight format rules:
 - Generate 3–6 insights. Quality over quantity — only include ones grounded in the data.
 - For any career track with status "action_required", always include an actionable insight
 - Use exact track names from career context — never abbreviate or paraphrase
-- Weather correlations: if hayfever or eczema is logged and there is relevant pollen/wind data, note the connection
+- Weather correlations: ONLY note connections that are medically plausible. Specifically: high pollen or high wind → hayfever/allergy/eczema flares. High UV → skin dryness. High AQI/PM2.5 → respiratory symptoms. Do NOT connect wind, rain, or temperature to brain fog, focus, mood, or energy — those are not direct causal relationships.
 - If a field is missing from today's log that is usually logged, note it calmly
 
 daily_win: one warm but not sycophantic observation about something done well today, "Topic - observation" format. Null if nothing clear stands out.
