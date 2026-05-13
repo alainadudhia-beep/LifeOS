@@ -10,9 +10,6 @@ const supabase = createClient(
 const USER_ID = process.env.HEALTH_IMPORT_USER_ID
 
 export default async function handler(req, res) {
-  if (req.headers['x-test-secret'] !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
 
