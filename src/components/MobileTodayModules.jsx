@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import {
   MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField,
-  EXERCISE_MODULE, BODY_MODULE, bodyScore, scoreToSummary,
+  EXERCISE_MODULE, BODY_MODULE, bodyRating,
   sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins,
 } from './LifeModules'
 import './LifeModules.css'
@@ -160,8 +160,8 @@ export default function MobileTodayModules() {
   const yBodyM     = (() => { const d = new Date(today); d.setDate(d.getDate() - 1); return logs[d.toISOString().slice(0, 10)]?.body ?? {} })()
   const pillFwd    = bodyData.pill   != null ? bodyData.pill   : yBodyM.pill   ?? null
   const periodFwdM = bodyData.period != null ? bodyData.period : yBodyM.period ?? null
-  const bodySc     = bodyScore(bodyData)
-  const bodyBg     = bodySc != null ? scoreToSummary(bodySc).bg : null
+  const bodyR      = bodyRating(bodyData)
+  const bodyBg     = bodyR != null ? bodyR.bg : null
   const bodyLabel  = period ? 'Period' : illness && illness !== 'None' ? illness : null
 
   // ── Exercise ──────────────────────────────────────────────────────────────

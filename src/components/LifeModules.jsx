@@ -8,41 +8,30 @@ import './LifeModules.css'
 // ─── colour palettes ──────────────────────────────────────────────────────────
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
-const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#dcfce7', '8': '#bbf7d0', '9+': '#86efac' }
+// Sleep: red / orange / yellow / light-green / green / dark-green  (<5 / 5-6 / 6-7 / 7-8 / 8-9 / 9+)
+const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#bbf7d0', '8': '#86efac', '9+': '#4ade80' }
 const SEVERITY_COLORS = { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' }
 const EXERCISE_SHORT  = { 'Yoga': 'Yoga', 'Pilates': 'Pilates', 'Long walk': 'Walk', 'Gym': 'Gym' }
 const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7490', 'Gym': '#1e40af' }
 
 // ─── sleep colour helpers (Fitbit + old manual fallback) ──────────────────────
 
-const HOURS_SCORE   = { '<5': 0, '5': 1, '6': 2, '7': 3, '8': 4, '9+': 5 }
-const QUALITY_SCORE = { Poor: 0, Fair: 1, Good: 2 }
-const SLEEP_COLORS  = [
-  '#fee2e2', '#fde8c8', '#fef9c3',
-  '#fef9c3', '#dcfce7', '#bbf7d0',
-  '#86efac', '#4ade80',
-]
-
-// Fitbit-sourced colour (sleep_minutes + in_bed_minutes)
-function sleepColorFromFitbit(sleepMin, inBedMin) {
+// Fitbit-sourced colour — simple hours-based scale
+function sleepColorFromFitbit(sleepMin) {
   if (sleepMin == null || sleepMin > 960) return null
-  const hrs     = sleepMin / 60
-  const hBucket = hrs < 5 ? '<5' : hrs < 6 ? '5' : hrs < 7 ? '6' : hrs < 8 ? '7' : hrs < 9 ? '8' : '9+'
-  const h       = HOURS_SCORE[hBucket]
-  if (!inBedMin) return SLEEP_H[hBucket]
-  const eff = sleepMin / inBedMin
-  const q   = eff >= 0.85 ? 2 : eff >= 0.70 ? 1 : 0
-  return SLEEP_COLORS[h + q] ?? '#4ade80'
+  const hrs = sleepMin / 60
+  return hrs >= 9 ? '#4ade80'
+    : hrs >= 8 ? '#86efac'
+    : hrs >= 7 ? '#bbf7d0'
+    : hrs >= 6 ? '#fef9c3'
+    : hrs >= 5 ? '#fde8c8'
+    : '#fee2e2'
 }
 
-// Old manual-entry colour (hours bucket + quality)
+// Old manual-entry colour (hours bucket)
 function sleepColorFromOldData(d) {
   if (!d?.hours) return null
-  const h = HOURS_SCORE[d.hours]
-  if (h == null) return SLEEP_H[d.hours] ?? null
-  const q = d.quality != null ? (QUALITY_SCORE[d.quality] ?? null) : null
-  if (q == null) return SLEEP_H[d.hours]
-  return SLEEP_COLORS[h + q] ?? '#4ade80'
+  return SLEEP_H[d.hours] ?? null
 }
 
 function sleepEffLabel(sleepMin, inBedMin) {
@@ -83,27 +72,48 @@ function avg(nums) {
   return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null
 }
 
-function inflammScore(d) {
-  if (!d) return null
-  return avg([
-    d.eczema       != null ? SEVERITY_SCORE[d.eczema]       : null,
-    d.hayfever     != null ? SEVERITY_SCORE[d.hayfever]     : null,
-    d.episcleritis != null ? SEVERITY_SCORE[d.episcleritis] : null,
-  ])
+// ─── categorical rating (Allergies + Body) ───────────────────────────────────
+// Rules agreed with user:
+//   Great — all filled values are None
+//   Good  — no Meds/Bads, at least one Low and at least one None
+//   Fair  — exactly 1 Med (no Bads), OR all filled are Low (no Nones, no Bads)
+//   Poor  — 2+ Meds, OR any Bad
+
+function categoricalRating(severityValues) {
+  // severityValues: array of 'None'|'Low'|'Med'|'Bad' strings (pre-filtered to non-null)
+  if (!severityValues.length) return null
+  let nones = 0, lows = 0, meds = 0, bads = 0
+  for (const v of severityValues) {
+    if (v === 'None') nones++
+    else if (v === 'Low') lows++
+    else if (v === 'Med') meds++
+    else if (v === 'Bad') bads++
+  }
+  if (bads >= 1 || meds >= 2)                      return { label: 'Poor',  bg: '#fee2e2' }
+  if (meds === 1 || (lows > 0 && nones === 0))     return { label: 'Fair',  bg: '#fef9c3' }
+  if (lows >= 1 && nones >= 1)                     return { label: 'Good',  bg: '#dcfce7' }
+  if (nones > 0)                                   return { label: 'Great', bg: '#86efac' }
+  return null
 }
 
-// Body pain/symptom scoring (separate from Allergies)
-const ILLNESS_SCORE = { None: 3, Cold: 2.5, Flu: 1, Sick: 0 }
+function allergiesRating(d) {
+  if (!d) return null
+  const vals = [d.eczema, d.hayfever, d.episcleritis].filter(v => v != null)
+  return categoricalRating(vals)
+}
 
-function bodyScore(d) {
+// Illness severity mapped to the same None/Low/Med/Bad scale
+const ILLNESS_TO_SEV = { None: 'None', Cold: 'Low', Flu: 'Med', Sick: 'Bad' }
+
+function bodyRating(d) {
   if (!d) return null
   const vals = [
-    d.knee_pain        != null ? SEVERITY_SCORE[d.knee_pain]        : null,
-    d.wrist_nerve_pain != null ? SEVERITY_SCORE[d.wrist_nerve_pain] : null,
-    d.illness          != null ? ILLNESS_SCORE[d.illness]           : null,
-    d.gut              != null ? SEVERITY_SCORE[d.gut]              : null,
+    d.knee_pain,
+    d.wrist_nerve_pain,
+    d.gut,
+    d.illness != null ? ILLNESS_TO_SEV[d.illness] : null,
   ].filter(v => v != null)
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  return categoricalRating(vals)
 }
 
 function dietScore(d) {
@@ -157,15 +167,15 @@ const MODULES = [
   {
     key: 'health', label: 'Allergies',
     defaults: { episcleritis: 'None' },
-    cellColor: d => { const s = inflammScore(d); return s != null ? scoreToSummary(s).bg : (hasAny(d) ? '#f1f5f9' : null) },
-    cellLabel: d => { const s = inflammScore(d); return s != null ? scoreToSummary(s).label : null },
+    cellColor: d => { const r = allergiesRating(d); return r != null ? r.bg : (hasAny(d) ? '#f1f5f9' : null) },
+    cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
       { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
       { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'eczema_location',   label: 'Location',           type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
-      { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose','Puffy eyes'] },
+      { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips'] },
       { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
       { key: 'note',              label: 'Note',               type: 'text' },
@@ -231,14 +241,14 @@ const MODULES = [
     cellColor: d => {
       const v = d?.level
       if (v == null) return null
-      if (v === 'None' || v === '0') return '#bbf7d0'
+      if (v === 'None' || v === '0') return '#86efac'   // matches "Great" green
       if (v === '1' || v === '2' || v === '1-2') return '#fef9c3'
       if (v === '3' || v === '4' || v === '3-4') return '#fde8c8'
       return '#fee2e2'
     },
     cellLabel: d => d?.level ?? null,
     fields: [
-      { key: 'level', label: 'Drinks', type: 'options',     options: ['None','1','2','3','4','5+'], colors: { None: '#bbf7d0', '1': '#fef9c3', '2': '#fef9c3', '3': '#fde8c8', '4': '#fde8c8', '5+': '#fee2e2' } },
+      { key: 'level', label: 'Drinks', type: 'options',     options: ['None','1','2','3','4','5+'], colors: { None: '#86efac', '1': '#fef9c3', '2': '#fef9c3', '3': '#fde8c8', '4': '#fde8c8', '5+': '#fee2e2' } },
       { key: 'type',  label: 'Type',   type: 'multiselect', options: ['Wine','Beer','Spirits'] },
     ],
   },
@@ -292,7 +302,7 @@ const EXERCISE_MODULE = {
 const BODY_MODULE = {
   key: 'body', label: 'Body',
   defaults: { illness: 'None', painkillers: '0', knee_pain: 'None', wrist_nerve_pain: 'None' },
-  cellColor: d => { const s = bodyScore(d); return s != null ? scoreToSummary(s).bg : null },
+  cellColor: d => { const r = bodyRating(d); return r != null ? r.bg : null },
   fields: [
     { key: '_weight_kg',       label: 'Weight',             type: 'readonly',    unit: 'kg', autosync: true },
     { key: 'knee_pain',        label: 'Knee Pain',          type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
@@ -928,8 +938,8 @@ export default function LifeModules({ mobile } = {}) {
             }
             const period   = bodyData.period ?? !!logs[iso]?.period  // backward compat
             const { value: kg, isStale: kgStale } = lastKnownWeight(iso)
-            const s        = bodyScore(bodyData)
-            const bg       = s != null ? scoreToSummary(s).bg : (kg != null ? '#f1f5f9' : null)
+            const r        = bodyRating(bodyData)
+            const bg       = r != null ? r.bg : (kg != null ? '#f1f5f9' : null)
             const open     = activeCell?.moduleKey === 'body' && activeCell?.date === iso
             const isFuture = iso > todayIso
             const fmtKg    = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
@@ -969,8 +979,8 @@ export default function LifeModules({ mobile } = {}) {
           }
           const period   = bodyData.period ?? !!logs[todayIso]?.period
           const { value: kgT, isStale: kgStaleT } = lastKnownWeight(todayIso)
-          const sT       = bodyScore(bodyData)
-          const bg       = sT != null ? scoreToSummary(sT).bg : (kgT != null ? '#f1f5f9' : null)
+          const rT       = bodyRating(bodyData)
+          const bg       = rT != null ? rT.bg : (kgT != null ? '#f1f5f9' : null)
           const open     = activeCell?.moduleKey === 'body' && activeCell?.date === todayIso
           const fmtKgT   = kgT != null ? (kgT % 1 === 0 ? String(kgT) : kgT.toFixed(1)) : null
           const yBodyT   = yesterdayBody(todayIso)
@@ -1461,4 +1471,4 @@ function PopoverField({ field, value, stale, onSet }) {
   return null
 }
 
-export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyScore, scoreToSummary, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyRating, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }
