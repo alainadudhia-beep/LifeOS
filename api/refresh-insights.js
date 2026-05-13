@@ -22,17 +22,29 @@ Return exactly this structure:
 }
 
 Insight format rules:
-- ALWAYS format text as "Topic - description" (e.g. "Sleep - solid 8hrs last night", "Hayfever - worse when wind is high, even with low pollen")
-- Always capitalise Topic: "Sleep", "Water", "Hayfever", "Eczema", "Energy", "Alcohol", etc.
+- ALWAYS format text as "Topic - description" (e.g. "Sleep - solid 8hrs last night")
+- Topic is always the main subject, capitalised: "Sleep", "Water", "Hayfever", "Eczema", "Energy", or the exact career track name
 - positive: true = celebrating something genuinely good
 - positive: false = calm, neutral observation or gentle nudge — never guilt-inducing or harsh
-- actionable: true = there is something specific to do (follow up, apply, log something)
+- actionable: true = there is something specific to do
 - actionable: false = observation or celebration
 - Generate 3–6 insights. Quality over quantity — only include ones grounded in the data.
-- For any career track with status "action_required", always include an actionable insight
 - Use exact track names from career context — never abbreviate or paraphrase
-- Weather correlations: ONLY note connections that are medically plausible. Specifically: high pollen or high wind → hayfever/allergy/eczema flares. High UV → skin dryness. High AQI/PM2.5 → respiratory symptoms. Do NOT connect wind, rain, or temperature to brain fog, focus, mood, or energy — those are not direct causal relationships.
-- If a field is missing from today's log that is usually logged, note it calmly
+
+Career track rules (important):
+- Any milestone flagged as [TOMORROW] or [TODAY] must appear as the FIRST insight, actionable: true
+- For any track with status "action_required", always include an actionable insight
+- If a track's last note was written 5+ days ago and it is still active, note "it's been a while since [Track name] - worth a check-in"
+- NEVER repeat relative time phrases from note text (e.g. "tomorrow", "next week", "yesterday") — these were written at an earlier date and will be stale. Describe the situation from today's perspective instead.
+
+Date formatting:
+- Always write dates as ordinal day + month: "14th May", "3rd June" — never ISO format like "2026-05-14"
+
+Weather correlations — ONLY note connections that are medically plausible:
+- High pollen or strong wind → hayfever / allergy / eczema flares
+- High UV → skin dryness
+- High AQI / PM2.5 → respiratory symptoms
+- Do NOT connect wind, rain, or temperature to brain fog, focus, mood, or energy
 
 daily_win: one warm but not sycophantic observation about something done well today, "Topic - observation" format. Null if nothing clear stands out.
 
@@ -40,27 +52,66 @@ IMPORTANT: Use only regular hyphens (-) in all text. Never em dashes (—) or en
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatWeatherLine(w, date) {
+function windLabel(kmh) {
+  if (kmh == null) return null
+  if (kmh < 15) return 'Low wind'
+  if (kmh < 35) return 'Moderate wind'
+  return 'Strong wind'
+}
+
+function fmtDate(iso) {
+  // "2026-05-14" → "14th May"
+  const d = new Date(iso + 'T12:00:00')
+  const day = d.getDate()
+  const suffix = [11,12,13].includes(day) ? 'th'
+    : day % 10 === 1 ? 'st' : day % 10 === 2 ? 'nd' : day % 10 === 3 ? 'rd' : 'th'
+  return `${day}${suffix} ${d.toLocaleDateString('en-GB', { month: 'long' })}`
+}
+
+function daysDiff(isoA, isoB) {
+  return Math.round((new Date(isoA) - new Date(isoB)) / 86400000)
+}
+
+function formatWeatherLine(w) {
   if (!w) return null
   const parts = []
-  if (w.location)                   parts.push(w.location)
-  if (w.temp_max != null)           parts.push(`${Math.round(w.temp_max)}°C max`)
-  if (w.precipitation_mm != null)   parts.push(`${w.precipitation_mm}mm rain`)
-  if (w.wind_speed_max != null)     parts.push(`wind ${Math.round(w.wind_speed_max)} km/h`)
-  if (w.grass_pollen_label)         parts.push(`grass pollen ${w.grass_pollen_label}`)
+  if (w.temp_max != null)         parts.push(`${Math.round(w.temp_max)}°C max`)
+  if (w.precipitation_mm != null) parts.push(`${w.precipitation_mm}mm rain`)
+  const wl = windLabel(w.wind_speed_max)
+  if (wl)                         parts.push(wl)
+  if (w.grass_pollen_label)       parts.push(`grass pollen ${w.grass_pollen_label}`)
   if (w.birch_pollen_label && w.birch_pollen > 0) parts.push(`birch ${w.birch_pollen_label}`)
-  if (w.aqi_label)                  parts.push(`AQI ${w.aqi_label}`)
-  return `  ${date}: ${parts.join(', ')}`
+  if (w.aqi_label)                parts.push(`AQI ${w.aqi_label}`)
+  return parts.join(', ')
 }
 
 function buildInsightContext(today, logs, tracksArr, weatherStore) {
   const lines = []
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowIso = tomorrow.toISOString().slice(0, 10)
+
+  // ── Imminent milestones (next 48h) — surfaced first so Claude treats as top priority
+  const imminent = []
+  for (const t of tracksArr) {
+    const status = t.status_history?.length
+      ? t.status_history[t.status_history.length - 1].status : t.status
+    if (status === 'closed' || status === 'secured' || t.archived) continue
+    for (const m of (t.milestones ?? [])) {
+      if (m.date === today)        imminent.push(`"${t.name}" - ${m.label} [TODAY] (${fmtDate(m.date)})`)
+      else if (m.date === tomorrowIso) imminent.push(`"${t.name}" - ${m.label} [TOMORROW] (${fmtDate(m.date)})`)
+    }
+  }
+  if (imminent.length) {
+    lines.push('URGENT - Upcoming milestones in next 48 hours:')
+    imminent.forEach(l => lines.push('  ' + l))
+  }
 
   // Today's environment
   const todayW = weatherStore[today]
   if (todayW) {
-    const wLine = formatWeatherLine(todayW, today)
-    if (wLine) lines.push(`Today's environment: ${wLine.trim()}`)
+    const wLine = formatWeatherLine(todayW)
+    if (wLine) lines.push(`Today's environment (${todayW.location ?? 'London'}): ${wLine}`)
   }
 
   // Today's full log
@@ -124,9 +175,9 @@ function buildInsightContext(today, logs, tracksArr, weatherStore) {
     if (log.exercise?.activities?.length) parts.push(`exercise: ${log.exercise.activities.join(', ')}`)
     if (log.alcohol?.level && log.alcohol.level !== 'None') parts.push(`alcohol: ${log.alcohol.level}`)
 
-    const wLine = formatWeatherLine(weatherStore[iso], '')
-    const weatherSuffix = wLine ? ` | env: ${wLine.trim().replace(/^:\s*/, '')}` : ''
-    if (parts.length) recentLines.push(`  ${iso}: ${parts.join(' | ')}${weatherSuffix}`)
+    const wLine = formatWeatherLine(weatherStore[iso])
+    const weatherSuffix = wLine ? ` | env: ${wLine}` : ''
+    if (parts.length) recentLines.push(`  ${fmtDate(iso)}: ${parts.join(' | ')}${weatherSuffix}`)
   }
   if (recentLines.length) {
     lines.push('Recent history (last 14 days):')
@@ -146,14 +197,24 @@ function buildInsightContext(today, logs, tracksArr, weatherStore) {
       const status = t.status_history?.length
         ? t.status_history[t.status_history.length - 1].status
         : t.status
-      const lastNote = t.notes_log?.[0]?.text
+      const lastNoteEntry = t.notes_log?.[0]
+      const lastNoteText  = lastNoteEntry?.text
+      const lastNoteDate  = lastNoteEntry?.timestamp?.slice(0, 10)
+      const noteAgeDays   = lastNoteDate ? daysDiff(today, lastNoteDate) : null
+      const noteAge       = noteAgeDays != null
+        ? (noteAgeDays === 0 ? 'today' : noteAgeDays === 1 ? '1 day ago' : `${noteAgeDays} days ago`)
+        : 'unknown'
       const upcoming = (t.milestones ?? [])
-        .filter(m => m.date >= today)
+        .filter(m => m.date > tomorrowIso)  // imminent ones already surfaced above
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, 2)
-        .map(m => `${m.label} on ${m.date}`)
+        .map(m => `${m.label} on ${fmtDate(m.date)}`)
         .join(', ')
-      lines.push(`  "${t.name}" - ${status}${lastNote ? ` | note: "${lastNote.slice(0, 80)}"` : ''}${upcoming ? ` | upcoming: ${upcoming}` : ''}`)
+      lines.push(
+        `  "${t.name}" - ${status}` +
+        (lastNoteText ? ` | last note (${noteAge}): "${lastNoteText.slice(0, 80)}"` : ' | no notes yet') +
+        (upcoming ? ` | upcoming: ${upcoming}` : '')
+      )
     }
   }
 

@@ -207,17 +207,25 @@ function mergeModule(existing, parsed, moduleKey) {
 
 // ── Context builder (server-side; reads from Supabase data) ──────────────────
 
+function windLabel(kmh) {
+  if (kmh == null) return null
+  if (kmh < 15) return 'Low wind'
+  if (kmh < 35) return 'Moderate wind'
+  return 'Strong wind'
+}
+
 function formatWeatherContext(w) {
   if (!w) return null
   const parts = []
-  if (w.location)           parts.push(`Location: ${w.location}`)
-  if (w.temp_max != null)   parts.push(`${Math.round(w.temp_max)}°C max / ${Math.round(w.temp_min)}°C min`)
+  if (w.location)                 parts.push(`Location: ${w.location}`)
+  if (w.temp_max != null)         parts.push(`${Math.round(w.temp_max)}°C max / ${Math.round(w.temp_min)}°C min`)
   if (w.precipitation_mm != null) parts.push(`rain: ${w.precipitation_mm}mm`)
-  if (w.wind_speed_max != null)   parts.push(`wind: ${Math.round(w.wind_speed_max)} km/h`)
-  if (w.uv_index != null)   parts.push(`UV: ${w.uv_index.toFixed(1)}`)
-  if (w.grass_pollen_label) parts.push(`grass pollen: ${w.grass_pollen_label}`)
+  const wl = windLabel(w.wind_speed_max)
+  if (wl)                         parts.push(wl)
+  if (w.uv_index != null)         parts.push(`UV: ${w.uv_index.toFixed(1)}`)
+  if (w.grass_pollen_label)       parts.push(`grass pollen: ${w.grass_pollen_label}`)
   if (w.birch_pollen_label && w.birch_pollen > 0) parts.push(`birch pollen: ${w.birch_pollen_label}`)
-  if (w.aqi_label)          parts.push(`AQI: ${w.aqi_label}`)
+  if (w.aqi_label)                parts.push(`AQI: ${w.aqi_label}`)
   return parts.join(', ')
 }
 
