@@ -467,11 +467,11 @@ const Insights = forwardRef(function Insights(_, ref) {
     return best
   }
   function mentionsTrack(text) {
+    // Only route to Work if the TOPIC (before the dash) is a track name.
+    // Don't scan the full body — life insights sometimes mention track names
+    // in passing (e.g. "before the Sentinel chat") and would be wrongly routed.
     const topic = insightTopic(text)
-    const t = text.toLowerCase()
-    return tracks.some(track =>
-      t.includes(track.name.toLowerCase()) || topicsOverlap(topic, track.name)
-    )
+    return tracks.some(track => topicsOverlap(topic, track.name))
   }
 
   const claudeActive     = items.filter(it => it.type === 'claude' && !it.completed)
