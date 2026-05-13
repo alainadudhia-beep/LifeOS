@@ -6,10 +6,11 @@ export default function CommitmentEditModal({ commitment, onSave, onDelete, onCl
   const [name, setName]           = useState(commitment.name)
   const [startDate, setStartDate] = useState(commitment.start_date)
   const [endDate, setEndDate]     = useState(commitment.end_date)
+  const [location, setLocation]   = useState(commitment.location ?? '')
 
   function handleSave() {
     if (!name.trim()) return
-    onSave({ ...commitment, name: name.trim(), start_date: startDate, end_date: endDate })
+    onSave({ ...commitment, name: name.trim(), start_date: startDate, end_date: endDate, location: location.trim() || null })
   }
 
   return (
@@ -34,6 +35,16 @@ export default function CommitmentEditModal({ commitment, onSave, onDelete, onCl
             <label className="modal-label">End date</label>
             <input className="modal-input" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
+        </div>
+
+        <div className="modal-section">
+          <label className="modal-label">Location <span style={{ fontWeight: 400, color: '#94a3b8' }}>(optional — city name for weather data)</span></label>
+          <input
+            className="modal-input"
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+            placeholder="e.g. Copenhagen, Lisbon"
+          />
         </div>
 
         <div className="modal-actions commitment-actions">
