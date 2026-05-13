@@ -81,7 +81,7 @@ const ADDITIVE_MAPS = {
     snacking:  { 'Low': 1, 'Med': 2, 'High': 3 },
   },
   water: {
-    glasses: { '<3': 1.5, '4-6': 5, '7+': 8, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
+    glasses: { '<3': 1.5, '4-6': 5, '7+': 7, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
   },
   alcohol: {
     level: { None: 0, '1-2': 1.5, '3-4': 3.5, '1': 1, '2': 2, '3': 3, '4': 4, '5+': 5 },
@@ -90,7 +90,7 @@ const ADDITIVE_MAPS = {
 
 const ADDITIVE_REVERSE = {
   fruit_veg: n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
-  glasses:   n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
+  glasses:   n => n >= 7 ? '7+' : n <= 0 ? '0' : String(Math.round(n)),
   level:     n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
   sugar:     n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',

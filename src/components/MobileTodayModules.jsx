@@ -10,7 +10,7 @@ import './LifeModules.css'
 import './MobileTodayModules.css'
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
-const WATER_CYCLE = ['1', '2', '3', '4', '5', '6', '7', '8+', null]
+const WATER_CYCLE = ['1', '2', '3', '4', '5', '6', '7+', null]
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
