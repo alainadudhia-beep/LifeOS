@@ -439,6 +439,13 @@
   opacity: 1;
 }
 
+/* No hover tooltips on touch devices — tap opens the portal instead */
+@media (hover: none) {
+  .lm-grat-emoji[data-tooltip]::after {
+    display: none;
+  }
+}
+
 /* ─── gratitude popover ─── */
 .lm-grat-popover {
   position: absolute;
@@ -476,6 +483,15 @@
   color: #374151;
   background: #f8fafc;
   outline: none;
+}
+
+/* 16px prevents iOS from zooming the viewport on focus */
+@media (max-width: 767px) {
+  .lm-grat-input {
+    font-size: 16px;
+    width: 100%;
+    height: 36px;
+  }
 }
 
 .lm-grat-input:focus {
