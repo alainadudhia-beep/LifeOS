@@ -86,11 +86,24 @@ function avg(nums) {
 function inflammScore(d) {
   if (!d) return null
   return avg([
-    d.eczema           != null ? SEVERITY_SCORE[d.eczema]           : null,
-    d.hayfever         != null ? SEVERITY_SCORE[d.hayfever]         : null,
-    d.gut              != null ? SEVERITY_SCORE[d.gut]              : null,
-    d.wrist_nerve_pain != null ? SEVERITY_SCORE[d.wrist_nerve_pain] : null,
+    d.eczema       != null ? SEVERITY_SCORE[d.eczema]       : null,
+    d.hayfever     != null ? SEVERITY_SCORE[d.hayfever]     : null,
+    d.episcleritis != null ? SEVERITY_SCORE[d.episcleritis] : null,
   ])
+}
+
+// Body pain/symptom scoring (separate from Allergies)
+const ILLNESS_SCORE = { None: 3, Cold: 2.5, Flu: 1, Sick: 0 }
+
+function bodyScore(d) {
+  if (!d) return null
+  const vals = [
+    d.knee_pain        != null ? SEVERITY_SCORE[d.knee_pain]        : null,
+    d.wrist_nerve_pain != null ? SEVERITY_SCORE[d.wrist_nerve_pain] : null,
+    d.illness          != null ? ILLNESS_SCORE[d.illness]           : null,
+    d.gut              != null ? SEVERITY_SCORE[d.gut]              : null,
+  ].filter(v => v != null)
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
 }
 
 function dietScore(d) {
@@ -140,23 +153,22 @@ const MODULE_EMOJI = {
 }
 
 const MODULES = [
-  // ── Inflammation ─────────────────────────────────────────────────────────────
+  // ── Allergies ─────────────────────────────────────────────────────────────────
   {
-    key: 'health', label: 'Inflammation',
+    key: 'health', label: 'Allergies',
+    defaults: { episcleritis: 'None' },
     cellColor: d => { const s = inflammScore(d); return s != null ? scoreToSummary(s).bg : (hasAny(d) ? '#f1f5f9' : null) },
     cellLabel: d => { const s = inflammScore(d); return s != null ? scoreToSummary(s).label : null },
     fields: [
-      { key: 'antihistamines',    label: 'Antihistamines',    type: 'options',     options: ['None','1','2','3'],                                  colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
-      { key: 'eczema',            label: 'Eczema',            type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'eczema_location',   label: 'Location',          type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
-      { key: 'hayfever',          label: 'Hayfever',          type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
+      { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
+      { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
+      { key: 'eczema_location',   label: 'Location',           type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
+      { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
+      { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose','Puffy eyes'] },
-      { key: 'gut',               label: 'Gut',               type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'gut_symptoms',      label: 'Gut Symptoms',      type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
-      { key: 'wrist_nerve_pain',  label: 'Wrist Nerve Pain',  type: 'options',     options: ['None','Low','Med','Bad'],                            colors: SEVERITY_COLORS },
-      { key: 'dryness',       label: 'Dryness',           type: 'multiselect', options: ['Eyes','Skin','Lips'] },
-      { key: 'steroid_cream', label: 'Steroid Cream',     type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
-      { key: 'note',              label: 'Note',              type: 'text' },
+      { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips'] },
+      { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
+      { key: 'note',              label: 'Note',               type: 'text' },
     ],
   },
 
@@ -276,15 +288,22 @@ const EXERCISE_MODULE = {
 }
 
 // ── Body module (custom row — weight injected from Fitbit for readonly display)
+// gut / gut_symptoms / wrist_nerve_pain migrated here from health module
 const BODY_MODULE = {
   key: 'body', label: 'Body',
-  defaults: { illness: 'None', painkillers: '0' },
+  defaults: { illness: 'None', painkillers: '0', knee_pain: 'None', wrist_nerve_pain: 'None' },
+  cellColor: d => { const s = bodyScore(d); return s != null ? scoreToSummary(s).bg : null },
   fields: [
-    { key: '_weight_kg',  label: 'Weight',             type: 'readonly', unit: 'kg', autosync: true },
-    { key: 'period',      label: 'Period',             type: 'toggle',   onLabel: 'Yes', offLabel: 'No' },
-    { key: 'pill',        label: 'Contraceptive Pill', type: 'toggle',   onLabel: 'Yes', offLabel: 'No' },
-    { key: 'illness',     label: 'Illness',            type: 'options',  options: ['None','Cold','Flu','Sick'], colors: { None: '#f1f5f9', Cold: '#fde8c8', Flu: '#fde8c8', Sick: '#fee2e2' } },
-    { key: 'painkillers', label: 'Painkillers',        type: 'options',  options: ['0','2','4','6'],           colors: { '0': '#f1f5f9', '2': '#fef9c3', '4': '#fde8c8', '6': '#fee2e2' } },
+    { key: '_weight_kg',       label: 'Weight',             type: 'readonly',    unit: 'kg', autosync: true },
+    { key: 'knee_pain',        label: 'Knee Pain',          type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
+    { key: 'wrist_nerve_pain', label: 'Wrist Pain',         type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
+    { key: 'gut',              label: 'Gut',                type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
+    { key: 'gut_symptoms',     label: 'Gut Symptoms',       type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
+    { key: 'period',           label: 'Period',             type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
+    { key: 'pill',             label: 'Contraceptive Pill', type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
+    { key: 'illness',          label: 'Illness',            type: 'options',     options: ['None','Cold','Flu','Sick'], colors: { None: '#f1f5f9', Cold: '#fef9c3', Flu: '#fde8c8', Sick: '#fee2e2' } },
+    { key: 'painkillers',      label: 'Painkillers',        type: 'options',     options: ['0','2','4','6'],            colors: { '0': '#f1f5f9', '2': '#e0f2fe', '4': '#bae6fd', '6': '#7dd3fc' } },
+    { key: 'note',             label: 'Note',               type: 'text' },
   ],
 }
 
@@ -363,6 +382,44 @@ export default function LifeModules({ mobile } = {}) {
     function onLogsUpdated() { refreshLogs() }
     window.addEventListener('lifetracker-logs-updated', onLogsUpdated)
     return () => window.removeEventListener('lifetracker-logs-updated', onLogsUpdated)
+  }, []) // eslint-disable-line
+
+  // One-time migration: move wrist_nerve_pain / gut / gut_symptoms from health → body
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      for (const [date, day] of Object.entries(prev)) {
+        const health = day.health ?? {}
+        const body   = day.body   ?? {}
+        const needsMigration = (
+          (health.wrist_nerve_pain != null && body.wrist_nerve_pain == null) ||
+          (health.gut              != null && body.gut              == null) ||
+          (health.gut_symptoms     != null && body.gut_symptoms     == null)
+        )
+        if (needsMigration) {
+          const newBody   = { ...body }
+          const newHealth = { ...health }
+          if (health.wrist_nerve_pain != null && body.wrist_nerve_pain == null) {
+            newBody.wrist_nerve_pain = health.wrist_nerve_pain
+            delete newHealth.wrist_nerve_pain
+          }
+          if (health.gut != null && body.gut == null) {
+            newBody.gut = health.gut
+            delete newHealth.gut
+          }
+          if (health.gut_symptoms != null && body.gut_symptoms == null) {
+            newBody.gut_symptoms = health.gut_symptoms
+            delete newHealth.gut_symptoms
+          }
+          next[date] = { ...day, health: newHealth, body: newBody }
+          changed = true
+        } else {
+          next[date] = day
+        }
+      }
+      return changed ? next : prev
+    })
   }, []) // eslint-disable-line
 
   useEffect(() => {
@@ -860,14 +917,19 @@ export default function LifeModules({ mobile } = {}) {
           <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
             const iso      = d.toISOString().slice(0, 10)
-            const bodyData = logs[iso]?.body ?? {}
+            const rawBody  = logs[iso]?.body ?? {}
+            const rawHealth = logs[iso]?.health ?? {}
+            // Read-time fallback: if wrist/gut still in health (pre-migration), use it
+            const bodyData = {
+              ...rawBody,
+              wrist_nerve_pain: rawBody.wrist_nerve_pain ?? rawHealth.wrist_nerve_pain ?? undefined,
+              gut:              rawBody.gut              ?? rawHealth.gut              ?? undefined,
+              gut_symptoms:     rawBody.gut_symptoms     ?? rawHealth.gut_symptoms     ?? undefined,
+            }
             const period   = bodyData.period ?? !!logs[iso]?.period  // backward compat
-            const illness  = bodyData.illness
             const { value: kg, isStale: kgStale } = lastKnownWeight(iso)
-            const bg       = illness && illness !== 'None' ? '#fee2e2'
-              : period ? '#fce7f3'
-              : kg != null ? '#f1f5f9'
-              : null
+            const s        = bodyScore(bodyData)
+            const bg       = s != null ? scoreToSummary(s).bg : (kg != null ? '#f1f5f9' : null)
             const open     = activeCell?.moduleKey === 'body' && activeCell?.date === iso
             const isFuture = iso > todayIso
             const fmtKg    = kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null
@@ -898,11 +960,17 @@ export default function LifeModules({ mobile } = {}) {
           })}
         </div>
         {mobile && (() => {
-          const bodyData = logs[todayIso]?.body ?? {}
+          const rawBodyT  = logs[todayIso]?.body ?? {}
+          const rawHealthT = logs[todayIso]?.health ?? {}
+          const bodyData  = {
+            ...rawBodyT,
+            wrist_nerve_pain: rawBodyT.wrist_nerve_pain ?? rawHealthT.wrist_nerve_pain ?? undefined,
+            gut:              rawBodyT.gut              ?? rawHealthT.gut              ?? undefined,
+          }
           const period   = bodyData.period ?? !!logs[todayIso]?.period
-          const illness  = bodyData.illness
           const { value: kgT, isStale: kgStaleT } = lastKnownWeight(todayIso)
-          const bg       = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kgT != null ? '#f1f5f9' : null
+          const sT       = bodyScore(bodyData)
+          const bg       = sT != null ? scoreToSummary(sT).bg : (kgT != null ? '#f1f5f9' : null)
           const open     = activeCell?.moduleKey === 'body' && activeCell?.date === todayIso
           const fmtKgT   = kgT != null ? (kgT % 1 === 0 ? String(kgT) : kgT.toFixed(1)) : null
           const yBodyT   = yesterdayBody(todayIso)
@@ -1393,4 +1461,4 @@ function PopoverField({ field, value, stale, onSet }) {
   return null
 }
 
-export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyScore, scoreToSummary, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }

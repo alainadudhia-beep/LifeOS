@@ -12,10 +12,16 @@ mood.adhd_meds: "None" | "5mg" | "7.5mg" | "10mg" | null
 mood.melatonin: true | false | null
 health.eczema: "None" | "Low" | "Med" | "Bad" | null
 health.eczema_location: array from ["Eyes","Under mouth","Neck","Back of neck","Scalp","Forehead","Chin"] - only if eczema mentioned
+health.episcleritis: "None" | "Low" | "Med" | "Bad" | null
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.antihistamines: "None" | "1" | "2" | "3" | null
 health.dryness: array from ["Eyes","Skin","Lips"] - only if dry/dehydrated symptoms mentioned
 health.steroid_cream: true | false | null
+body.knee_pain: "None" | "Low" | "Med" | "Bad" | null
+body.wrist_nerve_pain: "None" | "Low" | "Med" | "Bad" | null
+body.gut: "None" | "Low" | "Med" | "Bad" | null
+body.gut_symptoms: array from ["Bloating","Cramps","Diarrhoea"] - only if gut symptoms mentioned
+body.note: string | null - free-text note about body/physical symptoms
 diet.sugar: "None" | "Low" | "Med" | "High" | null
 diet.protein: "Low" | "Med" | "High" | null
 diet.fruit_veg: "1" | "2" | "3" | "4" | "5" | "6+" | null (individual portions as string)
@@ -90,6 +96,10 @@ Mapping guidance:
 - dry/gritty/irritated eyes without hayfever context → health.dryness: ["Eyes"]
 - mentions applying steroid cream / hydrocortisone → health.steroid_cream: true
 - mentions specific foods eaten → populate diet.note with a brief summary
+- mentions gut/stomach issues (bloating, cramps, upset stomach) → body.gut: "Low"/"Med"/"Bad" and body.gut_symptoms as appropriate
+- mentions wrist pain or nerve pain in wrist → body.wrist_nerve_pain
+- mentions knee pain → body.knee_pain
+- mentions eye inflammation / episcleritis / red eye (not hayfever) → health.episcleritis
 
 If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.
 

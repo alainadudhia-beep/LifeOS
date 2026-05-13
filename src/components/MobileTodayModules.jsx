@@ -3,14 +3,14 @@ import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import {
   MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField,
-  EXERCISE_MODULE, BODY_MODULE,
+  EXERCISE_MODULE, BODY_MODULE, bodyScore, scoreToSummary,
   sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins,
 } from './LifeModules'
 import './LifeModules.css'
 import './MobileTodayModules.css'
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
-const WATER_CYCLE = [1, 2, 3, 4, 5, 6, 7, '8+', null]
+const WATER_CYCLE = ['1', '2', '3', '4', '5', '6', '7', '8+', null]
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -138,7 +138,14 @@ export default function MobileTodayModules() {
 
   // ── Body ──────────────────────────────────────────────────────────────────
 
-  const bodyData = todayLog.body ?? {}
+  const rawBodyM   = todayLog.body   ?? {}
+  const rawHealthM = todayLog.health ?? {}
+  // Read-time fallback for pre-migration data
+  const bodyData   = {
+    ...rawBodyM,
+    wrist_nerve_pain: rawBodyM.wrist_nerve_pain ?? rawHealthM.wrist_nerve_pain ?? undefined,
+    gut:              rawBodyM.gut              ?? rawHealthM.gut              ?? undefined,
+  }
   const period   = bodyData.period ?? !!todayLog.period
   const illness  = bodyData.illness
   const { kg, kgStaleM } = (() => {
@@ -153,7 +160,8 @@ export default function MobileTodayModules() {
   const yBodyM     = (() => { const d = new Date(today); d.setDate(d.getDate() - 1); return logs[d.toISOString().slice(0, 10)]?.body ?? {} })()
   const pillFwd    = bodyData.pill   != null ? bodyData.pill   : yBodyM.pill   ?? null
   const periodFwdM = bodyData.period != null ? bodyData.period : yBodyM.period ?? null
-  const bodyBg     = illness && illness !== 'None' ? '#fee2e2' : period ? '#fce7f3' : kg != null ? '#f1f5f9' : null
+  const bodySc     = bodyScore(bodyData)
+  const bodyBg     = bodySc != null ? scoreToSummary(bodySc).bg : null
   const bodyLabel  = period ? 'Period' : illness && illness !== 'None' ? illness : null
 
   // ── Exercise ──────────────────────────────────────────────────────────────

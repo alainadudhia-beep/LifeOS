@@ -22,6 +22,7 @@ const PHASE_UNION = {
   health:   new Set(['eczema_location', 'dryness']),
   mood:     new Set(['symptoms']),
   exercise: new Set(['activities']),
+  body:     new Set(['gut_symptoms']),
 }
 
 const PHASE_FIRST_MENTION = {
@@ -184,7 +185,7 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
     ]
   }
 
-  const moduleKeys = ['mood', 'health', 'diet', 'alcohol', 'water', 'exercise', 'sleep', 'social']
+  const moduleKeys = ['mood', 'health', 'body', 'diet', 'alcohol', 'water', 'exercise', 'sleep', 'social']
   for (const key of moduleKeys) {
     if (parsed[key]) {
       todayLog[key] = mergeModule(todayLog[key] ?? {}, parsed[key], key)
