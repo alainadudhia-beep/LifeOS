@@ -953,7 +953,10 @@ export default function LifeModules({ mobile } = {}) {
                 style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
                 onClick={isFuture ? undefined : e => handleCellClick(e, 'body', iso)}
               >
-                {period && <span className="lm-period-dot" />}
+                {period
+                  ? <span className="lm-period-dot" />
+                  : r?.label && <span className="lm-cell-label">{r.label}</span>
+                }
                 {open && (
                   <Popover
                     ref={popoverRef}
@@ -993,7 +996,10 @@ export default function LifeModules({ mobile } = {}) {
                 style={{ left: 1, width: dayW - 2, background: bg || undefined }}
                 onClick={e => handleCellClick(e, 'body', todayIso)}
               >
-                {period && <span className="lm-period-dot" />}
+                {period
+                  ? <span className="lm-period-dot" />
+                  : rT?.label && <span className="lm-cell-label">{rT.label}</span>
+                }
                 {open && (
                   <Popover
                     ref={popoverRef}
