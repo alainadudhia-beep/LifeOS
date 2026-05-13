@@ -515,7 +515,6 @@ const Insights = forwardRef(function Insights(_, ref) {
       const res  = await fetch('/api/refresh-insights', { method: 'POST' })
       const data = await res.json()
       if (data.insights?.length) {
-        // Reuse the existing addInsights logic via the imperative handle path
         setItems(prev => {
           const today = new Date().toISOString().slice(0, 10)
           const kept  = prev.filter(it => it.type !== 'claude' || (it.created_at ?? '').slice(0, 10) !== today)

@@ -10,6 +10,7 @@ const LIFE_LOGS_KEY   = 'lifetracker-life-logs'
 const TRACKS_KEY      = 'lifetracker-tracks-v3'
 const WEATHER_KEY     = 'lifetracker-weather'
 const INSIGHTS_KEY    = 'lifetracker-insights'
+const FITBIT_RAW_KEY  = 'lifetracker-fitbit-raw'
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
@@ -30,7 +31,6 @@ Quality rules — what makes a good insight:
 - Compare today's values to the user's personal baseline averages (provided in context). "Sleep was 5hrs (your average is 7.1hrs)" is useful. "You slept 5hrs" is not.
 - Note deviations from baseline, not just absolute values.
 - Forward-looking: if tomorrow's environment forecast shows High pollen or Strong wind, warn the user tonight so they can pre-empt (take antihistamine, prepare).
-- Patterns across multiple days are more valuable than single-day facts.
 - Generate 3–6 insights. Fewer good ones beat many mediocre ones.
 
 What NOT to include:
