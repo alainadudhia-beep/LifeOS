@@ -94,14 +94,14 @@ function categoricalRating(severityValues) {
   }
   // Bad:   2+ Med OR any Bad
   if (bads >= 1 || meds >= 2)                               return { label: 'Bad',   bg: '#fee2e2' }
-  // Poor:  1 Med + at least 1 Low (other things are dragging too)
+  // Poor:  1 Med + at least 1 Low
   if (meds === 1 && lows >= 1)                              return { label: 'Poor',  bg: '#fde8c8' }
-  // Fair:  all Low (no None) — uniformly mildly off
-  //        OR 1 Med but everything else is None — one moderate thing, otherwise clean
-  if ((lows > 0 && nones === 0 && meds === 0) ||
+  // Fair:  2–3 Lows, rest None (no Med/Bad)
+  //        OR 1 Med but everything else is None
+  if ((lows >= 2 && meds === 0 && bads === 0) ||
       (meds === 1 && lows === 0 && nones > 0))              return { label: 'Fair',  bg: '#fef9c3' }
-  // Good:  mix of Low + None, no Med/Bad
-  if (lows >= 1 && nones >= 1)                              return { label: 'Good',  bg: '#dcfce7' }
+  // Good:  exactly 1 Low, rest None, no Med/Bad
+  if (lows === 1 && meds === 0 && bads === 0 && nones >= 1) return { label: 'Good',  bg: '#dcfce7' }
   // Great: all None
   if (nones > 0)                                            return { label: 'Great', bg: '#86efac' }
   return null
@@ -224,24 +224,24 @@ const MODULES = [
     cellColor: d => {
       const v = d?.glasses
       if (v == null) return null
-      const n = v === '8+' ? 8 : typeof v === 'number' ? v : parseInt(v)
+      const n = v === '7+' || v === '8+' ? 7 : typeof v === 'number' ? v : parseInt(v)
       if (!isNaN(n)) {
         if (n === 0) return '#f1f5f9'
-        if (n <= 2) return '#fee2e2'
+        if (n <= 2)  return '#fee2e2'
         if (n === 3) return '#fde8c8'
-        if (n <= 5) return '#fef9c3'
-        if (n === 6) return '#dcfce7'
-        if (n === 7) return '#bbf7d0'
-        return '#86efac'
+        if (n === 4) return '#fef9c3'
+        if (n === 5) return '#bbf7d0'
+        if (n === 6) return '#86efac'
+        return '#4ade80'  // 7+
       }
       // backward compat for old bucket strings
-      return { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#bbf7d0' }[v] ?? null
+      return { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#4ade80', '8+': '#4ade80' }[v] ?? null
     },
     cellLabel: d => d?.glasses != null ? String(d.glasses) : null,
     fields: [
       { key: 'glasses', label: 'Glasses', type: 'options',
-        options: ['0','1','2','3','4','5','6','7','8+'],
-        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fde8c8', '4': '#fef9c3', '5': '#fef9c3', '6': '#dcfce7', '7': '#bbf7d0', '8+': '#86efac' },
+        options: ['0','1','2','3','4','5','6','7+'],
+        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fde8c8', '4': '#fef9c3', '5': '#bbf7d0', '6': '#86efac', '7+': '#4ade80' },
       },
     ],
   },
