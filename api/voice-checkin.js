@@ -7,6 +7,7 @@ const supabase = createClient(
 
 const LIFE_LOGS_KEY = 'lifetracker-life-logs'
 const TRACKS_KEY    = 'lifetracker-tracks-v3'
+const WEATHER_KEY   = 'lifetracker-weather'
 
 // ── System prompt (keep in sync with parseTranscript.js) ─────────────────────
 
@@ -206,8 +207,26 @@ function mergeModule(existing, parsed, moduleKey) {
 
 // ── Context builder (server-side; reads from Supabase data) ──────────────────
 
-function buildContext(today, logs, tracksArr) {
+function formatWeatherContext(w) {
+  if (!w) return null
+  const parts = []
+  if (w.location)           parts.push(`Location: ${w.location}`)
+  if (w.temp_max != null)   parts.push(`${Math.round(w.temp_max)}°C max / ${Math.round(w.temp_min)}°C min`)
+  if (w.precipitation_mm != null) parts.push(`rain: ${w.precipitation_mm}mm`)
+  if (w.wind_speed_max != null)   parts.push(`wind: ${Math.round(w.wind_speed_max)} km/h`)
+  if (w.uv_index != null)   parts.push(`UV: ${w.uv_index.toFixed(1)}`)
+  if (w.grass_pollen_label) parts.push(`grass pollen: ${w.grass_pollen_label}`)
+  if (w.birch_pollen_label && w.birch_pollen > 0) parts.push(`birch pollen: ${w.birch_pollen_label}`)
+  if (w.aqi_label)          parts.push(`AQI: ${w.aqi_label}`)
+  return parts.join(', ')
+}
+
+function buildContext(today, logs, tracksArr, weatherStore = {}) {
   const lines = []
+
+  // Today's weather
+  const todayWeather = formatWeatherContext(weatherStore[today])
+  if (todayWeather) lines.push(`Today's environment: ${todayWeather}`)
 
   const todayLog = logs[today]
   if (todayLog) {
@@ -419,21 +438,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'transcript required' })
   }
 
-  // Read logs, tracks, and insights in parallel
-  const [logsRow, tracksRow, insightsRow] = await Promise.all([
+  // Read logs, tracks, insights, and weather in parallel
+  const [logsRow, tracksRow, insightsRow, weatherRow] = await Promise.all([
     supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', userId).single(),
     supabase.from('user_data').select('value').eq('key', TRACKS_KEY).eq('user_id', userId).single(),
     supabase.from('user_data').select('value').eq('key', 'lifetracker-insights').eq('user_id', userId).single(),
+    supabase.from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', userId).single(),
   ])
 
-  const logs         = logsRow.data?.value ?? {}
-  const tracksRaw    = tracksRow.data?.value ?? {}
-  const tracksArr    = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
+  const logs          = logsRow.data?.value ?? {}
+  const tracksRaw     = tracksRow.data?.value ?? {}
+  const tracksArr     = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
   const insightsStore = insightsRow.data?.value ?? {}
+  const weatherStore  = weatherRow.data?.value ?? {}
 
-  const trackNames    = tracksArr.map(t => t.name).filter(Boolean)
+  const trackNames     = tracksArr.map(t => t.name).filter(Boolean)
   const dynamicContext = (trackNames.length ? `\n\nKnown career tracks: ${trackNames.join(', ')}` : '')
-    + buildContext(date, logs, tracksArr)
+    + buildContext(date, logs, tracksArr, weatherStore)
 
   // Parse transcript with Claude (static system prompt is cached server-side)
   let parsed
@@ -497,14 +518,24 @@ export default async function handler(req, res) {
   ]
 
   if (parsed.insights?.length) {
-    insightsStore[today] = {
-      items:        parsed.insights,
-      daily_win:    parsed.daily_win ?? null,
-      generated_at: new Date().toISOString(),
-    }
+    // Client stores insights as a flat array of items with type/id/created_at.
+    // Read existing array, purge stale claude items from today, append new ones.
+    const existingItems = Array.isArray(insightsStore) ? insightsStore : []
+    const todayStr      = new Date().toISOString().slice(0, 10)
+    const kept          = existingItems.filter(it => it.type !== 'claude' || (it.created_at ?? '').slice(0, 10) !== todayStr)
+    const newItems      = parsed.insights.map(ins => ({
+      id:           `ins-claude-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      type:         'claude',
+      text:         ins.text.replace(/—/g, '-').trim(),
+      positive:     ins.positive  ?? false,
+      actionable:   ins.actionable ?? false,
+      completed:    false,
+      completed_at: null,
+      created_at:   new Date().toISOString(),
+    }))
     writes.push(
       supabase.from('user_data').upsert(
-        { key: 'lifetracker-insights', user_id: userId, value: insightsStore, updated_at: new Date().toISOString() },
+        { key: 'lifetracker-insights', user_id: userId, value: [...kept, ...newItems], updated_at: new Date().toISOString() },
         { onConflict: 'key,user_id' }
       )
     )

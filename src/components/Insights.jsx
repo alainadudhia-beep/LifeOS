@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { dbWrite } from '../lib/db'
 import './Insights.css'
 
@@ -206,6 +206,7 @@ function completionLabel(trackName, status) {
 const Insights = forwardRef(function Insights(_, ref) {
   const [items, setItemsRaw] = useState(loadInsights)
   const [autoInsights, setAutoInsights] = useState([])
+  const [refreshing, setRefreshing] = useState(false)
 
   function setItems(fn) {
     setItemsRaw(prev => {
@@ -507,8 +508,47 @@ const Insights = forwardRef(function Insights(_, ref) {
 
   const isEmpty = workItems.length === 0 && lifeItems.length === 0
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    try {
+      const res  = await fetch('/api/refresh-insights', { method: 'POST' })
+      const data = await res.json()
+      if (data.insights?.length) {
+        // Reuse the existing addInsights logic via the imperative handle path
+        setItems(prev => {
+          const today = new Date().toISOString().slice(0, 10)
+          const kept  = prev.filter(it => it.type !== 'claude' || (it.created_at ?? '').slice(0, 10) !== today)
+          const fresh = data.insights.map(ins => ({
+            id:           `ins-claude-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            type:         'claude',
+            text:         ins.text.replace(/—/g, '-').trim(),
+            positive:     ins.positive   ?? false,
+            actionable:   ins.actionable ?? false,
+            completed:    false,
+            completed_at: null,
+            created_at:   new Date().toISOString(),
+          }))
+          return [...kept, ...fresh]
+        })
+      }
+    } catch (err) {
+      console.error('[Insights] refresh failed', err)
+    } finally {
+      setRefreshing(false)
+    }
+  }, [refreshing])
+
   return (
     <div className="ins-panel">
+      <div className="ins-header">
+        <button
+          className={`ins-refresh-btn${refreshing ? ' ins-refresh-btn--spinning' : ''}`}
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh insights"
+        >↻</button>
+      </div>
       <Section title="Work Summary" items={workItems}  onDismiss={id => dismiss(id)} />
       <Section title="Life Summary" items={lifeItems}  onDismiss={id => dismiss(id)} />
       {isEmpty && <p className="ins-empty">Log a check-in to get insights</p>}

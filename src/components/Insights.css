@@ -116,3 +116,35 @@
 .ins-dismiss:hover {
   color: #94a3b8;
 }
+
+.ins-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 4px 0;
+}
+
+.ins-refresh-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.ins-refresh-btn:hover {
+  color: #64748b;
+}
+
+.ins-refresh-btn--spinning {
+  animation: ins-spin 1s linear infinite;
+  color: #64748b;
+}
+
+@keyframes ins-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
