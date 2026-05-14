@@ -248,7 +248,11 @@ export default function Trends() {
           setFindings(
             bestLagFindings(data.findings)
               .filter(f => f.effect_size >= MIN_EFFECT_SIZE && f.n >= MIN_N)
-              .filter(f => !(HIGHER_IS_BAD.has(f.effect_id) && f.lag === 0))
+              .filter(f => {
+                if (!HIGHER_IS_BAD.has(f.effect_id) || f.lag !== 0) return true
+                // Allow same-day for hayfever/eczema driven by environment (pollen, wind)
+                return f.cause_group === 'environment' && (f.effect_id === 'hayfever' || f.effect_id === 'eczema')
+              })
           )
           setComputedAt(data.computed_at)
           setNDays(data.n_days)
