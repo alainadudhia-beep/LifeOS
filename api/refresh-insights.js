@@ -5,12 +5,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const USER_ID         = process.env.HEALTH_IMPORT_USER_ID
-const LIFE_LOGS_KEY   = 'lifetracker-life-logs'
-const TRACKS_KEY      = 'lifetracker-tracks-v3'
-const WEATHER_KEY     = 'lifetracker-weather'
-const INSIGHTS_KEY    = 'lifetracker-insights'
-const FITBIT_RAW_KEY  = 'lifetracker-fitbit-raw'
+const USER_ID            = process.env.HEALTH_IMPORT_USER_ID
+const LIFE_LOGS_KEY      = 'lifetracker-life-logs'
+const TRACKS_KEY         = 'lifetracker-tracks-v3'
+const WEATHER_KEY        = 'lifetracker-weather'
+const INSIGHTS_KEY       = 'lifetracker-insights'
+const FITBIT_RAW_KEY     = 'lifetracker-fitbit-raw'
+const COMMITMENTS_KEY    = 'lifetracker-commitments'
+const TRENDS_KEY         = 'lifetracker-trends'
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
@@ -129,7 +131,67 @@ function computeBaselines(today, logs, days = 14) {
   }
 }
 
-function buildInsightContext(today, logs, tracksArr, weatherStore) {
+// ── Trends helpers ────────────────────────────────────────────────────────────
+
+const HIGHER_IS_BAD_IDS = new Set([
+  'eczema', 'hayfever', 'gut', 'nerve_pain', 'knee_pain',
+  'episcleritis', 'dryness', 'bloating', 'cramps', 'diarrhoea', 'brain_fog', 'headache',
+])
+
+function trendSentence(f) {
+  const higherIsBad = HIGHER_IS_BAD_IDS.has(f.effect_id)
+  const label = f.effect_label ?? f.effect_id
+  const lag = f.lag === 0 ? 'same day' : f.lag === 1 ? 'next day' : `${f.lag}d later`
+  if (f.type === 'binary') {
+    const worse = (f.direction === 'higher_with' && higherIsBad) || (f.direction === 'lower_with' && !higherIsBad)
+    return `${f.cause_label} → ${worse ? 'worse' : 'better'} ${label} (${lag})`
+  }
+  if (f.type === 'continuous') {
+    const isBeneficial = (f.direction === 'positive' && !higherIsBad) || (f.direction === 'negative' && higherIsBad)
+    return `Higher ${f.cause_label.toLowerCase()} → ${isBeneficial ? 'better' : 'worse'} ${label} (${lag}, r=${f.pearson_r})`
+  }
+  return null
+}
+
+function buildTrendsContext(trendsData) {
+  const findings = trendsData?.findings
+  if (!findings?.length) return null
+  const map = new Map()
+  for (const f of findings) {
+    if (f.effect_size < 0.4 || f.n < 14) continue
+    if (HIGHER_IS_BAD_IDS.has(f.effect_id) && f.lag === 0) continue
+    const key = `${f.cause_id}::${f.effect_id}`
+    if (!map.has(key) || f.effect_size > map.get(key).effect_size) map.set(key, f)
+  }
+  const best = [...map.values()].sort((a, b) => b.effect_size - a.effect_size).slice(0, 12)
+  if (!best.length) return null
+  return best.map(trendSentence).filter(Boolean).join('\n  ')
+}
+
+// ── Commitments helpers ───────────────────────────────────────────────────────
+
+function buildCommitmentsContext(commitments, today) {
+  if (!commitments?.length) return null
+  const past = new Date(today); past.setDate(past.getDate() - 7)
+  const future = new Date(today); future.setDate(future.getDate() + 21)
+  const pastIso   = past.toISOString().slice(0, 10)
+  const futureIso = future.toISOString().slice(0, 10)
+  const relevant = commitments
+    .filter(c => c.end_date >= pastIso && c.start_date <= futureIso)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date))
+  if (!relevant.length) return null
+  return relevant.map(c => {
+    const isActive   = c.start_date <= today && c.end_date >= today
+    const isUpcoming = c.start_date > today
+    const status     = isActive ? 'NOW' : isUpcoming ? 'upcoming' : 'just ended'
+    const loc        = c.location ? `, ${c.location}` : ''
+    return `  - "${c.name}" (${fmtDate(c.start_date)}–${fmtDate(c.end_date)}${loc}) [${status}]`
+  }).join('\n')
+}
+
+// ── Context builder ───────────────────────────────────────────────────────────
+
+function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, trendsData) {
   const lines = []
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -252,6 +314,20 @@ function buildInsightContext(today, logs, tracksArr, weatherStore) {
     lines.push(...recentLines)
   }
 
+  // Commitments (trips, events) — gives context for unusual eating/drinking patterns
+  const commitmentsCtx = buildCommitmentsContext(commitments, today)
+  if (commitmentsCtx) {
+    lines.push('\nCommitments / trips (context for behaviour patterns):')
+    lines.push(commitmentsCtx)
+  }
+
+  // Known personal patterns from correlation analysis (high confidence only)
+  const trendsCtx = buildTrendsContext(trendsData)
+  if (trendsCtx) {
+    lines.push('\nKnown personal patterns (from data analysis, use to personalise nudges):')
+    lines.push('  ' + trendsCtx)
+  }
+
   // Career decision deadline
   const septWeeks = Math.ceil((new Date('2026-09-01') - new Date(today)) / (7 * 86400000))
   lines.push(`\nKey career decision deadline: 1st September 2026 (${septWeeks} weeks away)`)
@@ -341,19 +417,23 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().slice(0, 10)
 
     // Read all data in parallel
-    const [logsRow, tracksRow, weatherRow, insightsRow] = await Promise.all([
+    const [logsRow, tracksRow, weatherRow, insightsRow, commitmentsRow, trendsRow] = await Promise.all([
       supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', TRACKS_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', INSIGHTS_KEY).eq('user_id', USER_ID).single(),
+      supabase.from('user_data').select('value').eq('key', COMMITMENTS_KEY).eq('user_id', USER_ID).single(),
+      supabase.from('user_data').select('value').eq('key', TRENDS_KEY).eq('user_id', USER_ID).single(),
     ])
 
-    const logs         = logsRow.data?.value    ?? {}
-    const tracksRaw    = tracksRow.data?.value  ?? {}
+    const logs         = logsRow.data?.value         ?? {}
+    const tracksRaw    = tracksRow.data?.value        ?? {}
     const tracksArr    = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
-    const weatherStore = weatherRow.data?.value ?? {}
+    const weatherStore = weatherRow.data?.value       ?? {}
+    const commitments  = commitmentsRow.data?.value   ?? []
+    const trendsData   = trendsRow.data?.value        ?? null
 
-    const context = buildInsightContext(today, logs, tracksArr, weatherStore)
+    const context = buildInsightContext(today, logs, tracksArr, weatherStore, commitments, trendsData)
     const parsed  = await callClaude(context)
 
     if (!parsed.insights?.length) {
