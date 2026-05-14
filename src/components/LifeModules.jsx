@@ -9,7 +9,7 @@ import './LifeModules.css'
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
 // Sleep: red / orange / yellow / light-green / green / dark-green  (<5 / 5-6 / 6-7 / 7-8 / 8-9 / 9+)
-const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#bbf7d0', '8': '#86efac', '9+': '#86efac' }
+const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#dcfce7', '8': '#bbf7d0', '9+': '#86efac' }
 const SEVERITY_COLORS = { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' }
 const EXERCISE_SHORT  = { 'Yoga': 'Yoga', 'Pilates': 'Pilates', 'Long walk': 'Walk', 'Gym': 'Gym' }
 const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7490', 'Gym': '#1e40af' }
@@ -20,8 +20,9 @@ const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7
 function sleepColorFromFitbit(sleepMin) {
   if (sleepMin == null || sleepMin > 960) return null
   const hrs = sleepMin / 60
-  return hrs >= 8 ? '#86efac'
-    : hrs >= 7 ? '#bbf7d0'
+  return hrs >= 9 ? '#86efac'
+    : hrs >= 8 ? '#bbf7d0'
+    : hrs >= 7 ? '#dcfce7'
     : hrs >= 6 ? '#fef9c3'
     : hrs >= 5 ? '#fde8c8'
     : '#fee2e2'
