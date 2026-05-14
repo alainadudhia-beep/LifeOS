@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbWrite } from '../lib/db'
+import { dbWrite, dbRead } from '../lib/db'
 import './Trends.css'
 
 // ── Effect group definitions ──────────────────────────────────────────────────
@@ -225,7 +225,11 @@ function loadHidden() {
   try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY)) ?? []) } catch { return new Set() }
 }
 function saveHidden(set) {
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...set])) } catch {}
+  try {
+    const arr = [...set]
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr))
+    dbWrite(HIDDEN_KEY, arr).catch(() => {})
+  } catch {}
 }
 
 const FEEDBACK_KEY = 'lifetracker-trends-feedback'
@@ -258,7 +262,11 @@ export default function Trends() {
   useEffect(() => {
     async function load() {
       try {
-        const res  = await fetch('/api/trends')
+        const [res, hiddenRemote, feedbackRemote] = await Promise.all([
+          fetch('/api/trends'),
+          dbRead(HIDDEN_KEY),
+          dbRead(FEEDBACK_KEY),
+        ])
         const data = await res.json()
         if (data.findings?.length) {
           setFindings(
@@ -272,6 +280,16 @@ export default function Trends() {
           )
           setComputedAt(data.computed_at)
           setNDays(data.n_days)
+        }
+        if (hiddenRemote) {
+          const s = new Set(hiddenRemote)
+          setHidden(s)
+          localStorage.setItem(HIDDEN_KEY, JSON.stringify([...s]))
+        }
+        if (feedbackRemote) {
+          const m = new Map(Object.entries(feedbackRemote))
+          setFeedback(m)
+          localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedbackRemote))
         }
       } catch (err) {
         console.error('[Trends] load failed', err)
