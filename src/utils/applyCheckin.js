@@ -90,7 +90,7 @@ const ADDITIVE_MAPS = {
 
 const ADDITIVE_REVERSE = {
   fruit_veg: n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
-  glasses:   n => n >= 7 ? '7+' : n <= 0 ? '0' : String(Math.round(n)),
+  glasses:   n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
   level:     n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
   sugar:     n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',

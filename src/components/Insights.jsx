@@ -104,7 +104,7 @@ function computeAutoInsights(logs) {
   // Water
   const waterDays = logged.filter(d => d.log.water?.glasses)
   if (waterDays.length >= 3) {
-    const high = waterDays.filter(d => d.log.water?.glasses === '7+')
+    const high = waterDays.filter(d => { const g = d.log.water?.glasses; return g === '7' || g === '8+' })
     const low  = waterDays.filter(d => d.log.water?.glasses === '<3')
     if (high.length >= 3)
       out.push({ id: 'auto-water-good', positive: true,  text: `Hydration - staying well hydrated, 7+ glasses most days` })
