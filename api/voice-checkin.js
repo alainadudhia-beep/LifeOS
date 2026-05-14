@@ -17,16 +17,22 @@ IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes 
 
 Use exactly these field values:
 
-mood fields (work, life, focus): integer 1–5, or null
+mood fields (work, life, focus, energy): integer 1–5, or null
 mood.symptoms: array from ["Fatigue","Brain fog","Anxious","Headache"] - only include if mentioned
 mood.adhd_meds: "None" | "5mg" | "7.5mg" | "10mg" | null
 mood.melatonin: true | false | null
 health.eczema: "None" | "Low" | "Med" | "Bad" | null
 health.eczema_location: array from ["Eyes","Under mouth","Neck","Back of neck","Scalp","Forehead","Chin"] - only if eczema mentioned
+health.episcleritis: "None" | "Low" | "Med" | "Bad" | null - eye inflammation (not hayfever-related; red/inflamed eye)
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.antihistamines: "None" | "1" | "2" | "3" | null
 health.dryness: array from ["Eyes","Skin","Lips"] - only if dry/dehydrated symptoms mentioned
 health.steroid_cream: true | false | null
+body.gut: "None" | "Low" | "Med" | "Bad" | null
+body.gut_symptoms: array from ["Bloating","Cramps","Diarrhoea"] - only if gut symptoms mentioned
+body.wrist_nerve_pain: "None" | "Low" | "Med" | "Bad" | null
+body.knee_pain: "None" | "Low" | "Med" | "Bad" | null
+body.note: string | null - free-text note about physical symptoms
 diet.sugar: "None" | "Low" | "Med" | "High" | null
 diet.protein: "Low" | "Med" | "High" | null
 diet.fruit_veg: "1" | "2" | "3" | "4" | "5" | "6+" | null (individual portions as string)
@@ -38,7 +44,7 @@ diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitam
 diet.note: string | null - free-text note of specific foods eaten (e.g. "salmon and veg for dinner, granola for breakfast")
 alcohol.level: "None" | "1" | "2" | "3" | "4" | "5+" | null (number of drinks as string)
 alcohol.type: array from ["Wine","Beer","Spirits"]
-water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8+" | null (exact number of glasses as string)
+water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7+" | null (exact number of glasses as string; 7 or more → "7+")
 exercise.activities: array from ["Yoga","Pilates","Long walk","Gym"]
 exercise.steps: integer | null (step count; "10k steps" → 10000)
 sleep.hours: "<5" | "5" | "6" | "7" | "8" | "9+" | null
@@ -92,7 +98,7 @@ Mapping guidance:
 - "took an antihistamine" / "took a Claritin" → health.antihistamines: "1"
 - itchy eyes/throat/nose with pollen context → health.hayfever: "Low" or "Med" as appropriate
 - "no alcohol" / "sober" / "didn't drink" → alcohol.level: "None"
-- "loads of water" / "really hydrated" → water.glasses: "8+"
+- "loads of water" / "really hydrated" → water.glasses: "7+"
 - "skipped breakfast" / "not much food" → diet.snacking: "Low", diet.carbs: "Low" as inferences
 - "2 matchas" / "a matcha" → diet.caffeine: "1" (matcha = 0.5 caffeine units; 2 matchas = 1)
 - "all my supplements" / "all of them" (re: supplements) → diet.supplements: all 7 options
@@ -102,6 +108,10 @@ Mapping guidance:
 - dry/gritty/irritated eyes without hayfever context → health.dryness: ["Eyes"]
 - mentions applying steroid cream / hydrocortisone → health.steroid_cream: true
 - mentions specific foods eaten → populate diet.note with a brief summary
+- mentions gut/stomach issues (bloating, cramps, upset stomach) → body.gut: "Low"/"Med"/"Bad" and body.gut_symptoms as appropriate
+- mentions wrist pain or nerve pain in wrist → body.wrist_nerve_pain
+- mentions knee pain → body.knee_pain
+- mentions eye inflammation / episcleritis / red eye (not hayfever) → health.episcleritis
 
 If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.
 
@@ -485,7 +495,7 @@ export default async function handler(req, res) {
   ]
 
   // Merge life modules
-  const moduleKeys = ['mood', 'health', 'diet', 'alcohol', 'water', 'exercise', 'sleep', 'social']
+  const moduleKeys = ['mood', 'health', 'body', 'diet', 'alcohol', 'water', 'exercise', 'sleep', 'social']
   for (const key of moduleKeys) {
     if (parsed[key]) {
       todayLog[key] = mergeModule(todayLog[key] ?? {}, parsed[key], key)
@@ -646,7 +656,7 @@ export default async function handler(req, res) {
     { module: 'mood',   field: 'energy',   label: 'energy' },
     { module: 'health', field: 'eczema',   label: 'eczema' },
     { module: 'health', field: 'hayfever', label: 'hayfever' },
-    { module: 'health', field: 'gut',      label: 'gut' },
+    { module: 'body',   field: 'gut',      label: 'gut' },
     { module: 'sleep',  field: 'hours',    label: 'sleep' },
   ]
   const missingFields = IMPORTANT_FIELDS
