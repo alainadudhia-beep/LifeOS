@@ -157,12 +157,13 @@
   flex-shrink: 0;
 }
 
-.trd-finding-row:hover .trd-hide-btn {
-  opacity: 1;
-}
-
-.trd-hide-btn:hover {
-  color: #94a3b8;
+@media (hover: hover) {
+  .trd-finding-row:hover .trd-hide-btn {
+    opacity: 1;
+  }
+  .trd-hide-btn:hover {
+    color: #94a3b8;
+  }
 }
 
 /* ── Reset hidden ── */
