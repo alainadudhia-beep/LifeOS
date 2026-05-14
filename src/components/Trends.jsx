@@ -419,7 +419,7 @@ export default function Trends() {
                 <span>👎</span> Disagree
               </button>
               <button className="trd-modal-vote trd-modal-vote--unsure" onClick={() => voteFinding(selectedFinding, 'unsure')}>
-                <span>🤷</span> Not sure
+                <span>🤷‍♀️</span> Not sure
               </button>
               <button className="trd-modal-vote trd-modal-vote--agree" onClick={() => voteFinding(selectedFinding, 'agree')}>
                 <span>👍</span> Agree
@@ -440,7 +440,7 @@ function FindingRow({ f, onSelect, vote }) {
         <span className="trd-strength">{strengthDots(f.effect_size, dir)}</span>
         <FindingSentence f={f} />
         {vote === 'agree' && <span className="trd-vote-badge">👍</span>}
-        {vote === 'unsure' && <span className="trd-vote-badge trd-vote-badge--unsure">🤷</span>}
+        {vote === 'unsure' && <span className="trd-vote-badge trd-vote-badge--unsure">🤷‍♀️</span>}
         <span className="trd-chevron">›</span>
       </button>
     </div>
