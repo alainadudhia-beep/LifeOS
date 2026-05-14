@@ -230,8 +230,8 @@ const MODULES = [
         if (n <= 2)  return '#fee2e2'
         if (n === 3) return '#fde8c8'
         if (n === 4) return '#fef9c3'
-        if (n === 5) return '#bbf7d0'
-        if (n === 6) return '#86efac'
+        if (n === 5) return '#86efac'
+        if (n === 6) return '#bbf7d0'
         return '#4ade80'  // 7+
       }
       // backward compat for old bucket strings
@@ -241,7 +241,7 @@ const MODULES = [
     fields: [
       { key: 'glasses', label: 'Glasses', type: 'options',
         options: ['0','1','2','3','4','5','6','7+'],
-        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fde8c8', '4': '#fef9c3', '5': '#bbf7d0', '6': '#86efac', '7+': '#4ade80' },
+        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fde8c8', '4': '#fef9c3', '5': '#86efac', '6': '#bbf7d0', '7+': '#4ade80' },
       },
     ],
   },
