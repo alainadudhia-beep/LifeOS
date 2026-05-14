@@ -9,7 +9,7 @@ import './LifeModules.css'
 
 const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac' }
 // Sleep: red / orange / yellow / light-green / green / dark-green  (<5 / 5-6 / 6-7 / 7-8 / 8-9 / 9+)
-const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#bbf7d0', '8': '#86efac', '9+': '#4ade80' }
+const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#bbf7d0', '8': '#86efac', '9+': '#86efac' }
 const SEVERITY_COLORS = { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' }
 const EXERCISE_SHORT  = { 'Yoga': 'Yoga', 'Pilates': 'Pilates', 'Long walk': 'Walk', 'Gym': 'Gym' }
 const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7490', 'Gym': '#1e40af' }
@@ -20,8 +20,7 @@ const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7
 function sleepColorFromFitbit(sleepMin) {
   if (sleepMin == null || sleepMin > 960) return null
   const hrs = sleepMin / 60
-  return hrs >= 9 ? '#4ade80'
-    : hrs >= 8 ? '#86efac'
+  return hrs >= 8 ? '#86efac'
     : hrs >= 7 ? '#bbf7d0'
     : hrs >= 6 ? '#fef9c3'
     : hrs >= 5 ? '#fde8c8'
@@ -224,24 +223,24 @@ const MODULES = [
     cellColor: d => {
       const v = d?.glasses
       if (v == null) return null
-      const n = v === '7+' || v === '8+' ? 7 : typeof v === 'number' ? v : parseInt(v)
+      const n = v === '8+' ? 8 : typeof v === 'number' ? v : parseInt(v)
       if (!isNaN(n)) {
         if (n === 0) return '#f1f5f9'
-        if (n <= 2)  return '#fee2e2'
-        if (n === 3) return '#fde8c8'
-        if (n === 4) return '#fef9c3'
-        if (n === 5) return '#86efac'
-        if (n === 6) return '#bbf7d0'
-        return '#4ade80'  // 7+
+        if (n <= 3)  return '#fee2e2'
+        if (n === 4) return '#fde8c8'
+        if (n === 5) return '#fef9c3'
+        if (n === 6) return '#dcfce7'
+        if (n === 7) return '#bbf7d0'
+        return '#86efac'  // 8+
       }
       // backward compat for old bucket strings
-      return { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#4ade80', '8+': '#4ade80' }[v] ?? null
+      return { '<3': '#fee2e2', '4-6': '#fef9c3', '7+': '#86efac', '8+': '#86efac' }[v] ?? null
     },
     cellLabel: d => d?.glasses != null ? String(d.glasses) : null,
     fields: [
       { key: 'glasses', label: 'Glasses', type: 'options',
-        options: ['0','1','2','3','4','5','6','7+'],
-        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fde8c8', '4': '#fef9c3', '5': '#86efac', '6': '#bbf7d0', '7+': '#4ade80' },
+        options: ['0','1','2','3','4','5','6','7','8+'],
+        colors: { '0': '#f1f5f9', '1': '#fee2e2', '2': '#fee2e2', '3': '#fee2e2', '4': '#fde8c8', '5': '#fef9c3', '6': '#dcfce7', '7': '#bbf7d0', '8+': '#86efac' },
       },
     ],
   },

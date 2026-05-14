@@ -33,7 +33,7 @@ diet.supplements: array from ["Omega 3","Collagen","Turmeric","Vitamin B","Vitam
 diet.note: string | null - free-text note of specific foods eaten (e.g. "salmon and veg for dinner, granola for breakfast")
 alcohol.level: "None" | "1" | "2" | "3" | "4" | "5+" | null (number of drinks as string)
 alcohol.type: array from ["Wine","Beer","Spirits"]
-water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7+" | null (exact number of glasses as string; 7 or more → "7+")
+water.glasses: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8+" | null (exact number of glasses as string; 8 or more → "8+")
 exercise.activities: array from ["Yoga","Pilates","Long walk","Gym"]
 exercise.steps: integer | null (step count; "10k steps" → 10000)
 sleep.hours: "<5" | "5" | "6" | "7" | "8" | "9+" | null
@@ -86,7 +86,7 @@ Mapping guidance:
 - "took an antihistamine" / "took a Claritin" → health.antihistamines: "1"
 - itchy eyes/throat/nose with pollen context → health.hayfever: "Low" or "Med" as appropriate
 - "no alcohol" / "sober" / "didn't drink" → alcohol.level: "None"
-- "loads of water" / "really hydrated" → water.glasses: "7+"
+- "loads of water" / "really hydrated" → water.glasses: "8+"
 - "skipped breakfast" / "not much food" → diet.snacking: "Low", diet.carbs: "Low" as inferences
 - "2 matchas" / "a matcha" → diet.caffeine: "1" (matcha = 0.5 caffeine units; 2 matchas = 1)
 - "all my supplements" / "all of them" (re: supplements) → diet.supplements: all 7 options
