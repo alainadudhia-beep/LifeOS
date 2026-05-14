@@ -113,9 +113,7 @@ Mapping guidance:
 - mentions knee pain → body.knee_pain
 - mentions eye inflammation / episcleritis / red eye (not hayfever) → health.episcleritis
 
-If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.
-
-For this_week_suggestions: use the recent life logs and career track context (if provided) to make specific, actionable suggestions. Examples: "You haven't logged exercise since Tuesday - today could be a good day for yoga", "Capsa is marked action_required - worth prioritising today", "Sleep has been under 7hrs the last 3 days - consider an earlier bedtime". Keep each suggestion to one sentence. Do not suggest logging mood/sleep if they are already in missing_important (avoid duplicates).`
+If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.`
 
 // ── Merge logic (mirrors applyCheckin.js — no browser APIs) ──────────────────
 

@@ -6,13 +6,13 @@ IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes 
 
 Use exactly these field values:
 
-mood fields (work, life, focus): integer 1–5, or null
+mood fields (work, life, focus, energy): integer 1–5, or null
 mood.symptoms: array from ["Fatigue","Brain fog","Anxious","Headache"] - only include if mentioned
 mood.adhd_meds: "None" | "5mg" | "7.5mg" | "10mg" | null
 mood.melatonin: true | false | null
 health.eczema: "None" | "Low" | "Med" | "Bad" | null
 health.eczema_location: array from ["Eyes","Under mouth","Neck","Back of neck","Scalp","Forehead","Chin"] - only if eczema mentioned
-health.episcleritis: "None" | "Low" | "Med" | "Bad" | null
+health.episcleritis: "None" | "Low" | "Med" | "Bad" | null - eye inflammation (not hayfever-related; red/inflamed eye)
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.antihistamines: "None" | "1" | "2" | "3" | null
 health.dryness: array from ["Eyes","Skin","Lips"] - only if dry/dehydrated symptoms mentioned
@@ -76,6 +76,7 @@ insights: array of { text: string, positive: boolean, actionable: boolean }
   - do NOT make negative or guilt-inducing; frame nudges as calm observations
   - IMPORTANT: for every track in the context with status "action_required", always generate an actionable insight using the last note for context. E.g. if "PM Role at Zoe" is action_required with note "need to finish application", produce: { text: "PM Role at Zoe - still need to finish that application", positive: false, actionable: true }
   - CRITICAL: always use the EXACT track name from the career tracks context in insight text — never abbreviate, paraphrase, or invent a name
+next_time_nudge: string | null - if any important fields were missing from this check-in OR have been inconsistently logged over the past week, include one short sentence like "Worth mentioning next time: diet allergens, wrist pain." Otherwise null.
 
 Mapping guidance:
 - "4 glasses of water" → water.glasses: "4" (exact count, not a range)
@@ -101,9 +102,7 @@ Mapping guidance:
 - mentions knee pain → body.knee_pain
 - mentions eye inflammation / episcleritis / red eye (not hayfever) → health.episcleritis
 
-If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.
-
-For this_week_suggestions: use the recent life logs and career track context (if provided) to make specific, actionable suggestions. Examples: "You haven't logged exercise since Tuesday - today could be a good day for yoga", "Capsa is marked action_required - worth prioritising today", "Sleep has been under 7hrs the last 3 days - consider an earlier bedtime". Keep each suggestion to one sentence. Do not suggest logging mood/sleep if they are already in missing_important (avoid duplicates).`
+If uncertain about a value, return null rather than guess. Do not hallucinate values not implied by the transcript.`
 
 export async function parseTranscript(transcript, trackNames = [], recentContext = '') {
   if (!API_KEY) throw new Error('VITE_ANTHROPIC_API_KEY not set')
