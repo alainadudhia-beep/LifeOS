@@ -14,12 +14,11 @@ const EFFECT_GROUPS = [
   { id: 'cognitive',    label: 'Brain fog & focus',    effects: ['brain_fog', 'focus'] },
   { id: 'headache',     label: 'Headache',             effects: ['headache'] },
   { id: 'sleep',        label: 'Sleep',                effects: ['sleep'] },
-  { id: 'antihistamine',label: 'Antihistamines needed',effects: ['antihistamines'] },
 ]
 
 const HIGHER_IS_BAD = new Set([
   'eczema', 'hayfever', 'gut', 'nerve_pain', 'knee_pain',
-  'episcleritis', 'dryness', 'antihistamines',
+  'episcleritis', 'dryness',
   'bloating', 'cramps', 'diarrhoea', 'brain_fog', 'headache',
 ])
 
@@ -30,7 +29,7 @@ const EFFECT_LABELS = {
   energy: 'energy', focus: 'focus',
   work_mood: 'work mood', life_mood: 'life mood',
   brain_fog: 'brain fog', headache: 'headaches',
-  sleep: 'sleep quality', antihistamines: 'antihistamine use',
+  sleep: 'sleep quality',
   bloating: 'bloating', cramps: 'cramps', diarrhoea: 'diarrhoea',
 }
 
@@ -214,7 +213,7 @@ function bestLagFindings(findings) {
   return [...map.values()]
 }
 
-const MIN_EFFECT_SIZE = 0.15
+const MIN_EFFECT_SIZE = 0.3
 const MIN_N = 10
 
 const HIDDEN_KEY = 'lifetracker-trends-hidden'

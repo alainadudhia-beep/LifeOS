@@ -45,8 +45,6 @@ function buildEffects() {
     { id: 'knee_pain',      label: 'Knee pain',       scale: 3, getValue: l => sevOf(l, 'knee_pain') },
     { id: 'episcleritis',   label: 'Episcleritis',    scale: 3, getValue: l => sevOf(l, 'episcleritis') },
     { id: 'dryness',        label: 'Dryness',         scale: 3, getValue: l => l.health?.dryness?.length ?? null },
-    { id: 'antihistamines', label: 'Antihistamines needed', scale: 3, getValue: l => ANTI_N[l.health?.antihistamines] ?? null },
-
     // Gut symptoms (binary)
     { id: 'bloating',   label: 'Bloating',   scale: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Bloating')  ? 1 : 0) : null } },
     { id: 'cramps',     label: 'Cramps',     scale: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Cramps')    ? 1 : 0) : null } },
@@ -197,18 +195,6 @@ function buildCauses(logs, weatherStore, fitbitRaw) {
     id: 'steroid_cream', label: 'Steroid cream', group: 'meds', maxLag: 3, isBinary: true,
     getValue: log => log.health?.steroid_cream === true || log.body?.steroid_cream === true,
   })
-
-  // ── Supplements ─────────────────────────────────────────────────────────────
-  const suppSet = new Set()
-  for (const log of Object.values(logs)) {
-    for (const s of (log.diet?.supplements ?? [])) suppSet.add(s)
-  }
-  for (const sup of suppSet) {
-    causes.push({
-      id: `supplement:${sup}`, label: `${sup} supplement`, group: 'supplement', maxLag: 5, isBinary: true,
-      getValue: log => (log.diet?.supplements ?? []).includes(sup),
-    })
-  }
 
   // ── Environment ─────────────────────────────────────────────────────────────
   causes.push({
