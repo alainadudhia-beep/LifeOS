@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { dbWrite } from '../lib/db'
 import './Trends.css'
 
 // ── Effect group definitions ──────────────────────────────────────────────────
@@ -227,6 +228,20 @@ function saveHidden(set) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...set])) } catch {}
 }
 
+const FEEDBACK_KEY = 'lifetracker-trends-feedback'
+function feedbackKey(f) {
+  return `${f.cause_id}::${f.effect_id}::${findingDirection(f)}`
+}
+function loadFeedback() {
+  try { return new Map(Object.entries(JSON.parse(localStorage.getItem(FEEDBACK_KEY)) ?? {})) } catch { return new Map() }
+}
+function saveFeedback(map) {
+  try {
+    localStorage.setItem(FEEDBACK_KEY, JSON.stringify(Object.fromEntries(map)))
+    dbWrite(FEEDBACK_KEY, Object.fromEntries(map)).catch(() => {})
+  } catch {}
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Trends() {
@@ -238,6 +253,7 @@ export default function Trends() {
   const [openSubGroups, setOpenSubGroups] = useState({})
   const [selectedFinding, setSelectedFinding] = useState(null)
   const [hidden, setHidden] = useState(loadHidden)
+  const [feedback, setFeedback] = useState(loadFeedback)
 
   useEffect(() => {
     async function load() {
@@ -290,6 +306,18 @@ export default function Trends() {
   function resetHidden() {
     setHidden(new Set())
     saveHidden(new Set())
+  }
+
+  function voteFinding(f, vote) {
+    const key = feedbackKey(f)
+    setFeedback(prev => {
+      const next = new Map(prev)
+      next.set(key, vote)
+      saveFeedback(next)
+      return next
+    })
+    if (vote === 'disagree') hideFinding(f)
+    else setSelectedFinding(null)
   }
 
   const visibleFindings = findings.filter(f => !hidden.has(`${f.cause_id}::${f.effect_id}`))
@@ -359,14 +387,14 @@ export default function Trends() {
                         <span className="trd-group-arrow">{sgOpen ? '▾' : '▸'}</span>
                       </button>
                       {sgOpen && sg.findings.map(f => (
-                        <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} />
+                        <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} vote={feedback.get(feedbackKey(f))} />
                       ))}
                     </div>
                   )
                 })
               ) : (
                 group.findings.map(f => (
-                  <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} />
+                  <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} vote={feedback.get(feedbackKey(f))} />
                 ))
               )
             )}
@@ -385,9 +413,17 @@ export default function Trends() {
           <div className="trd-modal" onClick={e => e.stopPropagation()}>
             <div className="trd-modal-title">{shortSentence(selectedFinding)}</div>
             <p className="trd-modal-body">{fullExplanation(selectedFinding)}</p>
+            <div className="trd-modal-vote-label">Does this match your experience?</div>
             <div className="trd-modal-actions">
-              <button className="trd-modal-hide" onClick={() => hideFinding(selectedFinding)}>Hide this finding</button>
-              <button className="trd-modal-close" onClick={() => setSelectedFinding(null)}>Close</button>
+              <button className="trd-modal-vote trd-modal-vote--disagree" onClick={() => voteFinding(selectedFinding, 'disagree')}>
+                <span>👎</span> Disagree
+              </button>
+              <button className="trd-modal-vote trd-modal-vote--unsure" onClick={() => voteFinding(selectedFinding, 'unsure')}>
+                <span>🤷</span> Not sure
+              </button>
+              <button className="trd-modal-vote trd-modal-vote--agree" onClick={() => voteFinding(selectedFinding, 'agree')}>
+                <span>👍</span> Agree
+              </button>
             </div>
           </div>
         </div>
@@ -396,13 +432,15 @@ export default function Trends() {
   )
 }
 
-function FindingRow({ f, onSelect, onHide }) {
+function FindingRow({ f, onSelect, onHide, vote }) {
   const dir = findingDirection(f)
   return (
     <div className="trd-finding-row">
       <button className="trd-finding" onClick={() => onSelect(f)}>
         <span className="trd-strength">{strengthDots(f.effect_size, dir)}</span>
         <FindingSentence f={f} />
+        {vote === 'agree' && <span className="trd-vote-badge">👍</span>}
+        {vote === 'unsure' && <span className="trd-vote-badge trd-vote-badge--unsure">🤷</span>}
         <span className="trd-chevron">›</span>
       </button>
       <button className="trd-hide-btn" onClick={e => { e.stopPropagation(); onHide(f) }} title="Hide this finding">×</button>

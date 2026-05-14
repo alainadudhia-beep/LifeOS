@@ -237,40 +237,65 @@
   margin: 0 0 16px;
 }
 
+.trd-modal-vote-label {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
 .trd-modal-actions {
   display: flex;
   gap: 8px;
 }
 
-.trd-modal-hide {
+.trd-modal-vote {
   flex: 1;
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #94a3b8;
-  font-size: 13px;
+  color: #64748b;
+  font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.trd-modal-hide:hover {
+.trd-modal-vote span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.trd-modal-vote--disagree:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.trd-modal-vote--unsure:hover {
   background: #f8fafc;
+  border-color: #cbd5e1;
   color: #475569;
 }
 
-.trd-modal-close {
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: #1e293b;
-  color: #fff;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s;
+.trd-modal-vote--agree:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #16a34a;
 }
 
-.trd-modal-close:hover {
-  background: #334155;
+/* ── Vote badge on finding rows ── */
+
+.trd-vote-badge {
+  font-size: 11px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.trd-vote-badge--unsure {
+  opacity: 0.5;
 }
