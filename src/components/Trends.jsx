@@ -17,7 +17,6 @@ const EFFECT_GROUPS = [
   { id: 'antihistamine',label: 'Antihistamines needed',effects: ['antihistamines'] },
 ]
 
-// Whether a higher value of this effect is bad (symptom) or good (performance)
 const HIGHER_IS_BAD = new Set([
   'eczema', 'hayfever', 'gut', 'nerve_pain', 'knee_pain',
   'episcleritis', 'dryness', 'antihistamines',
@@ -69,7 +68,60 @@ function lagPhrase(lag) {
   return `${lag} days later`
 }
 
-// ── Plain-English sentence ────────────────────────────────────────────────────
+// ── Direction helpers ─────────────────────────────────────────────────────────
+
+function findingDirection(f) {
+  const higherIsBad = HIGHER_IS_BAD.has(f.effect_id)
+  if (f.type === 'binary') {
+    if (f.direction === 'higher_with' && higherIsBad)  return 'bad'
+    if (f.direction === 'higher_with' && !higherIsBad) return 'good'
+    if (f.direction === 'lower_with'  && higherIsBad)  return 'good'
+    return 'bad'
+  }
+  if (f.type === 'continuous') {
+    const positive = f.direction === 'positive'
+    if (positive && higherIsBad)  return 'bad'
+    if (positive && !higherIsBad) return 'good'
+    if (!positive && higherIsBad) return 'good'
+    return 'bad'
+  }
+  return 'neutral'
+}
+
+// ── Sentence rendering (JSX, with bold) ───────────────────────────────────────
+
+function FindingSentence({ f }) {
+  const effectLabel = EFFECT_LABELS[f.effect_id] ?? f.effect_label
+  const higherIsBad = HIGHER_IS_BAD.has(f.effect_id)
+  const lag = lagPhrase(f.lag)
+
+  if (f.type === 'binary') {
+    const worsen  = f.direction === 'higher_with' && higherIsBad
+    const improve = f.direction === 'higher_with' && !higherIsBad
+    const reduce  = f.direction === 'lower_with'  && higherIsBad
+
+    if (worsen)  return <span className="trd-sentence"><strong>{f.cause_label}</strong> <strong className="trd-dir--bad">tends to worsen</strong> your {effectLabel}, {lag}</span>
+    if (improve) return <span className="trd-sentence"><strong>{f.cause_label}</strong> correlates with <strong className="trd-dir--good">better</strong> {effectLabel}, {lag}</span>
+    if (reduce)  return <span className="trd-sentence"><strong>{f.cause_label}</strong> correlates with <strong className="trd-dir--good">lower</strong> {effectLabel}, {lag}</span>
+    return         <span className="trd-sentence"><strong>{f.cause_label}</strong> correlates with <strong className="trd-dir--bad">lower</strong> {effectLabel}, {lag}</span>
+  }
+
+  if (f.type === 'continuous') {
+    const positive = f.direction === 'positive'
+    const worsen   = positive && higherIsBad
+    const improve  = positive && !higherIsBad
+    const reduce   = !positive && higherIsBad
+
+    if (worsen)  return <span className="trd-sentence">Higher <strong>{f.cause_label.toLowerCase()}</strong> correlates with <strong className="trd-dir--bad">worse</strong> {effectLabel}, {lag}</span>
+    if (improve) return <span className="trd-sentence">Higher <strong>{f.cause_label.toLowerCase()}</strong> correlates with <strong className="trd-dir--good">better</strong> {effectLabel}, {lag}</span>
+    if (reduce)  return <span className="trd-sentence">Higher <strong>{f.cause_label.toLowerCase()}</strong> correlates with <strong className="trd-dir--good">lower</strong> {effectLabel}, {lag}</span>
+    return         <span className="trd-sentence">Higher <strong>{f.cause_label.toLowerCase()}</strong> correlates with <strong className="trd-dir--bad">lower</strong> {effectLabel}, {lag}</span>
+  }
+
+  return <span className="trd-sentence">{f.cause_label} → {effectLabel}</span>
+}
+
+// ── Plain-English sentence (string, for modal title) ──────────────────────────
 
 function shortSentence(f) {
   const effectLabel = EFFECT_LABELS[f.effect_id] ?? f.effect_label
@@ -80,12 +132,10 @@ function shortSentence(f) {
     const worsen  = f.direction === 'higher_with' && higherIsBad
     const improve = f.direction === 'higher_with' && !higherIsBad
     const reduce  = f.direction === 'lower_with'  && higherIsBad
-    const lower   = f.direction === 'lower_with'  && !higherIsBad
-
     if (worsen)  return `${f.cause_label} tends to worsen your ${effectLabel}, ${lag}`
     if (improve) return `${f.cause_label} correlates with better ${effectLabel}, ${lag}`
     if (reduce)  return `${f.cause_label} correlates with lower ${effectLabel}, ${lag}`
-    if (lower)   return `${f.cause_label} correlates with lower ${effectLabel}, ${lag}`
+    return `${f.cause_label} correlates with lower ${effectLabel}, ${lag}`
   }
 
   if (f.type === 'continuous') {
@@ -93,12 +143,10 @@ function shortSentence(f) {
     const worsen   = positive && higherIsBad
     const improve  = positive && !higherIsBad
     const reduce   = !positive && higherIsBad
-    const lower    = !positive && !higherIsBad
-
     if (worsen)  return `Higher ${f.cause_label.toLowerCase()} correlates with worse ${effectLabel}, ${lag}`
     if (improve) return `Higher ${f.cause_label.toLowerCase()} correlates with better ${effectLabel}, ${lag}`
     if (reduce)  return `Higher ${f.cause_label.toLowerCase()} correlates with lower ${effectLabel}, ${lag}`
-    if (lower)   return `Higher ${f.cause_label.toLowerCase()} correlates with lower ${effectLabel}, ${lag}`
+    return `Higher ${f.cause_label.toLowerCase()} correlates with lower ${effectLabel}, ${lag}`
   }
 
   return `${f.cause_label} → ${effectLabel} (lag ${f.lag}d)`
@@ -119,16 +167,13 @@ function fullExplanation(f) {
     const direction = f.direction === 'higher_with'
       ? (higherIsBad ? 'higher (worse)' : 'higher (better)')
       : (higherIsBad ? 'lower (better)' : 'lower (worse)')
-
-    const withN    = f.n_with
-    const withoutN = f.n_without
-    const totalN   = f.n
+    const totalN = f.n
 
     return [
-      `On the ${withN} day${withN !== 1 ? 's' : ''} when you had ${f.cause_label.toLowerCase()}, your ${effectLabel} was ${withLabel} ${lagText} (avg ${f.mean_with}/scale).`,
-      `On the ${withoutN} day${withoutN !== 1 ? 's' : ''} without, it was ${withoutLabel} (avg ${f.mean_without}/scale).`,
+      `On the ${f.n_with} day${f.n_with !== 1 ? 's' : ''} when you had ${f.cause_label.toLowerCase()}, your ${effectLabel} was ${withLabel} ${lagText} (avg ${f.mean_with}/scale).`,
+      `On the ${f.n_without} day${f.n_without !== 1 ? 's' : ''} without, it was ${withoutLabel} (avg ${f.mean_without}/scale).`,
       `That's ${direction} — a difference of ${Math.abs(f.diff).toFixed(1)} points.`,
-      totalN < 10 ? `Small sample (${totalN} days total) — treat this as a early signal, not a firm conclusion.` : `Based on ${totalN} days of data.`,
+      totalN < 14 ? `Small sample (${totalN} days total) — treat as an early signal.` : `Based on ${totalN} days of data.`,
     ].join(' ')
   }
 
@@ -140,7 +185,7 @@ function fullExplanation(f) {
     return [
       `${f.cause_label} and your ${effectLabel} are ${rStrength}ly correlated ${lagText} (r = ${f.pearson_r}).`,
       `${direction === 'positively' ? 'Higher' : 'Lower'} ${f.cause_label.toLowerCase()} tends to mean ${higherIsBad ? 'worse' : 'better'} ${effectLabel}.`,
-      f.n < 10 ? `Small sample (${f.n} days) — early signal only.` : `Based on ${f.n} days of data.`,
+      f.n < 14 ? `Small sample (${f.n} days) — early signal only.` : `Based on ${f.n} days of data.`,
     ].join(' ')
   }
 
@@ -149,10 +194,11 @@ function fullExplanation(f) {
 
 // ── Effect size icon ──────────────────────────────────────────────────────────
 
-function strengthDots(effectSize) {
+function strengthDots(effectSize, direction) {
   const filled = effectSize >= 0.5 ? 3 : effectSize >= 0.3 ? 2 : 1
+  const cls = direction === 'bad' ? 'trd-dot--bad' : direction === 'good' ? 'trd-dot--good' : 'trd-dot--neutral'
   return Array.from({ length: 3 }, (_, i) => (
-    <span key={i} className={`trd-dot${i < filled ? ' trd-dot--filled' : ''}`} />
+    <span key={i} className={`trd-dot${i < filled ? ` ${cls}` : ''}`} />
   ))
 }
 
@@ -169,6 +215,15 @@ function bestLagFindings(findings) {
 }
 
 const MIN_EFFECT_SIZE = 0.15
+const MIN_N = 10
+
+const HIDDEN_KEY = 'lifetracker-trends-hidden'
+function loadHidden() {
+  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY)) ?? []) } catch { return new Set() }
+}
+function saveHidden(set) {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...set])) } catch {}
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -178,7 +233,9 @@ export default function Trends() {
   const [nDays, setNDays] = useState(0)
   const [loading, setLoading] = useState(true)
   const [openGroups, setOpenGroups] = useState({})
+  const [openSubGroups, setOpenSubGroups] = useState({})
   const [selectedFinding, setSelectedFinding] = useState(null)
+  const [hidden, setHidden] = useState(loadHidden)
 
   useEffect(() => {
     async function load() {
@@ -186,7 +243,10 @@ export default function Trends() {
         const res  = await fetch('/api/trends')
         const data = await res.json()
         if (data.findings?.length) {
-          setFindings(bestLagFindings(data.findings).filter(f => f.effect_size >= MIN_EFFECT_SIZE))
+          setFindings(
+            bestLagFindings(data.findings)
+              .filter(f => f.effect_size >= MIN_EFFECT_SIZE && f.n >= MIN_N)
+          )
           setComputedAt(data.computed_at)
           setNDays(data.n_days)
         }
@@ -203,13 +263,49 @@ export default function Trends() {
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  function toggleSubGroup(id) {
+    setOpenSubGroups(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  function hideFinding(f) {
+    const key = `${f.cause_id}::${f.effect_id}`
+    setHidden(prev => {
+      const next = new Set(prev)
+      next.add(key)
+      saveHidden(next)
+      return next
+    })
+    if (selectedFinding && `${selectedFinding.cause_id}::${selectedFinding.effect_id}` === key) {
+      setSelectedFinding(null)
+    }
+  }
+
+  function resetHidden() {
+    setHidden(new Set())
+    saveHidden(new Set())
+  }
+
+  const visibleFindings = findings.filter(f => !hidden.has(`${f.cause_id}::${f.effect_id}`))
+
   const activeGroups = EFFECT_GROUPS
-    .map(group => ({
-      ...group,
-      findings: findings
+    .map(group => {
+      const groupFindings = visibleFindings
         .filter(f => group.effects.includes(f.effect_id))
-        .sort((a, b) => b.effect_size - a.effect_size),
-    }))
+        .sort((a, b) => b.effect_size - a.effect_size)
+
+      const effectIds = [...new Set(groupFindings.map(f => f.effect_id))]
+      const isMultiEffect = effectIds.length > 1
+
+      const subGroups = isMultiEffect
+        ? effectIds.map(eid => ({
+            id: eid,
+            label: (EFFECT_LABELS[eid] ?? eid).replace(/^\w/, c => c.toUpperCase()),
+            findings: groupFindings.filter(f => f.effect_id === eid),
+          })).filter(sg => sg.findings.length > 0)
+        : null
+
+      return { ...group, findings: groupFindings, isMultiEffect, subGroups }
+    })
     .filter(g => g.findings.length > 0)
 
   if (loading) {
@@ -242,30 +338,67 @@ export default function Trends() {
               <span className="trd-group-count">{group.findings.length}</span>
               <span className="trd-group-arrow">{isOpen ? '▾' : '▸'}</span>
             </button>
-            {isOpen && group.findings.map(f => (
-              <button
-                key={`${f.cause_id}::${f.effect_id}`}
-                className="trd-finding"
-                onClick={() => setSelectedFinding(f)}
-              >
-                <span className="trd-strength">{strengthDots(f.effect_size)}</span>
-                <span className="trd-sentence">{shortSentence(f)}</span>
-                <span className="trd-chevron">›</span>
-              </button>
-            ))}
+
+            {isOpen && (
+              group.isMultiEffect ? (
+                group.subGroups.map(sg => {
+                  const sgKey = `${group.id}::${sg.id}`
+                  const sgOpen = openSubGroups[sgKey] === true  // default collapsed
+                  return (
+                    <div key={sg.id} className="trd-subgroup">
+                      <button className="trd-subgroup-header" onClick={() => toggleSubGroup(sgKey)}>
+                        <span className="trd-subgroup-label">{sg.label}</span>
+                        <span className="trd-group-count">{sg.findings.length}</span>
+                        <span className="trd-group-arrow">{sgOpen ? '▾' : '▸'}</span>
+                      </button>
+                      {sgOpen && sg.findings.map(f => (
+                        <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} />
+                      ))}
+                    </div>
+                  )
+                })
+              ) : (
+                group.findings.map(f => (
+                  <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} />
+                ))
+              )
+            )}
           </div>
         )
       })}
+
+      {hidden.size > 0 && (
+        <button className="trd-reset-hidden" onClick={resetHidden}>
+          Show {hidden.size} hidden finding{hidden.size !== 1 ? 's' : ''}
+        </button>
+      )}
 
       {selectedFinding && (
         <div className="trd-modal-overlay" onClick={() => setSelectedFinding(null)}>
           <div className="trd-modal" onClick={e => e.stopPropagation()}>
             <div className="trd-modal-title">{shortSentence(selectedFinding)}</div>
             <p className="trd-modal-body">{fullExplanation(selectedFinding)}</p>
-            <button className="trd-modal-close" onClick={() => setSelectedFinding(null)}>Close</button>
+            <div className="trd-modal-actions">
+              <button className="trd-modal-hide" onClick={() => hideFinding(selectedFinding)}>Hide this finding</button>
+              <button className="trd-modal-close" onClick={() => setSelectedFinding(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function FindingRow({ f, onSelect, onHide }) {
+  const dir = findingDirection(f)
+  return (
+    <div className="trd-finding-row">
+      <button className="trd-finding" onClick={() => onSelect(f)}>
+        <span className="trd-strength">{strengthDots(f.effect_size, dir)}</span>
+        <FindingSentence f={f} />
+        <span className="trd-chevron">›</span>
+      </button>
+      <button className="trd-hide-btn" onClick={e => { e.stopPropagation(); onHide(f) }} title="Hide this finding">×</button>
     </div>
   )
 }
