@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { dbWrite } from '../lib/db'
+import Trends from './Trends'
 import './Insights.css'
 
 const INSIGHTS_KEY = 'lifetracker-insights'
@@ -207,6 +208,7 @@ const Insights = forwardRef(function Insights(_, ref) {
   const [items, setItemsRaw] = useState(loadInsights)
   const [autoInsights, setAutoInsights] = useState([])
   const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState('insights')
 
   function setItems(fn) {
     setItemsRaw(prev => {
@@ -515,7 +517,6 @@ const Insights = forwardRef(function Insights(_, ref) {
       const res  = await fetch('/api/refresh-insights', { method: 'POST' })
       const data = await res.json()
       if (data.insights?.length) {
-        // Reuse the existing addInsights logic via the imperative handle path
         setItems(prev => {
           const today = new Date().toISOString().slice(0, 10)
           const kept  = prev.filter(it => it.type !== 'claude' || (it.created_at ?? '').slice(0, 10) !== today)
@@ -541,15 +542,34 @@ const Insights = forwardRef(function Insights(_, ref) {
 
   return (
     <div className="ins-panel">
-      <button
-        className={`ins-refresh-btn${refreshing ? ' ins-refresh-btn--spinning' : ''}`}
-        onClick={handleRefresh}
-        disabled={refreshing}
-        title="Refresh insights"
-      >↻</button>
-      <Section title="Work Summary" items={workItems}  onDismiss={id => dismiss(id)} />
-      <Section title="Life Summary" items={lifeItems}  onDismiss={id => dismiss(id)} />
-      {isEmpty && <p className="ins-empty">Log a check-in to get insights</p>}
+      <div className="ins-tabs">
+        <button
+          className={`ins-tab${activeTab === 'insights' ? ' ins-tab--active' : ''}`}
+          onClick={() => setActiveTab('insights')}
+        >Insights</button>
+        <button
+          className={`ins-tab${activeTab === 'trends' ? ' ins-tab--active' : ''}`}
+          onClick={() => setActiveTab('trends')}
+        >Trends</button>
+        {activeTab === 'insights' && (
+          <button
+            className={`ins-refresh-btn${refreshing ? ' ins-refresh-btn--spinning' : ''}`}
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh insights"
+          >↻</button>
+        )}
+      </div>
+
+      {activeTab === 'trends' ? (
+        <Trends />
+      ) : (
+        <>
+          <Section title="Work Summary" items={workItems}  onDismiss={id => dismiss(id)} />
+          <Section title="Life Summary" items={lifeItems}  onDismiss={id => dismiss(id)} />
+          {isEmpty && <p className="ins-empty">Log a check-in to get insights</p>}
+        </>
+      )}
     </div>
   )
 })

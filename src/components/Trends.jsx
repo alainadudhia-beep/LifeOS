@@ -1,0 +1,271 @@
+import { useState, useEffect } from 'react'
+import './Trends.css'
+
+// ── Effect group definitions ──────────────────────────────────────────────────
+
+const EFFECT_GROUPS = [
+  { id: 'eczema',       label: 'Eczema',               effects: ['eczema'] },
+  { id: 'hayfever',     label: 'Hayfever',             effects: ['hayfever'] },
+  { id: 'gut',          label: 'Gut',                  effects: ['gut', 'bloating', 'cramps', 'diarrhoea'] },
+  { id: 'pain',         label: 'Nerve & joint pain',   effects: ['nerve_pain', 'knee_pain'] },
+  { id: 'eyes_skin',    label: 'Eyes & skin',          effects: ['episcleritis', 'dryness'] },
+  { id: 'energy',       label: 'Energy',               effects: ['energy'] },
+  { id: 'mood',         label: 'Mood',                 effects: ['work_mood', 'life_mood'] },
+  { id: 'cognitive',    label: 'Brain fog & focus',    effects: ['brain_fog', 'focus'] },
+  { id: 'headache',     label: 'Headache',             effects: ['headache'] },
+  { id: 'sleep',        label: 'Sleep',                effects: ['sleep'] },
+  { id: 'antihistamine',label: 'Antihistamines needed',effects: ['antihistamines'] },
+]
+
+// Whether a higher value of this effect is bad (symptom) or good (performance)
+const HIGHER_IS_BAD = new Set([
+  'eczema', 'hayfever', 'gut', 'nerve_pain', 'knee_pain',
+  'episcleritis', 'dryness', 'antihistamines',
+  'bloating', 'cramps', 'diarrhoea', 'brain_fog', 'headache',
+])
+
+const EFFECT_LABELS = {
+  eczema: 'eczema', hayfever: 'hayfever', gut: 'gut severity',
+  nerve_pain: 'nerve pain', knee_pain: 'knee pain',
+  episcleritis: 'episcleritis', dryness: 'dryness',
+  energy: 'energy', focus: 'focus',
+  work_mood: 'work mood', life_mood: 'life mood',
+  brain_fog: 'brain fog', headache: 'headaches',
+  sleep: 'sleep quality', antihistamines: 'antihistamine use',
+  bloating: 'bloating', cramps: 'cramps', diarrhoea: 'diarrhoea',
+}
+
+const SEV_LABEL = v => {
+  if (v == null) return '?'
+  if (v <= 0.3)  return 'none'
+  if (v <= 0.7)  return 'very low'
+  if (v <= 1.2)  return 'low'
+  if (v <= 1.7)  return 'low-medium'
+  if (v <= 2.2)  return 'medium'
+  if (v <= 2.7)  return 'medium-high'
+  return 'high'
+}
+
+const MOOD_LABEL = v => {
+  if (v == null) return '?'
+  if (v <= 1.5)  return 'very low'
+  if (v <= 2.2)  return 'low'
+  if (v <= 3.0)  return 'moderate'
+  if (v <= 3.7)  return 'good'
+  if (v <= 4.3)  return 'high'
+  return 'very high'
+}
+
+function scoreLabel(effectId, val) {
+  if (val == null) return '?'
+  if (['focus', 'energy', 'work_mood', 'life_mood', 'sleep'].includes(effectId)) return MOOD_LABEL(val)
+  if (['brain_fog', 'headache', 'bloating', 'cramps', 'diarrhoea'].includes(effectId)) return val >= 0.5 ? 'present' : 'absent'
+  return SEV_LABEL(val)
+}
+
+function lagPhrase(lag) {
+  if (lag === 0) return 'on the same day'
+  if (lag === 1) return 'the following day'
+  return `${lag} days later`
+}
+
+// ── Plain-English sentence ────────────────────────────────────────────────────
+
+function shortSentence(f) {
+  const effectLabel = EFFECT_LABELS[f.effect_id] ?? f.effect_label
+  const lag = lagPhrase(f.lag)
+  const higherIsBad = HIGHER_IS_BAD.has(f.effect_id)
+
+  if (f.type === 'binary') {
+    const worsen  = f.direction === 'higher_with' && higherIsBad
+    const improve = f.direction === 'higher_with' && !higherIsBad
+    const reduce  = f.direction === 'lower_with'  && higherIsBad
+    const lower   = f.direction === 'lower_with'  && !higherIsBad
+
+    if (worsen)  return `${f.cause_label} tends to worsen your ${effectLabel}, ${lag}`
+    if (improve) return `${f.cause_label} correlates with better ${effectLabel}, ${lag}`
+    if (reduce)  return `${f.cause_label} correlates with lower ${effectLabel}, ${lag}`
+    if (lower)   return `${f.cause_label} correlates with lower ${effectLabel}, ${lag}`
+  }
+
+  if (f.type === 'continuous') {
+    const positive = f.direction === 'positive'
+    const worsen   = positive && higherIsBad
+    const improve  = positive && !higherIsBad
+    const reduce   = !positive && higherIsBad
+    const lower    = !positive && !higherIsBad
+
+    if (worsen)  return `Higher ${f.cause_label.toLowerCase()} correlates with worse ${effectLabel}, ${lag}`
+    if (improve) return `Higher ${f.cause_label.toLowerCase()} correlates with better ${effectLabel}, ${lag}`
+    if (reduce)  return `Higher ${f.cause_label.toLowerCase()} correlates with lower ${effectLabel}, ${lag}`
+    if (lower)   return `Higher ${f.cause_label.toLowerCase()} correlates with lower ${effectLabel}, ${lag}`
+  }
+
+  return `${f.cause_label} → ${effectLabel} (lag ${f.lag}d)`
+}
+
+// ── Full modal explanation ────────────────────────────────────────────────────
+
+function fullExplanation(f) {
+  const effectLabel = EFFECT_LABELS[f.effect_id] ?? f.effect_label
+  const higherIsBad = HIGHER_IS_BAD.has(f.effect_id)
+
+  if (f.type === 'binary') {
+    const withLabel    = scoreLabel(f.effect_id, f.mean_with)
+    const withoutLabel = scoreLabel(f.effect_id, f.mean_without)
+    const lagText = f.lag === 0 ? 'on the same day'
+      : f.lag === 1 ? 'the day after'
+      : `${f.lag} days after`
+    const direction = f.direction === 'higher_with'
+      ? (higherIsBad ? 'higher (worse)' : 'higher (better)')
+      : (higherIsBad ? 'lower (better)' : 'lower (worse)')
+
+    const withN    = f.n_with
+    const withoutN = f.n_without
+    const totalN   = f.n
+
+    return [
+      `On the ${withN} day${withN !== 1 ? 's' : ''} when you had ${f.cause_label.toLowerCase()}, your ${effectLabel} was ${withLabel} ${lagText} (avg ${f.mean_with}/scale).`,
+      `On the ${withoutN} day${withoutN !== 1 ? 's' : ''} without, it was ${withoutLabel} (avg ${f.mean_without}/scale).`,
+      `That's ${direction} — a difference of ${Math.abs(f.diff).toFixed(1)} points.`,
+      totalN < 10 ? `Small sample (${totalN} days total) — treat this as a early signal, not a firm conclusion.` : `Based on ${totalN} days of data.`,
+    ].join(' ')
+  }
+
+  if (f.type === 'continuous') {
+    const rStrength = Math.abs(f.pearson_r) >= 0.6 ? 'strong' : Math.abs(f.pearson_r) >= 0.35 ? 'moderate' : 'weak'
+    const direction = (f.direction === 'positive') === !higherIsBad ? 'positively' : 'negatively'
+    const lagText = f.lag === 0 ? 'on the same day' : `${f.lag === 1 ? 'the following day' : `${f.lag} days later`}`
+
+    return [
+      `${f.cause_label} and your ${effectLabel} are ${rStrength}ly correlated ${lagText} (r = ${f.pearson_r}).`,
+      `${direction === 'positively' ? 'Higher' : 'Lower'} ${f.cause_label.toLowerCase()} tends to mean ${higherIsBad ? 'worse' : 'better'} ${effectLabel}.`,
+      f.n < 10 ? `Small sample (${f.n} days) — early signal only.` : `Based on ${f.n} days of data.`,
+    ].join(' ')
+  }
+
+  return ''
+}
+
+// ── Effect size icon ──────────────────────────────────────────────────────────
+
+function strengthDots(effectSize) {
+  const filled = effectSize >= 0.5 ? 3 : effectSize >= 0.3 ? 2 : 1
+  return Array.from({ length: 3 }, (_, i) => (
+    <span key={i} className={`trd-dot${i < filled ? ' trd-dot--filled' : ''}`} />
+  ))
+}
+
+// ── Collapse to best lag per (cause, effect) pair ────────────────────────────
+
+function bestLagFindings(findings) {
+  const map = new Map()
+  for (const f of findings) {
+    const key = `${f.cause_id}::${f.effect_id}`
+    const existing = map.get(key)
+    if (!existing || f.effect_size > existing.effect_size) map.set(key, f)
+  }
+  return [...map.values()]
+}
+
+const MIN_EFFECT_SIZE = 0.15
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function Trends() {
+  const [findings, setFindings] = useState([])
+  const [computedAt, setComputedAt] = useState(null)
+  const [nDays, setNDays] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [openGroups, setOpenGroups] = useState({})
+  const [selectedFinding, setSelectedFinding] = useState(null)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res  = await fetch('/api/trends')
+        const data = await res.json()
+        if (data.findings?.length) {
+          setFindings(bestLagFindings(data.findings).filter(f => f.effect_size >= MIN_EFFECT_SIZE))
+          setComputedAt(data.computed_at)
+          setNDays(data.n_days)
+        }
+      } catch (err) {
+        console.error('[Trends] load failed', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  function toggleGroup(id) {
+    setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const activeGroups = EFFECT_GROUPS
+    .map(group => ({
+      ...group,
+      findings: findings
+        .filter(f => group.effects.includes(f.effect_id))
+        .sort((a, b) => b.effect_size - a.effect_size),
+    }))
+    .filter(g => g.findings.length > 0)
+
+  if (loading) {
+    return <div className="trd-empty">Loading patterns…</div>
+  }
+
+  if (!findings.length) {
+    return (
+      <div className="trd-empty">
+        <p>No patterns yet.</p>
+        <p className="trd-empty-sub">Trends run daily at 7am once enough data has built up.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="trd-panel">
+      {computedAt && (
+        <div className="trd-meta">
+          {nDays} days of data · updated {computedAt}
+        </div>
+      )}
+
+      {activeGroups.map(group => {
+        const isOpen = openGroups[group.id] !== false  // default open
+        return (
+          <div key={group.id} className="trd-group">
+            <button className="trd-group-header" onClick={() => toggleGroup(group.id)}>
+              <span className="trd-group-label">{group.label}</span>
+              <span className="trd-group-count">{group.findings.length}</span>
+              <span className="trd-group-arrow">{isOpen ? '▾' : '▸'}</span>
+            </button>
+            {isOpen && group.findings.map(f => (
+              <button
+                key={`${f.cause_id}::${f.effect_id}`}
+                className="trd-finding"
+                onClick={() => setSelectedFinding(f)}
+              >
+                <span className="trd-strength">{strengthDots(f.effect_size)}</span>
+                <span className="trd-sentence">{shortSentence(f)}</span>
+                <span className="trd-chevron">›</span>
+              </button>
+            ))}
+          </div>
+        )
+      })}
+
+      {selectedFinding && (
+        <div className="trd-modal-overlay" onClick={() => setSelectedFinding(null)}>
+          <div className="trd-modal" onClick={e => e.stopPropagation()}>
+            <div className="trd-modal-title">{shortSentence(selectedFinding)}</div>
+            <p className="trd-modal-body">{fullExplanation(selectedFinding)}</p>
+            <button className="trd-modal-close" onClick={() => setSelectedFinding(null)}>Close</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -10,6 +10,7 @@ const LIFE_LOGS_KEY   = 'lifetracker-life-logs'
 const TRACKS_KEY      = 'lifetracker-tracks-v3'
 const WEATHER_KEY     = 'lifetracker-weather'
 const INSIGHTS_KEY    = 'lifetracker-insights'
+const FITBIT_RAW_KEY  = 'lifetracker-fitbit-raw'
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
