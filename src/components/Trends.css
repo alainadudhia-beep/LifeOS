@@ -142,30 +142,6 @@
   padding-right: 4px;
 }
 
-/* ── Hide button ── */
-
-.trd-hide-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #cbd5e1;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 10px;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-
-@media (hover: hover) {
-  .trd-finding-row:hover .trd-hide-btn {
-    opacity: 1;
-  }
-  .trd-hide-btn:hover {
-    color: #94a3b8;
-  }
-}
-
 /* ── Reset hidden ── */
 
 .trd-reset-hidden {

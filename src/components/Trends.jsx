@@ -387,14 +387,14 @@ export default function Trends() {
                         <span className="trd-group-arrow">{sgOpen ? '▾' : '▸'}</span>
                       </button>
                       {sgOpen && sg.findings.map(f => (
-                        <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} vote={feedback.get(feedbackKey(f))} />
+                        <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} vote={feedback.get(feedbackKey(f))} />
                       ))}
                     </div>
                   )
                 })
               ) : (
                 group.findings.map(f => (
-                  <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} onHide={hideFinding} vote={feedback.get(feedbackKey(f))} />
+                  <FindingRow key={`${f.cause_id}::${f.effect_id}`} f={f} onSelect={setSelectedFinding} vote={feedback.get(feedbackKey(f))} />
                 ))
               )
             )}
@@ -432,7 +432,7 @@ export default function Trends() {
   )
 }
 
-function FindingRow({ f, onSelect, onHide, vote }) {
+function FindingRow({ f, onSelect, vote }) {
   const dir = findingDirection(f)
   return (
     <div className="trd-finding-row">
@@ -443,7 +443,6 @@ function FindingRow({ f, onSelect, onHide, vote }) {
         {vote === 'unsure' && <span className="trd-vote-badge trd-vote-badge--unsure">🤷</span>}
         <span className="trd-chevron">›</span>
       </button>
-      <button className="trd-hide-btn" onClick={e => { e.stopPropagation(); onHide(f) }} title="Hide this finding">×</button>
     </div>
   )
 }
