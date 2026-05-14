@@ -178,12 +178,15 @@ function fullExplanation(f) {
 
   if (f.type === 'continuous') {
     const rStrength = Math.abs(f.pearson_r) >= 0.6 ? 'strong' : Math.abs(f.pearson_r) >= 0.35 ? 'moderate' : 'weak'
-    const direction = (f.direction === 'positive') === !higherIsBad ? 'positively' : 'negatively'
-    const lagText = f.lag === 0 ? 'on the same day' : `${f.lag === 1 ? 'the following day' : `${f.lag} days later`}`
+    const positive = f.direction === 'positive'
+    const lagText = f.lag === 0 ? 'on the same day' : f.lag === 1 ? 'the following day' : `${f.lag} days later`
+    // positive r = higher cause → higher effect; negative r = higher cause → lower effect
+    const isBeneficial = (positive && !higherIsBad) || (!positive && higherIsBad)
+    const outcomeWord = isBeneficial ? 'better' : 'worse'
 
     return [
       `${f.cause_label} and your ${effectLabel} are ${rStrength}ly correlated ${lagText} (r = ${f.pearson_r}).`,
-      `${direction === 'positively' ? 'Higher' : 'Lower'} ${f.cause_label.toLowerCase()} tends to mean ${higherIsBad ? 'worse' : 'better'} ${effectLabel}.`,
+      `Higher ${f.cause_label.toLowerCase()} tends to mean ${outcomeWord} ${effectLabel}.`,
       f.n < 14 ? `Small sample (${f.n} days) — early signal only.` : `Based on ${f.n} days of data.`,
     ].join(' ')
   }
@@ -245,6 +248,7 @@ export default function Trends() {
           setFindings(
             bestLagFindings(data.findings)
               .filter(f => f.effect_size >= MIN_EFFECT_SIZE && f.n >= MIN_N)
+              .filter(f => !(HIGHER_IS_BAD.has(f.effect_id) && f.lag === 0))
           )
           setComputedAt(data.computed_at)
           setNDays(data.n_days)
