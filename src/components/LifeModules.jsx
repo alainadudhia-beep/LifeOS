@@ -185,7 +185,7 @@ const MODULES = [
       { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Puffy eyes','Sneezing'] },
       { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Body','In shower'] },
       { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
-      { key: 'eczema_location',   label: 'Eczema Location',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
+      { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips'] },
       { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
