@@ -29,8 +29,9 @@ export default function MobileTodayModules() {
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]           = useLocalStorage('lifetracker-fitbit-raw', {})
   const [weatherStore]        = useLocalStorage('lifetracker-weather', {})
-  const [activeModule, setActiveModule] = useState(null)
-  const [gratEdit, setGratEdit]         = useState(false)
+  const [activeModule, setActiveModule]       = useState(null)
+  const [gratEdit, setGratEdit]               = useState(false)
+  const [weatherSheetOpen, setWeatherSheetOpen] = useState(false)
 
   useEffect(() => {
     function onLogsUpdated() { refreshLogs() }
@@ -292,7 +293,10 @@ export default function MobileTodayModules() {
 
       {/* ── Weather banner ── */}
       {todayWeather && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 14px', background: '#f0f9ff', fontSize: 16 }}>
+        <button
+          onClick={() => setWeatherSheetOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 14px', background: '#f0f9ff', fontSize: 16, width: '100%', border: 'none', cursor: 'pointer' }}
+        >
           {todayWeather.temp_max != null && (
             <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
               {Math.round(todayWeather.temp_max)}°/{Math.round(todayWeather.temp_min)}°
@@ -303,8 +307,8 @@ export default function MobileTodayModules() {
           <span>🌧{dot(rainSev(todayWeather.precipitation_mm))}</span>
           {todayWeather.humidity_pct != null && <span>💦{dot(humiditySev(todayWeather.humidity_pct))}</span>}
           {todayWeather.uv_index != null    && <span>☀️{dot(uvSev(todayWeather.uv_index))}</span>}
-          {todayWeather.aqi_label           && <span>☁️{dot(aqiSev(todayWeather.aqi_label))}</span>}
-        </div>
+          {todayWeather.aqi_label           && <span>😷{dot(aqiSev(todayWeather.aqi_label))}</span>}
+        </button>
       )}
 
       {/* ── 2×6 grid: autosync (cols 1-2) + manual (cols 3-6) ── */}
@@ -577,6 +581,70 @@ export default function MobileTodayModules() {
                     <span>Resting {Math.round(stepsResting ?? 0)}</span>
                   </div>
                 </>
+              )}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* ── Weather detail sheet ── */}
+      {weatherSheetOpen && todayWeather && createPortal(
+        <>
+          <div className="mlm-overlay" onClick={() => setWeatherSheetOpen(false)} />
+          <div className="mlm-sheet mlm-sheet--compact">
+            <div className="mlm-sheet-handle" />
+            <div className="mlm-sheet-header">
+              <span className="mlm-sheet-title">🌤 Environment</span>
+              <span className="mlm-sheet-date">{fmtDate(today)}</span>
+              <button className="mlm-sheet-close" onClick={() => setWeatherSheetOpen(false)}>✕</button>
+            </div>
+            <div className="mlm-sheet-fields">
+              {todayWeather.temp_max != null && (
+                <div className="mlm-info-row">
+                  <span>Temperature</span>
+                  <strong>{Math.round(todayWeather.temp_min)}–{Math.round(todayWeather.temp_max)}°C</strong>
+                </div>
+              )}
+              {todayWeather.humidity_pct != null && (
+                <div className="mlm-info-row">
+                  <span>Humidity</span>
+                  <strong>{Math.round(todayWeather.humidity_pct)}%</strong>
+                </div>
+              )}
+              <div className="mlm-info-row">
+                <span>Rain</span>
+                <strong>{todayWeather.precipitation_mm != null && todayWeather.precipitation_mm >= 1 ? `${todayWeather.precipitation_mm.toFixed(1)} mm` : 'None'}</strong>
+              </div>
+              {todayWeather.wind_speed_max != null && (
+                <div className="mlm-info-row">
+                  <span>Wind</span>
+                  <strong>{Math.round(todayWeather.wind_speed_max)} km/h — {todayWeather.wind_speed_max < 15 ? 'Low' : todayWeather.wind_speed_max < 35 ? 'Moderate' : 'Strong'}</strong>
+                </div>
+              )}
+              {todayWeather.grass_pollen_label && (
+                <div className="mlm-info-row">
+                  <span>Grass pollen</span>
+                  <strong>{todayWeather.grass_pollen_label}{todayWeather.grass_pollen != null ? ` (${Math.round(todayWeather.grass_pollen)})` : ''}</strong>
+                </div>
+              )}
+              {todayWeather.birch_pollen_label && (
+                <div className="mlm-info-row">
+                  <span>Tree pollen</span>
+                  <strong>{todayWeather.birch_pollen_label}{todayWeather.birch_pollen != null ? ` (${Math.round(todayWeather.birch_pollen)})` : ''}</strong>
+                </div>
+              )}
+              {todayWeather.aqi_label && (
+                <div className="mlm-info-row">
+                  <span>Air Quality</span>
+                  <strong>{todayWeather.aqi_label}{todayWeather.aqi != null ? ` (${Math.round(todayWeather.aqi)})` : ''}</strong>
+                </div>
+              )}
+              {todayWeather.uv_index != null && (
+                <div className="mlm-info-row">
+                  <span>UV Index</span>
+                  <strong>{todayWeather.uv_index.toFixed(1)} — {todayWeather.uv_index < 3 ? 'Low' : todayWeather.uv_index < 6 ? 'Moderate' : 'High'}</strong>
+                </div>
               )}
             </div>
           </div>
