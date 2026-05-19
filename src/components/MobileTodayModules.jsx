@@ -293,12 +293,17 @@ export default function MobileTodayModules() {
       {/* ── Weather banner ── */}
       {todayWeather && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 14px', background: '#f0f9ff', fontSize: 16 }}>
+          {todayWeather.temp_max != null && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+              {Math.round(todayWeather.temp_max)}°/{Math.round(todayWeather.temp_min)}°
+            </span>
+          )}
           <span>🌿{dot(pollenSev(todayWeather))}</span>
           <span>💨{dot(windSev(todayWeather.wind_speed_max))}</span>
           <span>🌧{dot(rainSev(todayWeather.precipitation_mm))}</span>
           {todayWeather.humidity_pct != null && <span>💦{dot(humiditySev(todayWeather.humidity_pct))}</span>}
           {todayWeather.uv_index != null    && <span>☀️{dot(uvSev(todayWeather.uv_index))}</span>}
-          {todayWeather.aqi_label           && <span>🌫️{dot(aqiSev(todayWeather.aqi_label))}</span>}
+          {todayWeather.aqi_label           && <span>☁️{dot(aqiSev(todayWeather.aqi_label))}</span>}
         </div>
       )}
 
