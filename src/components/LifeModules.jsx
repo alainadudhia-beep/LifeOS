@@ -741,6 +741,16 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
           if (worst === 3) return '#fde8c8'
           return '#fee2e2'
         }
+        function weatherCellLabel(w) {
+          if (w == null) return null
+          const grassRank = POLLEN_RANK[w.grass_pollen_label] ?? 0
+          const treeRank  = POLLEN_RANK[w.birch_pollen_label] ?? 0
+          // Only show type label if above Low (rank > 1)
+          if (grassRank > 1 && grassRank >= treeRank) return 'Grass'
+          if (treeRank > 1) return 'Tree'
+          if (Math.max(grassRank, treeRank) === 1) return 'Low'
+          return null
+        }
         return (
           <div className="lm-row">
             <div className="lm-label"><span className="lm-label-emoji">🌤</span> <em>Environment</em></div>
@@ -750,7 +760,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
                 const iso = d.toISOString().slice(0, 10)
                 const w   = weatherStore[iso] ?? null
                 const bg  = weatherCellColor(w)
-                const label = w?.temp_max != null ? `${Math.round(w.temp_max)}°` : null
+                const label = weatherCellLabel(w)
                 const isOpen = weatherOpen === iso
                 const hasData = w != null
                 return (
@@ -769,7 +779,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
             {mobile && (() => {
               const w   = weatherStore[todayIso] ?? null
               const bg  = weatherCellColor(w)
-              const label = w?.temp_max != null ? `${Math.round(w.temp_max)}°` : null
+              const label = weatherCellLabel(w)
               const isOpen = weatherOpen === todayIso
               const hasData = w != null
               return (
@@ -1426,10 +1436,10 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
               <span>Tree pollen</span>
               <span style={chipStyle(tree.color)}>{tree.label}</span>
             </div>
-            {/* AQI */}
+            {/* Air Quality */}
             {aqi && (
               <div style={rowStyle}>
-                <span>AQI</span>
+                <span>Air Quality</span>
                 <span style={chipStyle(aqi.color)}>{aqi.label}</span>
               </div>
             )}

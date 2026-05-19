@@ -284,8 +284,14 @@ export default function MobileTodayModules() {
             <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>💨 {windLabel(todayWeather.wind_speed_max)}</span>
           )}
           <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌧 {rainLabel(todayWeather.precipitation_mm)}</span>
+          {todayWeather.humidity_pct != null && (
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>💦 {Math.round(todayWeather.humidity_pct)}%</span>
+          )}
+          {todayWeather.uv_index != null && (
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>☀️ UV{Math.round(todayWeather.uv_index)}</span>
+          )}
           {todayWeather.aqi_label && (
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>AQI {todayWeather.aqi_label}</span>
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌫️ {todayWeather.aqi_label}</span>
           )}
         </div>
       )}
