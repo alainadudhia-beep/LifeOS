@@ -183,10 +183,10 @@ const MODULES = [
     fields: [
       { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Puffy eyes','Sneezing'] },
-      { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Body','In shower'] },
       { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
+      { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Body','In shower'] },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips'] },
       { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
       { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
@@ -355,7 +355,7 @@ const DAY_SHORT = DAY_ABBR
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export default function LifeModules({ mobile } = {}) {
+export default function LifeModules({ mobile, weatherStore: weatherStoreProp } = {}) {
   const gridDays  = mobile
     ? allDays.filter(d => d.toISOString().slice(0, 10) < todayIso)
     : allDays
@@ -364,10 +364,13 @@ export default function LifeModules({ mobile } = {}) {
 
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]     = useLocalStorage('lifetracker-fitbit-raw', {})
+  const [weatherStoreLocal] = useLocalStorage('lifetracker-weather', {})
+  const weatherStore = weatherStoreProp ?? weatherStoreLocal
 
   const [activeCell, setActiveCell] = useState(null)
   const [sleepOpen,  setSleepOpen]  = useState(null)   // iso date
   const [stepsOpen,  setStepsOpen]  = useState(null)   // iso date
+  const [weatherOpen, setWeatherOpen] = useState(null) // iso date
 
   // Carry forward last known weight — walks back to last Fitbit sync (up to 90 days)
   function lastKnownWeight(iso) {
@@ -393,6 +396,8 @@ export default function LifeModules({ mobile } = {}) {
   const sleepCellRefs  = useRef({})
   const stepsRef       = useRef(null)
   const stepsCellRefs  = useRef({})
+  const weatherRef     = useRef(null)
+  const weatherCellRefs = useRef({})
   const gratRef        = useRef(null)
   const transcriptRef  = useRef(null)
 
@@ -507,6 +512,16 @@ export default function LifeModules({ mobile } = {}) {
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [stepsOpen])
+
+  useEffect(() => {
+    if (!weatherOpen) return
+    function onDown(e) {
+      if (weatherRef.current && !weatherRef.current.contains(e.target) &&
+          !weatherCellRefs.current[weatherOpen]?.contains(e.target)) setWeatherOpen(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [weatherOpen])
 
   useEffect(() => {
     if (!gratEdit) return
@@ -711,6 +726,68 @@ export default function LifeModules({ mobile } = {}) {
           </div>
         </div>
       )}
+
+      {/* ── 0. Environment (weather, autosync, click for detail) ── */}
+      {(() => {
+        const POLLEN_RANK = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 }
+        function weatherCellColor(w) {
+          if (w == null) return null
+          const grassRank = POLLEN_RANK[w.grass_pollen_label] ?? 0
+          const treeRank  = POLLEN_RANK[w.birch_pollen_label] ?? 0
+          const worst = Math.max(grassRank, treeRank)
+          if (worst === 0) return '#86efac'
+          if (worst === 1) return '#dcfce7'
+          if (worst === 2) return '#fef9c3'
+          if (worst === 3) return '#fde8c8'
+          return '#fee2e2'
+        }
+        return (
+          <div className="lm-row">
+            <div className="lm-label"><span className="lm-label-emoji">🌤</span> <em>Environment</em></div>
+            <div className="lm-day-grid" style={{ width: gridWidth }}>
+              <WeekLines days={gridDays} dayW={dayW} />
+              {gridDays.map((d, i) => {
+                const iso = d.toISOString().slice(0, 10)
+                const w   = weatherStore[iso] ?? null
+                const bg  = weatherCellColor(w)
+                const label = w?.temp_max != null ? `${Math.round(w.temp_max)}°` : null
+                const isOpen = weatherOpen === iso
+                const hasData = w != null
+                return (
+                  <div
+                    key={iso}
+                    ref={el => { weatherCellRefs.current[iso] = el }}
+                    className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
+                    style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
+                    onClick={hasData ? () => setWeatherOpen(isOpen ? null : iso) : undefined}
+                  >
+                    {label && <span className="lm-cell-label">{label}</span>}
+                  </div>
+                )
+              })}
+            </div>
+            {mobile && (() => {
+              const w   = weatherStore[todayIso] ?? null
+              const bg  = weatherCellColor(w)
+              const label = w?.temp_max != null ? `${Math.round(w.temp_max)}°` : null
+              const isOpen = weatherOpen === todayIso
+              const hasData = w != null
+              return (
+                <div className="lm-today-col">
+                  <div
+                    ref={el => { weatherCellRefs.current[todayIso] = el }}
+                    className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
+                    style={{ left: 1, width: dayW - 2, background: bg || undefined }}
+                    onClick={hasData ? () => setWeatherOpen(isOpen ? null : todayIso) : undefined}
+                  >
+                    {label && <span className="lm-cell-label">{label}</span>}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        )
+      })()}
 
       {/* ── 1. Sleep (autosync + old manual fallback, click for detail) ── */}
       <div className="lm-row">
