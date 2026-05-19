@@ -32,3 +32,4 @@ dist-ssr
 *.sw?
 BackUps/
 LifeOS/
+.vercel

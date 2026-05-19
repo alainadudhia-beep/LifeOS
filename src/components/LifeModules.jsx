@@ -181,13 +181,14 @@ const MODULES = [
     cellColor: d => { const r = allergiesRating(d); return r != null ? r.bg : (hasAny(d) ? '#f1f5f9' : null) },
     cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
-      { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
-      { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
-      { key: 'eczema_location',   label: 'Location',           type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
-      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Itchy throat','Itchy eyes','Runny nose','Itchy nose','Puffy eyes'] },
+      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Puffy eyes','Sneezing'] },
+      { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Body','In shower'] },
+      { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
+      { key: 'eczema_location',   label: 'Eczema Location',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips'] },
+      { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
       { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
       { key: 'note',              label: 'Note',               type: 'text' },
     ],
@@ -260,7 +261,7 @@ const MODULES = [
     cellLabel: d => d?.level ?? null,
     fields: [
       { key: 'level', label: 'Drinks', type: 'options',     options: ['None','1','2','3','4','5+'], colors: { None: '#86efac', '1': '#fef9c3', '2': '#fef9c3', '3': '#fde8c8', '4': '#fde8c8', '5+': '#fee2e2' } },
-      { key: 'type',  label: 'Type',   type: 'multiselect', options: ['Wine','Beer','Spirits'] },
+      { key: 'type',  label: 'Type',   type: 'multiselect', options: ['White wine','Red wine','Sparkling','Beer','Gin','Other spirits'] },
     ],
   },
 
@@ -276,8 +277,8 @@ const MODULES = [
       { key: 'fruit_veg',   label: 'Fruit & Veg', type: 'options',     options: ['1','2','3','4','5','6+'],    colors: { '1': '#fee2e2', '2': '#fde8c8', '3': '#fef9c3', '4': '#dcfce7', '5': '#bbf7d0', '6+': '#86efac' } },
       { key: 'carbs',       label: 'Carbs',       type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#dcfce7', High: '#fef9c3' } },
       { key: 'snacking',    label: 'Snacking',    type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#bbf7d0', Med: '#fef9c3', High: '#fee2e2' } },
-      { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast','Raw Tomato','Avocado','Spinach'] },
-      { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin D','Biotin','Adaptogenic Mushrooms'] },
+      { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast','Raw Tomato','Avocado','Spinach','Strawberry','Banana','Citrus','Fermented/pickled','Aged cheese','Leftovers','Processed'] },
+      { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin D','Biotin','Adaptogenic Mushrooms'], uiHidden: true },
       { key: 'note',        label: 'Notes',       type: 'text' },
     ],
   },
@@ -320,6 +321,7 @@ const BODY_MODULE = {
     { key: 'wrist_nerve_pain', label: 'Wrist Pain',         type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'gut',              label: 'Gut',                type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'gut_symptoms',     label: 'Gut Symptoms',       type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
+    { key: 'stool',            label: 'Stool',              type: 'score',       min: 1, max: 7, colors: { 1: '#eff6ff', 2: '#dbeafe', 3: '#bfdbfe', 4: '#93c5fd', 5: '#7dd3fc', 6: '#60a5fa', 7: '#38bdf8' } },
     { key: 'period',           label: 'Period',             type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
     { key: 'pill',             label: 'Contraceptive Pill', type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
     { key: 'illness',          label: 'Illness',            type: 'options',     options: ['None','Cold','Flu','Sick'], colors: { None: '#f1f5f9', Cold: '#fef9c3', Flu: '#fde8c8', Sick: '#fee2e2' } },
@@ -438,6 +440,40 @@ export default function LifeModules({ mobile } = {}) {
         } else {
           next[date] = day
         }
+      }
+      return changed ? next : prev
+    })
+  }, []) // eslint-disable-line
+
+  // Migration: rename hayfever_symptoms itchy values → itchy field; rename alcohol types
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      const ITCHY_MAP = { 'Itchy nose': 'Nose', 'Itchy eyes': 'Eyes', 'Itchy throat': 'Throat' }
+      for (const [date, day] of Object.entries(prev)) {
+        let newDay = day
+        const health = day.health ?? {}
+        const alcohol = day.alcohol ?? {}
+
+        // Move itchy hayfever_symptoms → itchy field
+        if (health.hayfever_symptoms?.some(s => ITCHY_MAP[s])) {
+          const remaining = health.hayfever_symptoms.filter(s => !ITCHY_MAP[s])
+          const migrated = health.hayfever_symptoms.filter(s => ITCHY_MAP[s]).map(s => ITCHY_MAP[s])
+          const existing = health.itchy ?? []
+          const merged = [...new Set([...existing, ...migrated])]
+          newDay = { ...newDay, health: { ...health, hayfever_symptoms: remaining, itchy: merged } }
+          changed = true
+        }
+
+        // Rename alcohol types: Wine → White wine, Spirits → Other spirits
+        if (alcohol.type?.some(t => t === 'Wine' || t === 'Spirits')) {
+          const newType = alcohol.type.map(t => t === 'Wine' ? 'White wine' : t === 'Spirits' ? 'Other spirits' : t)
+          newDay = { ...newDay, alcohol: { ...alcohol, type: newType } }
+          changed = true
+        }
+
+        next[date] = newDay
       }
       return changed ? next : prev
     })
@@ -1331,7 +1367,7 @@ const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile,
           {mobile && <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, lineHeight: 1, cursor: 'pointer', color: '#94a3b8', padding: '0 2px', marginRight: -4 }}>×</button>}
         </div>
       </div>
-      {mod.fields.map(field => (
+      {mod.fields.filter(f => !f.uiHidden).map(field => (
         <PopoverField
           key={field.key}
           field={field}
