@@ -124,7 +124,7 @@ export default async function handler(req, res) {
       fetch(
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${lat}&longitude=${lon}` +
-        `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max` +
+        `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,relative_humidity_2m_mean` +
         `&timezone=auto&forecast_days=2`
       ).then(r => { if (!r.ok) throw new Error(`Forecast API error: ${r.status}`); return r.json() }),
       fetchAirQualityForDates(lat, lon, today, tomorrow),
@@ -144,6 +144,7 @@ export default async function handler(req, res) {
         precipitation_mm:   d.precipitation_sum?.[dayIndex]   ?? null,
         wind_speed_max:     d.windspeed_10m_max?.[dayIndex]   ?? null,
         uv_index:           d.uv_index_max?.[dayIndex]        ?? null,
+        humidity_pct:       d.relative_humidity_2m_mean?.[dayIndex] ?? null,
         grass_pollen:       gp,
         grass_pollen_label: grassPollenLabel(gp),
         birch_pollen:       bp,

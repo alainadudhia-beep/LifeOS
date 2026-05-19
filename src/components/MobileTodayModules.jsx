@@ -28,6 +28,7 @@ function fmtSyncTime(isoStr) {
 export default function MobileTodayModules() {
   const [logs, setLogs, refreshLogs] = useLocalStorage('lifetracker-life-logs', {})
   const [fitbitRaw]           = useLocalStorage('lifetracker-fitbit-raw', {})
+  const [weatherStore]        = useLocalStorage('lifetracker-weather', {})
   const [activeModule, setActiveModule] = useState(null)
   const [gratEdit, setGratEdit]         = useState(false)
 
@@ -221,6 +222,34 @@ export default function MobileTodayModules() {
   const socialLabel     = compactLabel(socialMod, todayLog.social ?? null)
   const socialIncomplete = COMPLETE_CHECK.social && !COMPLETE_CHECK.social(todayLog.social ?? null)
 
+  // ── Weather banner ────────────────────────────────────────────────────────
+
+  const todayWeather = weatherStore[today] ?? null
+
+  function rainLabel(mm) {
+    if (mm == null || mm < 1) return 'None'
+    if (mm < 5)  return 'Low'
+    if (mm < 15) return 'Med'
+    return 'High'
+  }
+  function windLabel(kmh) {
+    if (kmh == null) return null
+    if (kmh < 15) return 'Low'
+    if (kmh < 35) return 'Mod'
+    return 'Strong'
+  }
+  function worstPollenLabel(w) {
+    const POLLEN_RANK = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 }
+    const grassRank = POLLEN_RANK[w?.grass_pollen_label] ?? 0
+    const treeRank  = POLLEN_RANK[w?.birch_pollen_label] ?? 0
+    const worst = Math.max(grassRank, treeRank)
+    if (worst === 0) return 'None'
+    if (worst === 1) return 'Low'
+    if (worst === 2) return 'Medium'
+    if (worst === 3) return 'High'
+    return 'Very High'
+  }
+
   // Which sheet to show
   const activeMod = activeModule && !['sleep', 'steps', 'journal'].includes(activeModule)
     ? [...MODULES, EXERCISE_MODULE, BODY_MODULE].find(m => m.key === activeModule)
@@ -241,6 +270,25 @@ export default function MobileTodayModules() {
 
   return (
     <div className="mlm-panel">
+
+      {/* ── Weather banner ── */}
+      {todayWeather && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', background: '#f0f9ff', flexWrap: 'nowrap', overflowX: 'hidden', fontSize: 11 }}>
+          {todayWeather.temp_max != null && todayWeather.temp_min != null && (
+            <span style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+              {Math.round(todayWeather.temp_max)}° / {Math.round(todayWeather.temp_min)}°
+            </span>
+          )}
+          <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌿 {worstPollenLabel(todayWeather)}</span>
+          {windLabel(todayWeather.wind_speed_max) && (
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>💨 {windLabel(todayWeather.wind_speed_max)}</span>
+          )}
+          <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌧 {rainLabel(todayWeather.precipitation_mm)}</span>
+          {todayWeather.aqi_label && (
+            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>AQI {todayWeather.aqi_label}</span>
+          )}
+        </div>
+      )}
 
       {/* ── 2×6 grid: autosync (cols 1-2) + manual (cols 3-6) ── */}
       <div className="mlm-grid">

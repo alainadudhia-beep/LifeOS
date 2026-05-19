@@ -1327,6 +1327,124 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         )
       })()}
 
+      {/* ── Weather info portal ── */}
+      {weatherOpen && (() => {
+        const cellEl = weatherCellRefs.current[weatherOpen]
+        if (!cellEl) return null
+        const w = weatherStore[weatherOpen] ?? null
+        if (!w) return null
+
+        function rainChip(mm) {
+          if (mm == null || mm < 1) return { label: 'None', color: '#86efac' }
+          if (mm < 5)  return { label: `Low (${mm.toFixed(1)}mm)`,  color: '#dcfce7' }
+          if (mm < 15) return { label: `Med (${mm.toFixed(1)}mm)`,  color: '#fef9c3' }
+          return { label: `High (${mm.toFixed(1)}mm)`, color: '#fde8c8' }
+        }
+        function windChip(kmh) {
+          if (kmh == null) return null
+          if (kmh < 15) return { label: `Low (${Math.round(kmh)} km/h)`,      color: '#86efac' }
+          if (kmh < 35) return { label: `Moderate (${Math.round(kmh)} km/h)`, color: '#fef9c3' }
+          return { label: `Strong (${Math.round(kmh)} km/h)`, color: '#fde8c8' }
+        }
+        function pollenChip(label) {
+          if (!label) return { label: 'None', color: '#86efac' }
+          const COLORS = { 'Low': '#dcfce7', 'Medium': '#fef9c3', 'High': '#fde8c8', 'Very High': '#fee2e2' }
+          return { label, color: COLORS[label] ?? '#f1f5f9' }
+        }
+        function aqiChip(label) {
+          if (!label) return null
+          const COLORS = { 'Good': '#86efac', 'Fair': '#dcfce7', 'Moderate': '#fef9c3', 'Poor': '#fde8c8', 'Very Poor': '#fee2e2' }
+          return { label, color: COLORS[label] ?? '#f1f5f9' }
+        }
+
+        const rain  = rainChip(w.precipitation_mm)
+        const wind  = windChip(w.wind_speed_max)
+        const grass = pollenChip(w.grass_pollen_label)
+        const tree  = pollenChip(w.birch_pollen_label)
+        const aqi   = aqiChip(w.aqi_label)
+
+        const rect = cellEl.getBoundingClientRect()
+        const left = Math.min(rect.left, window.innerWidth - 240)
+        const top  = rect.bottom + 8
+
+        const chipStyle = (color) => ({
+          display: 'inline-block',
+          background: color,
+          borderRadius: 4,
+          padding: '1px 6px',
+          fontSize: 12,
+          fontWeight: 500,
+          color: '#1e293b',
+        })
+        const rowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#64748b', marginBottom: 4 }
+
+        return createPortal(
+          <div
+            ref={weatherRef}
+            style={{ position: 'fixed', top, left, zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220 }}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{fmtDate(weatherOpen)}</span>
+              <AutosyncTag />
+            </div>
+            {/* Temperature */}
+            <div style={rowStyle}>
+              <span>Temperature</span>
+              <span style={{ fontWeight: 500, color: '#334155' }}>
+                {w.temp_min != null && w.temp_max != null
+                  ? `${Math.round(w.temp_min)}–${Math.round(w.temp_max)}°C`
+                  : w.temp_max != null ? `${Math.round(w.temp_max)}°C` : '—'}
+              </span>
+            </div>
+            {/* Humidity */}
+            <div style={rowStyle}>
+              <span>Humidity</span>
+              <span style={{ fontWeight: 500, color: '#334155' }}>
+                {w.humidity_pct != null ? `${Math.round(w.humidity_pct)}%` : '—'}
+              </span>
+            </div>
+            {/* Rain */}
+            <div style={rowStyle}>
+              <span>Rain</span>
+              <span style={chipStyle(rain.color)}>{rain.label}</span>
+            </div>
+            {/* Wind */}
+            {wind && (
+              <div style={rowStyle}>
+                <span>Wind</span>
+                <span style={chipStyle(wind.color)}>{wind.label}</span>
+              </div>
+            )}
+            {/* Grass pollen */}
+            <div style={rowStyle}>
+              <span>Grass pollen</span>
+              <span style={chipStyle(grass.color)}>{grass.label}</span>
+            </div>
+            {/* Tree pollen */}
+            <div style={rowStyle}>
+              <span>Tree pollen</span>
+              <span style={chipStyle(tree.color)}>{tree.label}</span>
+            </div>
+            {/* AQI */}
+            {aqi && (
+              <div style={rowStyle}>
+                <span>AQI</span>
+                <span style={chipStyle(aqi.color)}>{aqi.label}</span>
+              </div>
+            )}
+            {/* UV */}
+            {w.uv_index != null && (
+              <div style={rowStyle}>
+                <span>UV</span>
+                <span style={{ fontWeight: 500, color: '#334155' }}>{w.uv_index.toFixed(1)}</span>
+              </div>
+            )}
+          </div>,
+          document.body
+        )
+      })()}
+
       {/* ── Transcript portal ── */}
       {transcriptOpen && (() => {
         const cellEl      = transcriptCellRefs.current[transcriptOpen]

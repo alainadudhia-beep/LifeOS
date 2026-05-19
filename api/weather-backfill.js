@@ -100,7 +100,7 @@ async function fetchGroupWeather(city, startDate, endDate) {
       `https://archive-api.open-meteo.com/v1/archive` +
       `?latitude=${lat}&longitude=${lon}` +
       `&start_date=${startDate}&end_date=${endDate}` +
-      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max` +
+      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,relative_humidity_2m_mean` +
       `&timezone=auto`
     ).then(r => { if (!r.ok) throw new Error(`Archive API error: ${r.status}`); return r.json() }),
     fetchAirQualityForDates(lat, lon, startDate, endDate),
@@ -124,6 +124,7 @@ async function fetchGroupWeather(city, startDate, endDate) {
       precipitation_mm:   d.precipitation_sum?.[i]   ?? null,
       wind_speed_max:     d.windspeed_10m_max?.[i]   ?? null,
       uv_index:           d.uv_index_max?.[i]        ?? null,
+      humidity_pct:       d.relative_humidity_2m_mean?.[i] ?? null,
       grass_pollen:       gp,
       grass_pollen_label: grassPollenLabel(gp),
       birch_pollen:       bp,
