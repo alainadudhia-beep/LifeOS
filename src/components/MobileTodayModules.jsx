@@ -226,28 +226,47 @@ export default function MobileTodayModules() {
 
   const todayWeather = weatherStore[today] ?? null
 
-  function rainLabel(mm) {
-    if (mm == null || mm < 1) return 'None'
-    if (mm < 5)  return 'Low'
-    if (mm < 15) return 'Med'
-    return 'High'
+  // Weather banner helpers — severity → dot colour
+  const W_DOT = { good: '#4ade80', med: '#fbbf24', bad: '#f87171' }
+  function dot(sev) {
+    return (
+      <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: W_DOT[sev], marginLeft: 2, verticalAlign: 'middle', flexShrink: 0 }} />
+    )
   }
-  function windLabel(kmh) {
+  function pollenSev(w) {
+    const RANK = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 }
+    const worst = Math.max(RANK[w?.grass_pollen_label] ?? 0, RANK[w?.birch_pollen_label] ?? 0)
+    if (worst <= 1) return 'good'
+    if (worst === 2) return 'med'
+    return 'bad'
+  }
+  function windSev(kmh) {
     if (kmh == null) return null
-    if (kmh < 15) return 'Low'
-    if (kmh < 35) return 'Mod'
-    return 'Strong'
+    if (kmh < 15) return 'good'
+    if (kmh < 35) return 'med'
+    return 'bad'
   }
-  function worstPollenLabel(w) {
-    const POLLEN_RANK = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 }
-    const grassRank = POLLEN_RANK[w?.grass_pollen_label] ?? 0
-    const treeRank  = POLLEN_RANK[w?.birch_pollen_label] ?? 0
-    const worst = Math.max(grassRank, treeRank)
-    if (worst === 0) return 'None'
-    if (worst === 1) return 'Low'
-    if (worst === 2) return 'Medium'
-    if (worst === 3) return 'High'
-    return 'Very High'
+  function rainSev(mm) {
+    if (mm == null || mm < 5) return 'good'
+    if (mm < 15) return 'med'
+    return 'bad'
+  }
+  function humiditySev(pct) {
+    if (pct == null) return null
+    if (pct >= 40 && pct <= 70) return 'good'
+    return 'med'
+  }
+  function uvSev(uv) {
+    if (uv == null) return null
+    if (uv < 3) return 'good'
+    if (uv < 6) return 'med'
+    return 'bad'
+  }
+  function aqiSev(label) {
+    if (!label) return null
+    if (label === 'Good' || label === 'Fair') return 'good'
+    if (label === 'Moderate') return 'med'
+    return 'bad'
   }
 
   // Which sheet to show
@@ -273,26 +292,13 @@ export default function MobileTodayModules() {
 
       {/* ── Weather banner ── */}
       {todayWeather && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', background: '#f0f9ff', flexWrap: 'nowrap', overflowX: 'hidden', fontSize: 11 }}>
-          {todayWeather.temp_max != null && todayWeather.temp_min != null && (
-            <span style={{ fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
-              {Math.round(todayWeather.temp_max)}° / {Math.round(todayWeather.temp_min)}°
-            </span>
-          )}
-          <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌿 {worstPollenLabel(todayWeather)}</span>
-          {windLabel(todayWeather.wind_speed_max) && (
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>💨 {windLabel(todayWeather.wind_speed_max)}</span>
-          )}
-          <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌧 {rainLabel(todayWeather.precipitation_mm)}</span>
-          {todayWeather.humidity_pct != null && (
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>💦 {Math.round(todayWeather.humidity_pct)}%</span>
-          )}
-          {todayWeather.uv_index != null && (
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>☀️ UV{Math.round(todayWeather.uv_index)}</span>
-          )}
-          {todayWeather.aqi_label && (
-            <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>🌫️ {todayWeather.aqi_label}</span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 14px', background: '#f0f9ff', fontSize: 16 }}>
+          <span>🌿{dot(pollenSev(todayWeather))}</span>
+          <span>💨{dot(windSev(todayWeather.wind_speed_max))}</span>
+          <span>🌧{dot(rainSev(todayWeather.precipitation_mm))}</span>
+          {todayWeather.humidity_pct != null && <span>💦{dot(humiditySev(todayWeather.humidity_pct))}</span>}
+          {todayWeather.uv_index != null    && <span>☀️{dot(uvSev(todayWeather.uv_index))}</span>}
+          {todayWeather.aqi_label           && <span>🌫️{dot(aqiSev(todayWeather.aqi_label))}</span>}
         </div>
       )}
 
