@@ -212,7 +212,7 @@ const MODULES = [
       { key: 'work',      label: 'Mood (work)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'life',      label: 'Mood (life)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'focus',     label: 'Focus',       type: 'score',       min: 1, max: 5, colors: H5 },
-      { key: 'symptoms',  label: 'Symptoms',    type: 'multiselect', options: ['Fatigue','Brain fog','Anxious','Headache'] },
+      { key: 'symptoms',  label: 'Symptoms',    type: 'multiselect', options: ['Fatigue','Brain fog','Anxious','Headache','Crying'] },
       { key: 'adhd_meds', label: 'Attentin',     type: 'options',     options: ['None','5mg','7.5mg','10mg'], colors: { None: '#f1f5f9', '5mg': '#e0f2fe', '7.5mg': '#bae6fd', '10mg': '#7dd3fc' } },
       { key: 'ritalin',   label: 'Ritalin',      type: 'options',     options: ['None','10mg','18mg'],        colors: { None: '#f1f5f9', '10mg': '#e0f2fe', '18mg': '#bae6fd' } },
       { key: 'melatonin', label: 'Melatonin',   type: 'toggle' },
