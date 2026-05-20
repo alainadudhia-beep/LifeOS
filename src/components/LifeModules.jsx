@@ -314,7 +314,7 @@ const EXERCISE_MODULE = {
 // gut / gut_symptoms / wrist_nerve_pain migrated here from health module
 const BODY_MODULE = {
   key: 'body', label: 'Body',
-  defaults: { illness: 'None', painkillers: '0', knee_pain: 'None' },
+  defaults: { illness: 'None', painkillers: '0' },
   cellColor: d => { const r = bodyRating(d); return r != null ? r.bg : null },
   fields: [
     { key: '_weight_kg',       label: 'Weight',             type: 'readonly',    unit: 'kg', autosync: true },
