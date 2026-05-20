@@ -57,16 +57,21 @@ export default function MobileTodayModules() {
 
   function openModule(key) {
     const mod = [...MODULES, EXERCISE_MODULE, BODY_MODULE].find(m => m.key === key)
-    if (mod?.defaults) {
-      setLogs(prev => {
-        const current = prev[today]?.[key] ?? {}
-        const patch = Object.fromEntries(
-          Object.entries(mod.defaults).filter(([k]) => current[k] == null)
-        )
-        if (!Object.keys(patch).length) return prev
-        return { ...prev, [today]: { ...(prev[today] ?? {}), [key]: { ...current, ...patch } } }
-      })
-    }
+    setLogs(prev => {
+      const current = prev[today]?.[key] ?? {}
+      const patch = mod?.defaults
+        ? Object.fromEntries(Object.entries(mod.defaults).filter(([k]) => current[k] == null))
+        : {}
+      if (key === 'body') {
+        const d = new Date(today)
+        d.setDate(d.getDate() - 1)
+        const yBody = prev[d.toISOString().slice(0, 10)]?.body ?? {}
+        if (current.pill   == null && yBody.pill   != null) patch.pill   = yBody.pill
+        if (current.period == null && yBody.period != null) patch.period = yBody.period
+      }
+      if (!Object.keys(patch).length) return prev
+      return { ...prev, [today]: { ...(prev[today] ?? {}), [key]: { ...current, ...patch } } }
+    })
     setActiveModule(key)
   }
 

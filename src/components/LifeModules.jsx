@@ -177,7 +177,7 @@ const MODULES = [
   // ── Allergies ─────────────────────────────────────────────────────────────────
   {
     key: 'health', label: 'Allergies',
-    defaults: { episcleritis: 'None' },
+    defaults: {},
     cellColor: d => { const r = allergiesRating(d); return r != null ? r.bg : (hasAny(d) ? '#f1f5f9' : null) },
     cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
@@ -314,7 +314,7 @@ const EXERCISE_MODULE = {
 // gut / gut_symptoms / wrist_nerve_pain migrated here from health module
 const BODY_MODULE = {
   key: 'body', label: 'Body',
-  defaults: { illness: 'None', painkillers: '0', knee_pain: 'None', wrist_nerve_pain: 'None' },
+  defaults: { illness: 'None', painkillers: '0', knee_pain: 'None' },
   cellColor: d => { const r = bodyRating(d); return r != null ? r.bg : null },
   fields: [
     { key: '_weight_kg',       label: 'Weight',             type: 'readonly',    unit: 'kg', autosync: true },
@@ -616,16 +616,22 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
     } else {
       markLogged(moduleKey, date)
       const mod = [...MODULES, EXERCISE_MODULE, BODY_MODULE].find(m => m.key === moduleKey)
-      if (mod?.defaults) {
-        setLogs(prev => {
-          const current = prev[date]?.[moduleKey] ?? {}
-          const patch = Object.fromEntries(
-            Object.entries(mod.defaults).filter(([k]) => current[k] == null)
-          )
-          if (!Object.keys(patch).length) return prev
-          return { ...prev, [date]: { ...(prev[date] ?? {}), [moduleKey]: { ...current, ...patch } } }
-        })
-      }
+      setLogs(prev => {
+        const current = prev[date]?.[moduleKey] ?? {}
+        const patch = mod?.defaults
+          ? Object.fromEntries(Object.entries(mod.defaults).filter(([k]) => current[k] == null))
+          : {}
+        // Carry forward pill and period from yesterday when opening body
+        if (moduleKey === 'body') {
+          const d = new Date(date)
+          d.setDate(d.getDate() - 1)
+          const yBody = prev[d.toISOString().slice(0, 10)]?.body ?? {}
+          if (current.pill   == null && yBody.pill   != null) patch.pill   = yBody.pill
+          if (current.period == null && yBody.period != null) patch.period = yBody.period
+        }
+        if (!Object.keys(patch).length) return prev
+        return { ...prev, [date]: { ...(prev[date] ?? {}), [moduleKey]: { ...current, ...patch } } }
+      })
       setActiveCell({ moduleKey, date })
     }
   }
