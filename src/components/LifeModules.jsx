@@ -320,7 +320,7 @@ const BODY_MODULE = {
     { key: 'knee_pain',        label: 'Knee Pain',          type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'wrist_nerve_pain', label: 'Wrist Pain',         type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'gut',              label: 'Gut',                type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
-    { key: 'gut_symptoms',     label: 'Gut Symptoms',       type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea'] },
+    { key: 'gut_symptoms',     label: 'Gut Symptoms',       type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea','Bleeding','Smelly flatulence'] },
     { key: 'stool',            label: 'Stool',              type: 'score',       min: 1, max: 7, colors: { 1: '#f1f5f9', 2: '#f1f5f9', 3: '#f1f5f9', 4: '#f1f5f9', 5: '#f1f5f9', 6: '#f1f5f9', 7: '#f1f5f9' } },
     { key: 'period',           label: 'Period',             type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
     { key: 'pill',             label: 'Contraceptive Pill', type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
