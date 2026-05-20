@@ -1356,22 +1356,31 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
           if (kmh < 35) return { label: `Moderate (${Math.round(kmh)} km/h)`, color: '#fef9c3' }
           return { label: `Strong (${Math.round(kmh)} km/h)`, color: '#fde8c8' }
         }
-        function pollenChip(label) {
+        function pollenChip(label, score) {
           if (!label) return { label: 'None', color: '#86efac' }
           const COLORS = { 'Low': '#dcfce7', 'Medium': '#fef9c3', 'High': '#fde8c8', 'Very High': '#fee2e2' }
-          return { label, color: COLORS[label] ?? '#f1f5f9' }
+          const display = score != null ? `${label} (${Math.round(score)})` : label
+          return { label: display, color: COLORS[label] ?? '#f1f5f9' }
         }
-        function aqiChip(label) {
+        function aqiChip(label, score) {
           if (!label) return null
           const COLORS = { 'Good': '#86efac', 'Fair': '#dcfce7', 'Moderate': '#fef9c3', 'Poor': '#fde8c8', 'Very Poor': '#fee2e2' }
-          return { label, color: COLORS[label] ?? '#f1f5f9' }
+          const display = score != null ? `${label} (${Math.round(score)})` : label
+          return { label: display, color: COLORS[label] ?? '#f1f5f9' }
+        }
+        function uvChip(idx) {
+          if (idx == null) return null
+          const label = idx <= 2 ? 'Low' : idx <= 5 ? 'Moderate' : idx <= 7 ? 'High' : idx <= 10 ? 'Very High' : 'Extreme'
+          const COLORS = { 'Low': '#dcfce7', 'Moderate': '#fef9c3', 'High': '#fde8c8', 'Very High': '#fee2e2', 'Extreme': '#fee2e2' }
+          return { label: `${label} (${idx.toFixed(1)})`, color: COLORS[label] }
         }
 
         const rain  = rainChip(w.precipitation_mm)
         const wind  = windChip(w.wind_speed_max)
-        const grass = pollenChip(w.grass_pollen_label)
-        const tree  = pollenChip(w.birch_pollen_label)
-        const aqi   = aqiChip(w.aqi_label)
+        const grass = pollenChip(w.grass_pollen_label, w.grass_pollen)
+        const tree  = pollenChip(w.birch_pollen_label, w.birch_pollen)
+        const aqi   = aqiChip(w.aqi_label, w.aqi)
+        const uv    = uvChip(w.uv_index)
 
         const rect = cellEl.getBoundingClientRect()
         const left = Math.min(rect.left, window.innerWidth - 240)
@@ -1444,10 +1453,10 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
               </div>
             )}
             {/* UV */}
-            {w.uv_index != null && (
+            {uv && (
               <div style={rowStyle}>
                 <span>UV</span>
-                <span style={{ fontWeight: 500, color: '#334155' }}>{w.uv_index.toFixed(1)}</span>
+                <span style={chipStyle(uv.color)}>{uv.label}</span>
               </div>
             )}
           </div>,
