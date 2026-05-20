@@ -197,7 +197,7 @@ const MODULES = [
   // ── Mind ─────────────────────────────────────────────────────────────────────
   {
     key: 'mood', label: 'Mind',
-    defaults: { adhd_meds: 'None', melatonin: false },
+    defaults: { adhd_meds: 'None', ritalin: 'None', melatonin: false },
     cellColor: d => {
       const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
@@ -480,6 +480,23 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         }
 
         next[date] = newDay
+      }
+      return changed ? next : prev
+    })
+  }, []) // eslint-disable-line
+
+  // Migration: backfill ritalin: 'None' for all existing mood entries
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      for (const [date, day] of Object.entries(prev)) {
+        if (day.mood != null && day.mood.ritalin == null) {
+          next[date] = { ...day, mood: { ...day.mood, ritalin: 'None' } }
+          changed = true
+        } else {
+          next[date] = day
+        }
       }
       return changed ? next : prev
     })
