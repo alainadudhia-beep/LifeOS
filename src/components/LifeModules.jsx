@@ -11,7 +11,7 @@ const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac
 // Sleep: red / orange / yellow / light-green / green / dark-green  (<5 / 5-6 / 6-7 / 7-8 / 8-9 / 9+)
 const SLEEP_H         = { '<5': '#fee2e2', '5': '#fde8c8', '6': '#fef9c3', '7': '#dcfce7', '8': '#bbf7d0', '9+': '#86efac' }
 const SEVERITY_COLORS = { None: '#bbf7d0', Low: '#fef9c3', Med: '#fde8c8', Bad: '#fee2e2' }
-const EXERCISE_SHORT  = { 'Yoga': 'Yoga', 'Pilates': 'Pilates', 'Long walk': 'Walk', 'Gym': 'Gym' }
+const EXERCISE_SHORT  = { 'Yoga': 'Yoga', 'Pilates': 'Pilates', 'Dog walk': 'Walk', 'Gym': 'Gym' }
 const ACTIVITY_TEXT   = { 'Yoga': '#6b21a8', 'Pilates': '#9d174d', 'Walk': '#0e7490', 'Gym': '#1e40af' }
 
 // ─── sleep colour helpers (Fitbit + old manual fallback) ──────────────────────
@@ -182,7 +182,7 @@ const MODULES = [
     cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
       { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
-      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Puffy eyes','Sneezing'] },
+      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Blocked nose','Blocked sinuses','Puffy eyes','Sneezing'] },
       { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
@@ -306,7 +306,7 @@ const EXERCISE_MODULE = {
   key: 'exercise', label: 'Exercise',
   fields: [
     { key: 'energy',     label: 'Energy',     type: 'score',       min: 1, max: 5, colors: H5 },
-    { key: 'activities', label: 'Activities', type: 'multiselect', options: ['Yoga','Pilates','Long walk','Gym'], colors: { 'Yoga': '#e9d5ff', 'Pilates': '#fce7f3', 'Long walk': '#cffafe', 'Gym': '#dbeafe' } },
+    { key: 'activities', label: 'Activities', type: 'multiselect', options: ['Yoga','Pilates','Dog walk','Gym'], colors: { 'Yoga': '#e9d5ff', 'Pilates': '#fce7f3', 'Dog walk': '#cffafe', 'Gym': '#dbeafe' } },
   ],
 }
 
@@ -480,6 +480,24 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         }
 
         next[date] = newDay
+      }
+      return changed ? next : prev
+    })
+  }, []) // eslint-disable-line
+
+  // Migration: rename 'Long walk' → 'Dog walk' in exercise activities
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      for (const [date, day] of Object.entries(prev)) {
+        const acts = day.exercise?.activities
+        if (acts?.includes('Long walk')) {
+          next[date] = { ...day, exercise: { ...day.exercise, activities: acts.map(a => a === 'Long walk' ? 'Dog walk' : a) } }
+          changed = true
+        } else {
+          next[date] = day
+        }
       }
       return changed ? next : prev
     })
