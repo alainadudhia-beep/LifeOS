@@ -63,12 +63,28 @@ async function getAccessToken(refreshToken) {
 
 // ── Google Health API fetch helpers ─────────────────────────────────────────
 
-async function fetchDailyRollup(accessToken, dataType, startTime, endTime, debugErrors) {
+// Convert a YYYY-MM-DD string to the CivilDateTime object Google Health API expects.
+function civilDateTime(dateStr, hours = 0, minutes = 0, seconds = 0) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return { date: { year, month, day }, time: { hours, minutes, seconds, nanos: 0 } }
+}
+
+/**
+ * POST .../dataPoints:dailyRollUp
+ * Body must use CivilDateTime (not ISO timestamps).
+ * Used for: steps, resting HR, HRV, SpO2, respiratory rate, active calories, resting calories.
+ */
+async function fetchDailyRollup(accessToken, dataType, dateStr, debugErrors) {
   const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints:dailyRollUp`
   const res = await fetch(url, {
     method:  'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ startTime, endTime }),
+    body: JSON.stringify({
+      range: {
+        start: civilDateTime(dateStr, 0,  0,  0),
+        end:   civilDateTime(dateStr, 23, 59, 59),
+      },
+    }),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -79,9 +95,13 @@ async function fetchDailyRollup(accessToken, dataType, startTime, endTime, debug
   return res.json()
 }
 
+/**
+ * GET .../dataPoints (NOT :list — that path doesn't exist)
+ * Used for: sleep sessions, weight readings.
+ */
 async function fetchDataPoints(accessToken, dataType, startTime, endTime, debugErrors) {
-  const params = new URLSearchParams({ startTime, endTime })
-  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints:list?${params}`
+  const params = new URLSearchParams({ startTime, endTime, pageSize: '100' })
+  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints?${params}`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   if (!res.ok) {
     const text = await res.text()
@@ -153,11 +173,11 @@ async function fetchOvernightMetrics(accessToken, yesterdayDate) {
   const endTime   = `${yesterdayDate}T23:59:59Z`
 
   const [sleepData, hrData, hrvData, respData, spo2Data] = await Promise.all([
-    fetchDataPoints( accessToken, 'sleep',                        startTime, endTime),
-    fetchDailyRollup(accessToken, 'heart-rate',                   startTime, endTime), // resting HR
-    fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startTime, endTime),
-    fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startTime, endTime),
-    fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startTime, endTime),
+    fetchDataPoints( accessToken, 'sleep',                       startTime, endTime),
+    fetchDailyRollup(accessToken, 'daily-resting-heart-rate',    yesterdayDate), // resting HR (not 'heart-rate')
+    fetchDailyRollup(accessToken, 'heart-rate-variability',      yesterdayDate), // was 'daily-heart-rate-variability'
+    fetchDailyRollup(accessToken, 'daily-respiratory-rate',      yesterdayDate),
+    fetchDailyRollup(accessToken, 'oxygen-saturation',           yesterdayDate), // was 'daily-oxygen-saturation'
   ])
 
   const { sleep_minutes, in_bed_minutes } = parseSleep(sleepData)
@@ -190,10 +210,10 @@ async function fetchDaytimeMetrics(accessToken, date) {
   })()
 
   const [stepsData, activeEnergyData, restingEnergyData, weightData] = await Promise.all([
-    fetchDailyRollup(accessToken, 'steps',                startTime, endTime),
-    fetchDailyRollup(accessToken, 'active-energy-burned', startTime, endTime),
-    fetchDailyRollup(accessToken, 'basal-metabolic-rate', startTime, endTime), // resting/BMR energy
-    fetchDataPoints( accessToken, 'weight',               weightStart, endTime),
+    fetchDailyRollup(accessToken, 'steps',                          date),
+    fetchDailyRollup(accessToken, 'active-calories-burned',         date), // was 'active-energy-burned'
+    fetchDailyRollup(accessToken, 'daily-resting-calories-burned',  date), // was 'basal-metabolic-rate'
+    fetchDataPoints( accessToken, 'weight',                         weightStart, endTime),
   ])
 
   return {
@@ -327,15 +347,15 @@ export default async function handler(req, res) {
 
     const errors = {}
     const [sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight] = await Promise.all([
-      fetchDataPoints( accessToken, 'sleep',                        startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'heart-rate',                   startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'steps',                        startToday,     endToday,     errors),
-      fetchDailyRollup(accessToken, 'active-energy-burned',         startToday,     endToday,     errors),
-      fetchDailyRollup(accessToken, 'basal-metabolic-rate',         startToday,     endToday,     errors),
-      fetchDataPoints( accessToken, 'weight',                       weightStart,    endToday,     errors),
+      fetchDataPoints( accessToken, 'sleep',                         startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'daily-resting-heart-rate',      yesterday,                   errors),
+      fetchDailyRollup(accessToken, 'heart-rate-variability',        yesterday,                   errors),
+      fetchDailyRollup(accessToken, 'daily-respiratory-rate',        yesterday,                   errors),
+      fetchDailyRollup(accessToken, 'oxygen-saturation',             yesterday,                   errors),
+      fetchDailyRollup(accessToken, 'steps',                         today,                       errors),
+      fetchDailyRollup(accessToken, 'active-calories-burned',        today,                       errors),
+      fetchDailyRollup(accessToken, 'daily-resting-calories-burned', today,                       errors),
+      fetchDataPoints( accessToken, 'weight',                        weightStart,    endToday,     errors),
     ])
 
     return res.status(200).json({
