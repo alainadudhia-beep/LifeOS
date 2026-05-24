@@ -5,6 +5,7 @@ import {
   MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField,
   EXERCISE_MODULE, BODY_MODULE, bodyRating,
   sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins,
+  rollingHrvAvg, spo2Rating, respRateRating, skinTempRating, hrvRating, recoveryComposite,
 } from './LifeModules'
 import './LifeModules.css'
 import './MobileTodayModules.css'
@@ -115,10 +116,12 @@ export default function MobileTodayModules() {
 
   // ── Fitbit: calories ──────────────────────────────────────────────────────
 
-  const calsTotal = (stepsActive != null || stepsResting != null)
-    ? Math.round((stepsActive ?? 0) + (stepsResting ?? 0))
-    : null
-  const calsLabel = calsTotal != null ? `${calsTotal.toLocaleString()}` : null
+  // Prefer new total_calories_kcal; fall back to old active+resting for historical data
+  const calsTotal = fitbitToday.total_calories_kcal
+    ?? ((stepsActive != null || stepsResting != null)
+        ? Math.round((stepsActive ?? 0) + (stepsResting ?? 0))
+        : null)
+  const calsLabel = calsTotal != null ? calsTotal.toLocaleString() : null
   const calsBg = (() => {
     if (calsTotal == null) return null
     const h = new Date().getHours() + new Date().getMinutes() / 60
@@ -130,16 +133,12 @@ export default function MobileTodayModules() {
       : '#86efac'
   })()
 
-  // ── Fitbit: screen time ───────────────────────────────────────────────────
+  // ── Recovery (HRV, SpO2, resp rate, skin temp) ────────────────────────────
 
-  const screenMins = fitbitToday.screen_time_minutes ?? null
-  const screenBg   = screenMins == null ? null
-    : screenMins < 120 ? '#86efac'
-    : screenMins < 180 ? '#bbf7d0'
-    : screenMins < 240 ? '#fef9c3'
-    : screenMins < 300 ? '#fde8c8'
-    : '#fee2e2'
-  const screenLabel = screenMins != null ? fmtMins(screenMins) : null
+  const hrvAvgToday   = rollingHrvAvg(fitbitRaw, today)
+  const recoveryScore = recoveryComposite(fitbitToday, hrvAvgToday)
+  const recoveryBg    = recoveryScore?.bg ?? null
+  const recoveryLabel = recoveryScore?.label ?? null
 
   const syncTime = fmtSyncTime(fitbitToday.synced_at)
 
@@ -276,7 +275,7 @@ export default function MobileTodayModules() {
   }
 
   // Which sheet to show
-  const activeMod = activeModule && !['sleep', 'steps', 'journal'].includes(activeModule)
+  const activeMod = activeModule && !['sleep', 'steps', 'journal', 'recovery'].includes(activeModule)
     ? [...MODULES, EXERCISE_MODULE, BODY_MODULE].find(m => m.key === activeModule)
     : null
 
@@ -389,14 +388,15 @@ export default function MobileTodayModules() {
           {calsLabel && <span className="mlm-card-value">{calsLabel}</span>}
         </button>
 
-        {/* Row 2 col 2: Screen Time */}
+        {/* Row 2 col 2: Recovery */}
         <button
-          className="mlm-card mlm-card--sync"
-          style={screenBg ? { background: screenBg } : undefined}
-          disabled
+          className={`mlm-card mlm-card--sync ${activeModule === 'recovery' ? 'mlm-card--active' : ''}`}
+          style={recoveryBg ? { background: recoveryBg } : undefined}
+          onClick={recoveryScore ? () => setActiveModule('recovery') : undefined}
+          disabled={!recoveryScore}
         >
-          <span className="mlm-card-emoji">📱</span>
-          {screenLabel && <span className="mlm-card-value">{screenLabel}</span>}
+          <span className="mlm-card-emoji">🩺</span>
+          {recoveryLabel && <span className="mlm-card-value">{recoveryLabel}</span>}
         </button>
 
         {/* Row 2 col 3: Diet */}
@@ -575,18 +575,65 @@ export default function MobileTodayModules() {
               {steps != null && (
                 <div className="mlm-info-row"><span>Steps</span><strong>{steps.toLocaleString()}</strong></div>
               )}
-              {stepsActive != null && (
-                <>
-                  <div className="mlm-info-row">
-                    <span>Total calories</span>
-                    <strong>{Math.round(stepsActive + (stepsResting ?? 0))} kcal</strong>
-                  </div>
-                  <div className="mlm-info-row mlm-info-row--sub">
-                    <span>Active {Math.round(stepsActive)}</span>
-                    <span>Resting {Math.round(stepsResting ?? 0)}</span>
-                  </div>
-                </>
+              {calsTotal != null && (
+                <div className="mlm-info-row">
+                  <span>Total calories</span>
+                  <strong>{calsTotal.toLocaleString()} kcal</strong>
+                </div>
               )}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* ── Recovery detail sheet ── */}
+      {activeModule === 'recovery' && createPortal(
+        <>
+          <div className="mlm-overlay" onClick={() => setActiveModule(null)} />
+          <div className="mlm-sheet mlm-sheet--compact">
+            <div className="mlm-sheet-handle" />
+            <div className="mlm-sheet-header">
+              <span className="mlm-sheet-title">🩺 Recovery</span>
+              <span className="mlm-sheet-date">{fmtDate(today)}</span>
+              <button className="mlm-sheet-close" onClick={() => setActiveModule(null)}>✕</button>
+            </div>
+            <div className="mlm-sheet-fields">
+              {(() => {
+                const s_hrv  = hrvRating(fitbitToday.hrv, hrvAvgToday)
+                const s_spo2 = spo2Rating(fitbitToday.spo2)
+                const s_rr   = respRateRating(fitbitToday.respiratory_rate)
+                const s_stmp = skinTempRating(fitbitToday.skin_temp_deviation)
+                const chip = (bg) => ({ display: 'inline-block', background: bg, borderRadius: 4, padding: '1px 8px', fontSize: 12, fontWeight: 500, color: '#1e293b' })
+                return (
+                  <>
+                    {s_hrv && (
+                      <div className="mlm-info-row">
+                        <span>HRV{hrvAvgToday != null ? ` (avg ${Math.round(hrvAvgToday)})` : ''}</span>
+                        <span style={chip(s_hrv.bg)}>{s_hrv.label}{fitbitToday.hrv != null ? ` (${Math.round(fitbitToday.hrv)} ms)` : ''}</span>
+                      </div>
+                    )}
+                    {s_spo2 && (
+                      <div className="mlm-info-row">
+                        <span>SpO2</span>
+                        <span style={chip(s_spo2.bg)}>{s_spo2.label}{fitbitToday.spo2 != null ? ` (${fitbitToday.spo2.toFixed(1)}%)` : ''}</span>
+                      </div>
+                    )}
+                    {s_rr && (
+                      <div className="mlm-info-row">
+                        <span>Resp rate</span>
+                        <span style={chip(s_rr.bg)}>{s_rr.label}{fitbitToday.respiratory_rate != null ? ` (${fitbitToday.respiratory_rate.toFixed(1)} bpm)` : ''}</span>
+                      </div>
+                    )}
+                    {s_stmp && (
+                      <div className="mlm-info-row">
+                        <span>Skin temp</span>
+                        <span style={chip(s_stmp.bg)}>{s_stmp.label}{fitbitToday.skin_temp_deviation != null ? ` (${fitbitToday.skin_temp_deviation >= 0 ? '+' : ''}${fitbitToday.skin_temp_deviation.toFixed(2)}°C)` : ''}</span>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </div>
         </>,

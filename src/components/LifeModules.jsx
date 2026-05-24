@@ -156,6 +156,111 @@ function hasAny(d) {
   )
 }
 
+// ─── recovery scoring ─────────────────────────────────────────────────────────
+
+const RECOVERY_TIERS  = ['Bad', 'Poor', 'Fair', 'Good', 'Great']
+const RECOVERY_BG_MAP = ['#fee2e2', '#fde8c8', '#fef9c3', '#dcfce7', '#86efac']
+const TIER_IDX        = { Bad: 0, Poor: 1, Fair: 2, Good: 3, Great: 4 }
+
+function spo2Rating(pct) {
+  if (pct == null) return null
+  if (pct >= 97) return { label: 'Great', bg: '#86efac' }
+  if (pct >= 95) return { label: 'Good',  bg: '#dcfce7' }
+  if (pct >= 93) return { label: 'Fair',  bg: '#fef9c3' }
+  if (pct >= 91) return { label: 'Poor',  bg: '#fde8c8' }
+  return               { label: 'Bad',   bg: '#fee2e2' }
+}
+
+function respRateRating(bpm) {
+  if (bpm == null) return null
+  if (bpm >= 12 && bpm <= 16) return { label: 'Great', bg: '#86efac' }
+  if (bpm >= 10 && bpm <= 18) return { label: 'Good',  bg: '#dcfce7' }
+  if (bpm >= 8  && bpm <= 20) return { label: 'Fair',  bg: '#fef9c3' }
+  if (bpm >= 6  && bpm <= 22) return { label: 'Poor',  bg: '#fde8c8' }
+  return                      { label: 'Bad',   bg: '#fee2e2' }
+}
+
+function skinTempRating(dev) {
+  if (dev == null) return null
+  if (dev >= -0.1 && dev <= 0.3) return { label: 'Great', bg: '#86efac' }
+  if (dev >= -0.2 && dev <= 0.5) return { label: 'Good',  bg: '#dcfce7' }
+  if (dev >= -0.3 && dev <= 1.0) return { label: 'Fair',  bg: '#fef9c3' }
+  if (dev >= -0.5 && dev <= 1.5) return { label: 'Poor',  bg: '#fde8c8' }
+  return                         { label: 'Bad',   bg: '#fee2e2' }
+}
+
+// 30-day rolling HRV average — excludes the target date itself (so today's reading compares against prior nights)
+function rollingHrvAvg(fitbitRaw, iso) {
+  const d = new Date(iso)
+  const vals = []
+  for (let i = 1; i <= 30; i++) {
+    const dd = new Date(d)
+    dd.setDate(dd.getDate() - i)
+    const v = fitbitRaw[dd.toISOString().slice(0, 10)]?.hrv
+    if (v != null) vals.push(v)
+  }
+  return vals.length >= 3 ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+}
+
+function hrvRating(hrv, avg) {
+  if (hrv == null) return null
+  if (avg != null) {
+    const r = hrv / avg
+    if (r >= 1.20) return { label: 'Great', bg: '#86efac' }
+    if (r >= 0.95) return { label: 'Good',  bg: '#dcfce7' }
+    if (r >= 0.80) return { label: 'Fair',  bg: '#fef9c3' }
+    if (r >= 0.65) return { label: 'Poor',  bg: '#fde8c8' }
+    return               { label: 'Bad',   bg: '#fee2e2' }
+  }
+  // Absolute fallback when fewer than 3 baseline readings exist
+  if (hrv >= 55) return { label: 'Great', bg: '#86efac' }
+  if (hrv >= 40) return { label: 'Good',  bg: '#dcfce7' }
+  if (hrv >= 28) return { label: 'Fair',  bg: '#fef9c3' }
+  if (hrv >= 18) return { label: 'Poor',  bg: '#fde8c8' }
+  return              { label: 'Bad',   bg: '#fee2e2' }
+}
+
+// HRV and SpO2 are the primary recovery signals — resp rate is a stable baseline that rarely shifts
+const RECOVERY_WEIGHTS = { hrv: 3, spo2: 3, stmp: 2, rr: 1 }
+
+function recoveryComposite(raw, hrvAvg) {
+  if (!raw) return null
+  const { hrv, spo2, respiratory_rate: rr, skin_temp_deviation: stmp } = raw
+  if (hrv == null && spo2 == null && rr == null && stmp == null) return null
+
+  const entries = [
+    ['hrv',  hrvRating(hrv, hrvAvg)],
+    ['spo2', spo2Rating(spo2)],
+    ['stmp', skinTempRating(stmp)],
+    ['rr',   respRateRating(rr)],
+  ].filter(([, r]) => r != null)
+  if (!entries.length) return null
+
+  const weightedSum = entries.reduce((sum, [k, r]) => sum + TIER_IDX[r.label] * RECOVERY_WEIGHTS[k], 0)
+  const totalWeight = entries.reduce((sum, [k])    => sum + RECOVERY_WEIGHTS[k], 0)
+  let tierAvg = weightedSum / totalWeight
+
+  const hrv_r  = entries.find(([k]) => k === 'hrv')?.[1]
+  const spo2_r = entries.find(([k]) => k === 'spo2')?.[1]
+  const primaryWorst = Math.min(
+    hrv_r  ? TIER_IDX[hrv_r.label]  : 4,
+    spo2_r ? TIER_IDX[spo2_r.label] : 4,
+  )
+  const worstTier = Math.min(...entries.map(([, r]) => TIER_IDX[r.label]))
+
+  // SpO2 Bad (< 91%) is a clinical floor — cap at Poor
+  if (spo2Rating(spo2)?.label === 'Bad') tierAvg = Math.min(tierAvg, 1.4)
+  // Either primary metric Poor or Bad → cap at Fair
+  if (primaryWorst <= 1) tierAvg = Math.min(tierAvg, 2.4)
+  // Both primaries below Good → cap at Fair (resp rate / skin temp can't rescue)
+  else if (hrv_r && spo2_r && TIER_IDX[hrv_r.label] < 3 && TIER_IDX[spo2_r.label] < 3) tierAvg = Math.min(tierAvg, 2.4)
+  // Secondary metric Poor or Bad → cap at Good
+  else if (worstTier <= 1) tierAvg = Math.min(tierAvg, 2.9)
+
+  const score = tierAvg >= 3.5 ? 4 : tierAvg >= 2.5 ? 3 : tierAvg >= 1.5 ? 2 : tierAvg >= 0.5 ? 1 : 0
+  return { label: RECOVERY_TIERS[score], bg: RECOVERY_BG_MAP[score] }
+}
+
 // ─── autosync label helper ────────────────────────────────────────────────────
 
 const AutosyncTag = () => (
@@ -369,9 +474,10 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
   const weatherStore = weatherStoreProp ?? weatherStoreLocal
 
   const [activeCell, setActiveCell] = useState(null)
-  const [sleepOpen,  setSleepOpen]  = useState(null)   // iso date
-  const [stepsOpen,  setStepsOpen]  = useState(null)   // iso date
-  const [weatherOpen, setWeatherOpen] = useState(null) // iso date
+  const [sleepOpen,     setSleepOpen]     = useState(null)   // iso date
+  const [stepsOpen,     setStepsOpen]     = useState(null)   // iso date
+  const [recoveryOpen,  setRecoveryOpen]  = useState(null)   // iso date
+  const [weatherOpen,   setWeatherOpen]   = useState(null)   // iso date
 
   // Carry forward last known weight — walks back to last Fitbit sync (up to 90 days)
   function lastKnownWeight(iso) {
@@ -395,10 +501,12 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
   const popoverRef     = useRef(null)
   const sleepRef       = useRef(null)
   const sleepCellRefs  = useRef({})
-  const stepsRef       = useRef(null)
-  const stepsCellRefs  = useRef({})
-  const weatherRef     = useRef(null)
-  const weatherCellRefs = useRef({})
+  const stepsRef         = useRef(null)
+  const stepsCellRefs    = useRef({})
+  const recoveryRef      = useRef(null)
+  const recoveryCellRefs = useRef({})
+  const weatherRef       = useRef(null)
+  const weatherCellRefs  = useRef({})
   const gratRef        = useRef(null)
   const transcriptRef  = useRef(null)
 
@@ -548,6 +656,16 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [stepsOpen])
+
+  useEffect(() => {
+    if (!recoveryOpen) return
+    function onDown(e) {
+      if (recoveryRef.current && !recoveryRef.current.contains(e.target) &&
+          !recoveryCellRefs.current[recoveryOpen]?.contains(e.target)) setRecoveryOpen(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [recoveryOpen])
 
   useEffect(() => {
     if (!weatherOpen) return
@@ -955,46 +1073,46 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         })()}
       </div>
 
-      {/* ── 3. Screen Time (autosync) ── */}
+      {/* ── Recovery (autosync: HRV, SpO2, resp rate, skin temp) ── */}
       <div className="lm-row">
-        <div className="lm-label"><span className="lm-label-emoji">📱</span> <em>Screen Time</em></div>
+        <div className="lm-label"><span className="lm-label-emoji">🩺</span> <em>Recovery</em></div>
         <div className="lm-day-grid" style={{ width: gridWidth }}>
           <WeekLines days={gridDays} dayW={dayW} />
           {gridDays.map((d, i) => {
-            const iso = d.toISOString().slice(0, 10)
-            const mins = fitbitRaw[iso]?.screen_time_minutes ?? null
-            const bg = mins == null ? null
-              : mins < 120 ? '#86efac'
-              : mins < 180 ? '#bbf7d0'
-              : mins < 240 ? '#fef9c3'
-              : mins < 300 ? '#fde8c8'
-              : '#fee2e2'
+            const iso     = d.toISOString().slice(0, 10)
+            const raw     = fitbitRaw[iso]
+            const hrvAvg  = rollingHrvAvg(fitbitRaw, iso)
+            const score   = recoveryComposite(raw, hrvAvg)
+            const isOpen  = recoveryOpen === iso
+            const hasData = raw?.hrv != null || raw?.spo2 != null || raw?.respiratory_rate != null || raw?.skin_temp_deviation != null
             return (
               <div
                 key={iso}
-                className={`lm-cell ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
-                style={{ left: i * dayW + 1, width: dayW - 2, background: bg || undefined }}
+                ref={el => { recoveryCellRefs.current[iso] = el }}
+                className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''} ${d.getDay() === 1 ? 'lm-cell--week-start' : ''}`}
+                style={{ left: i * dayW + 1, width: dayW - 2, background: score?.bg || undefined }}
+                onClick={hasData ? () => setRecoveryOpen(isOpen ? null : iso) : undefined}
               >
-                {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
+                {score && <span className="lm-cell-label">{score.label}</span>}
               </div>
             )
           })}
         </div>
         {mobile && (() => {
-          const mins = fitbitRaw[todayIso]?.screen_time_minutes ?? null
-          const bg = mins == null ? null
-            : mins < 120 ? '#86efac'
-            : mins < 180 ? '#bbf7d0'
-            : mins < 240 ? '#fef9c3'
-            : mins < 300 ? '#fde8c8'
-            : '#fee2e2'
+          const raw     = fitbitRaw[todayIso]
+          const hrvAvg  = rollingHrvAvg(fitbitRaw, todayIso)
+          const score   = recoveryComposite(raw, hrvAvg)
+          const isOpen  = recoveryOpen === todayIso
+          const hasData = raw?.hrv != null || raw?.spo2 != null || raw?.respiratory_rate != null || raw?.skin_temp_deviation != null
           return (
             <div className="lm-today-col">
               <div
-                className="lm-cell"
-                style={{ left: 1, width: dayW - 2, background: bg || undefined }}
+                ref={el => { recoveryCellRefs.current[todayIso] = el }}
+                className={`lm-cell ${hasData ? 'lm-cell--clickable' : ''} ${isOpen ? 'lm-cell--active' : ''}`}
+                style={{ left: 1, width: dayW - 2, background: score?.bg || undefined }}
+                onClick={hasData ? () => setRecoveryOpen(isOpen ? null : todayIso) : undefined}
               >
-                {mins != null && <span className="lm-cell-label">{fmtMins(mins)}</span>}
+                {score && <span className="lm-cell-label">{score.label}</span>}
               </div>
             </div>
           )
@@ -1346,11 +1464,9 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
       {stepsOpen && (() => {
         const cellEl  = stepsCellRefs.current[stepsOpen]
         if (!cellEl) return null
-        const raw     = fitbitRaw[stepsOpen]
-        const steps   = raw?.steps
-        const active  = raw?.active_energy_kcal
-        const resting = raw?.resting_energy_kcal
-        const total   = active != null ? Math.round(active + (resting ?? 0)) : null
+        const raw   = fitbitRaw[stepsOpen]
+        const steps = raw?.steps
+        const total = raw?.total_calories_kcal ?? null
         const rect = cellEl.getBoundingClientRect()
         const left = Math.min(rect.left, window.innerWidth - 220)
         const top  = rect.bottom + 8
@@ -1366,12 +1482,65 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
             )}
             {total != null && (
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                Calories: <strong>{total >= 1000 ? `${(total / 1000).toFixed(1)}k` : total} kcal</strong>
+                Calories: <strong>{total.toLocaleString()} kcal</strong>
               </div>
             )}
-            {active != null && (
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                Active {Math.round(active)} · Resting {Math.round(resting ?? 0)}
+          </div>,
+          document.body
+        )
+      })()}
+
+      {/* ── Recovery info portal ── */}
+      {recoveryOpen && (() => {
+        const cellEl = recoveryCellRefs.current[recoveryOpen]
+        if (!cellEl) return null
+        const raw    = fitbitRaw[recoveryOpen]
+        if (!raw) return null
+        const hrvAvg = rollingHrvAvg(fitbitRaw, recoveryOpen)
+        const s_hrv  = hrvRating(raw.hrv, hrvAvg)
+        const s_spo2 = spo2Rating(raw.spo2)
+        const s_rr   = respRateRating(raw.respiratory_rate)
+        const s_stmp = skinTempRating(raw.skin_temp_deviation)
+        const rect = cellEl.getBoundingClientRect()
+        const left = Math.min(rect.left, window.innerWidth - 240)
+        const top  = rect.bottom + 8
+        const chipStyle = (color) => ({
+          display: 'inline-block', background: color, borderRadius: 4,
+          padding: '1px 6px', fontSize: 12, fontWeight: 500, color: '#1e293b',
+        })
+        const rowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#64748b', marginBottom: 4 }
+        return createPortal(
+          <div
+            ref={recoveryRef}
+            style={{ position: 'fixed', top, left, zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 220 }}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{fmtDate(recoveryOpen)}</span>
+              <AutosyncTag />
+            </div>
+            {s_hrv && (
+              <div style={rowStyle}>
+                <span>HRV{hrvAvg != null ? ` (avg ${Math.round(hrvAvg)})` : ''}</span>
+                <span style={chipStyle(s_hrv.bg)}>{s_hrv.label}{raw.hrv != null ? ` (${Math.round(raw.hrv)} ms)` : ''}</span>
+              </div>
+            )}
+            {s_spo2 && (
+              <div style={rowStyle}>
+                <span>SpO2</span>
+                <span style={chipStyle(s_spo2.bg)}>{s_spo2.label}{raw.spo2 != null ? ` (${raw.spo2.toFixed(1)}%)` : ''}</span>
+              </div>
+            )}
+            {s_rr && (
+              <div style={rowStyle}>
+                <span>Resp rate</span>
+                <span style={chipStyle(s_rr.bg)}>{s_rr.label}{raw.respiratory_rate != null ? ` (${raw.respiratory_rate.toFixed(1)} bpm)` : ''}</span>
+              </div>
+            )}
+            {s_stmp && (
+              <div style={rowStyle}>
+                <span>Skin temp</span>
+                <span style={chipStyle(s_stmp.bg)}>{s_stmp.label}{raw.skin_temp_deviation != null ? ` (${raw.skin_temp_deviation >= 0 ? '+' : ''}${raw.skin_temp_deviation.toFixed(2)}°C)` : ''}</span>
               </div>
             )}
           </div>,
@@ -1780,4 +1949,4 @@ function PopoverField({ field, value, stale, onSet }) {
   return null
 }
 
-export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyRating, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins }
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyRating, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins, rollingHrvAvg, spo2Rating, respRateRating, skinTempRating, hrvRating, recoveryComposite }
