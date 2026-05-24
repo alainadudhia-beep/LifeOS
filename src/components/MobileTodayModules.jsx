@@ -323,9 +323,10 @@ export default function MobileTodayModules() {
 
         {/* Row 1 col 1: Sleep */}
         <button
-          className="mlm-card mlm-card--sync"
+          className={`mlm-card mlm-card--sync ${activeModule === 'sleep' ? 'mlm-card--active' : ''}`}
           style={sleepBg ? { background: sleepBg } : undefined}
-          disabled
+          onClick={hasSleepData ? () => setActiveModule('sleep') : undefined}
+          disabled={!hasSleepData}
         >
           <span className="mlm-card-emoji">😴</span>
           {sleepLabel && <span className="mlm-card-value">{sleepLabel}</span>}
