@@ -29,7 +29,7 @@ const TOKENS_KEY   = 'google-health-tokens'
 const SCOPES = [
   'https://www.googleapis.com/auth/googlehealth.activity_and_fitness',
   'https://www.googleapis.com/auth/googlehealth.sleep',
-  'https://www.googleapis.com/auth/googlehealth.health_metrics',
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements',
 ].join(' ')
 
 export default async function handler(req, res) {
