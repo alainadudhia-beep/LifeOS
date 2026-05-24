@@ -4,7 +4,13 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/weather-fetch",    "schedule": "0 6 * * *" },
-    { "path": "/api/trends-compute",   "schedule": "0 7 * * *" }
+    { "path": "/api/weather-fetch",                      "schedule": "0 6 * * *"  },
+    { "path": "/api/trends-compute",                     "schedule": "0 7 * * *"  },
+    { "path": "/api/google-health-sync",                 "schedule": "30 0 * * *" },
+    { "path": "/api/google-health-sync?mode=daytime",    "schedule": "0 8 * * *"  },
+    { "path": "/api/google-health-sync?mode=daytime",    "schedule": "0 11 * * *" },
+    { "path": "/api/google-health-sync?mode=daytime",    "schedule": "0 14 * * *" },
+    { "path": "/api/google-health-sync?mode=daytime",    "schedule": "0 17 * * *" },
+    { "path": "/api/google-health-sync?mode=daytime",    "schedule": "0 21 * * *" }
   ]
 }
