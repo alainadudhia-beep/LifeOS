@@ -311,6 +311,35 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message })
   }
 
+  // ── Debug mode: return raw API responses without writing to Supabase ─────
+  if (req.query?.debug === 'true') {
+    const yesterday = utcDateString(-1)
+    const today     = utcDateString(0)
+    const startYesterday = `${yesterday}T00:00:00Z`
+    const endYesterday   = `${yesterday}T23:59:59Z`
+    const startToday     = `${today}T00:00:00Z`
+    const endToday       = `${today}T23:59:59Z`
+    const weightStart    = (() => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString() })()
+
+    const [sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight] = await Promise.all([
+      fetchDataPoints( accessToken, 'sleep',                        startYesterday, endYesterday),
+      fetchDailyRollup(accessToken, 'heart-rate',                   startYesterday, endYesterday),
+      fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startYesterday, endYesterday),
+      fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startYesterday, endYesterday),
+      fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startYesterday, endYesterday),
+      fetchDailyRollup(accessToken, 'steps',                        startToday,     endToday),
+      fetchDailyRollup(accessToken, 'active-energy-burned',         startToday,     endToday),
+      fetchDailyRollup(accessToken, 'basal-metabolic-rate',         startToday,     endToday),
+      fetchDataPoints( accessToken, 'weight',                       weightStart,    endToday),
+    ])
+
+    return res.status(200).json({
+      debug: true,
+      dates: { yesterday, today },
+      raw: { sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight },
+    })
+  }
+
   // ── Determine mode ────────────────────────────────────────────────────────
   // Manual backfill: ?date=YYYY-MM-DD always runs overnight (single-date) mode
   const manualDate = req.query?.date
