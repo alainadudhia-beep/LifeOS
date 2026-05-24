@@ -201,20 +201,20 @@ function sleepScoreRating(score) {
 function deepPctRating(deepMin, sleepMin) {
   if (deepMin == null || sleepMin == null || sleepMin === 0) return null
   const pct = deepMin / sleepMin * 100
-  if (pct >= 21) return { label: 'Great', bg: '#86efac',  pct }
-  if (pct >= 15) return { label: 'Good',  bg: '#dcfce7',  pct }
-  if (pct >= 10) return { label: 'Fair',  bg: '#fef9c3',  pct }
-  if (pct >= 6)  return { label: 'Poor',  bg: '#fde8c8',  pct }
+  if (pct >= 22) return { label: 'Great', bg: '#86efac',  pct }
+  if (pct >= 18) return { label: 'Good',  bg: '#dcfce7',  pct }
+  if (pct >= 14) return { label: 'Fair',  bg: '#fef9c3',  pct }
+  if (pct >= 10) return { label: 'Poor',  bg: '#fde8c8',  pct }
   return                { label: 'Bad',   bg: '#fee2e2',  pct }
 }
 
 function remPctRating(remMin, sleepMin) {
   if (remMin == null || sleepMin == null || sleepMin === 0) return null
   const pct = remMin / sleepMin * 100
-  if (pct >= 26) return { label: 'Great', bg: '#86efac',  pct }
+  if (pct >= 22) return { label: 'Great', bg: '#86efac',  pct }
   if (pct >= 18) return { label: 'Good',  bg: '#dcfce7',  pct }
-  if (pct >= 13) return { label: 'Fair',  bg: '#fef9c3',  pct }
-  if (pct >= 8)  return { label: 'Poor',  bg: '#fde8c8',  pct }
+  if (pct >= 14) return { label: 'Fair',  bg: '#fef9c3',  pct }
+  if (pct >= 10) return { label: 'Poor',  bg: '#fde8c8',  pct }
   return                { label: 'Bad',   bg: '#fee2e2',  pct }
 }
 
