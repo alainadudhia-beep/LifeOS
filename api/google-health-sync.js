@@ -174,13 +174,27 @@ function parseHRV(data, dateStr) {
   return Math.round(avg * 10) / 10  // 1 decimal
 }
 
-// SpO2: average percentage across all samples attributed to dateStr
+// SpO2: daily-oxygen-saturation gives Fitbit's overnight computed average
+// Field path TBD — log raw point if null so we can inspect the shape
 function parseSpO2(data, dateStr) {
-  const points = data?.dataPoints?.filter(p =>
+  const points = data?.dataPoints
+  if (!points?.length) return null
+  // Try daily format first (date-keyed, like resting HR)
+  const daily = points.find(p => civilDateMatches(p.dailyOxygenSaturation?.date, dateStr))
+  if (daily) {
+    const val = daily.dailyOxygenSaturation?.averagePercentage
+              ?? daily.dailyOxygenSaturation?.percentage
+    return val != null ? Math.round(val * 10) / 10 : null
+  }
+  // Fallback: intraday sample format
+  const intraday = points.filter(p =>
     civilDateMatches(p.oxygenSaturation?.sampleTime?.civilTime?.date, dateStr)
   )
-  if (!points?.length) return null
-  const avg = points.reduce((sum, p) => sum + (p.oxygenSaturation?.percentage ?? 0), 0) / points.length
+  if (!intraday.length) {
+    console.log('[google-health-sync] SpO2 raw point for inspection:', JSON.stringify(points[0]))
+    return null
+  }
+  const avg = intraday.reduce((sum, p) => sum + (p.oxygenSaturation?.percentage ?? 0), 0) / intraday.length
   return Math.round(avg * 10) / 10
 }
 
@@ -211,7 +225,7 @@ async function fetchAllMetrics(accessToken, dateStr) {
     listDataPoints(  accessToken, 'sleep',                    10),    // find session ending on dateStr
     listDataPoints(  accessToken, 'daily-resting-heart-rate', 5),
     listDataPoints(  accessToken, 'heart-rate-variability',   500),   // many 5-min samples per night
-    listDataPoints(  accessToken, 'oxygen-saturation',        500),
+    listDataPoints(  accessToken, 'daily-oxygen-saturation',   5),   // daily computed avg, not raw readings
     listDataPoints(  accessToken, 'daily-respiratory-rate',   5),
     listDataPoints(  accessToken, 'weight',                   3),     // most recent
   ])
@@ -356,14 +370,16 @@ export default async function handler(req, res) {
 
   // ── Debug mode: return raw metrics without writing ─────────────────────────
   if (req.query?.debug === 'true') {
-    const [todayMetrics, yesterdaySteps] = await Promise.all([
+    const [todayMetrics, yesterdaySteps, sleepScoreRaw] = await Promise.all([
       fetchAllMetrics(accessToken, today),
       fetchDaytimeMetrics(accessToken, yesterday),
+      listDataPoints(accessToken, 'sleep-score', 3), // probe — check if type exists
     ])
     return res.status(200).json({
       debug: true, today, yesterday,
       today_metrics: todayMetrics,
       yesterday_steps: yesterdaySteps,
+      sleep_score_probe: sleepScoreRaw,
     })
   }
 
