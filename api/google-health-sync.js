@@ -63,26 +63,30 @@ async function getAccessToken(refreshToken) {
 
 // ── Google Health API fetch helpers ─────────────────────────────────────────
 
-async function fetchDailyRollup(accessToken, dataType, startTime, endTime) {
-  const res = await fetch(`${BASE_URL}/dataTypes/${dataType}/dataPoints:dailyRollUp`, {
+async function fetchDailyRollup(accessToken, dataType, startTime, endTime, debugErrors) {
+  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints:dailyRollUp`
+  const res = await fetch(url, {
     method:  'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ startTime, endTime }),
   })
   if (!res.ok) {
-    console.error(`[google-health-sync] ${dataType} rollup ${res.status}:`, await res.text())
+    const text = await res.text()
+    console.error(`[google-health-sync] ${dataType} rollup ${res.status}:`, text)
+    if (debugErrors) debugErrors[dataType] = { status: res.status, url, body: text }
     return null
   }
   return res.json()
 }
 
-async function fetchDataPoints(accessToken, dataType, startTime, endTime) {
+async function fetchDataPoints(accessToken, dataType, startTime, endTime, debugErrors) {
   const params = new URLSearchParams({ startTime, endTime })
-  const res = await fetch(`${BASE_URL}/dataTypes/${dataType}/dataPoints:list?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
+  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints:list?${params}`
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   if (!res.ok) {
-    console.error(`[google-health-sync] ${dataType} list ${res.status}:`, await res.text())
+    const text = await res.text()
+    console.error(`[google-health-sync] ${dataType} list ${res.status}:`, text)
+    if (debugErrors) debugErrors[dataType] = { status: res.status, url, body: text }
     return null
   }
   return res.json()
@@ -321,21 +325,23 @@ export default async function handler(req, res) {
     const endToday       = `${today}T23:59:59Z`
     const weightStart    = (() => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString() })()
 
+    const errors = {}
     const [sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight] = await Promise.all([
-      fetchDataPoints( accessToken, 'sleep',                        startYesterday, endYesterday),
-      fetchDailyRollup(accessToken, 'heart-rate',                   startYesterday, endYesterday),
-      fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startYesterday, endYesterday),
-      fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startYesterday, endYesterday),
-      fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startYesterday, endYesterday),
-      fetchDailyRollup(accessToken, 'steps',                        startToday,     endToday),
-      fetchDailyRollup(accessToken, 'active-energy-burned',         startToday,     endToday),
-      fetchDailyRollup(accessToken, 'basal-metabolic-rate',         startToday,     endToday),
-      fetchDataPoints( accessToken, 'weight',                       weightStart,    endToday),
+      fetchDataPoints( accessToken, 'sleep',                        startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'heart-rate',                   startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startYesterday, endYesterday, errors),
+      fetchDailyRollup(accessToken, 'steps',                        startToday,     endToday,     errors),
+      fetchDailyRollup(accessToken, 'active-energy-burned',         startToday,     endToday,     errors),
+      fetchDailyRollup(accessToken, 'basal-metabolic-rate',         startToday,     endToday,     errors),
+      fetchDataPoints( accessToken, 'weight',                       weightStart,    endToday,     errors),
     ])
 
     return res.status(200).json({
       debug: true,
       dates: { yesterday, today },
+      errors,
       raw: { sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight },
     })
   }
