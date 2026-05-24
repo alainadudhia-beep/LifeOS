@@ -346,23 +346,36 @@ export default async function handler(req, res) {
     const weightStart    = (() => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString() })()
 
     const errors = {}
-    const [sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight] = await Promise.all([
-      fetchDataPoints( accessToken, 'sleep',                         startYesterday, endYesterday, errors),
-      fetchDailyRollup(accessToken, 'daily-resting-heart-rate',      yesterday,                   errors),
-      fetchDailyRollup(accessToken, 'heart-rate-variability',        yesterday,                   errors),
-      fetchDailyRollup(accessToken, 'daily-respiratory-rate',        yesterday,                   errors),
-      fetchDailyRollup(accessToken, 'oxygen-saturation',             yesterday,                   errors),
-      fetchDailyRollup(accessToken, 'steps',                         today,                       errors),
-      fetchDailyRollup(accessToken, 'active-calories-burned',        today,                       errors),
-      fetchDailyRollup(accessToken, 'daily-resting-calories-burned', today,                       errors),
-      fetchDataPoints( accessToken, 'weight',                        weightStart,    endToday,     errors),
-    ])
+
+    // Steps: dailyRollUp works ✅
+    const steps = await fetchDailyRollup(accessToken, 'steps', today, errors)
+
+    // Everything else: use list endpoint with pageSize only (no date filter yet)
+    // — we need to see the response shape before we can add proper filtering
+    const listTypes = [
+      'sleep', 'weight',
+      'daily-resting-heart-rate', 'heart-rate-variability',
+      'daily-respiratory-rate', 'oxygen-saturation',
+      'total-calories',          // active + resting combined — only calories type documented
+    ]
+    const listResults = {}
+    await Promise.all(listTypes.map(async (type) => {
+      const url = `${BASE_URL}/dataTypes/${type}/dataPoints?pageSize=3`
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+      const text = await r.text()
+      if (!r.ok) {
+        errors[type] = { status: r.status, url, body: text }
+      } else {
+        try { listResults[type] = JSON.parse(text) } catch { listResults[type] = text }
+      }
+    }))
 
     return res.status(200).json({
       debug: true,
       dates: { yesterday, today },
+      steps_raw: steps,
+      list_results: listResults,
       errors,
-      raw: { sleep, hr, hrv, resp, spo2, steps, activeEnergy, restingEnergy, weight },
     })
   }
 
