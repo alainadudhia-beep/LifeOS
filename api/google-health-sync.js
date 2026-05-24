@@ -135,17 +135,25 @@ function parseSleep(sleepData) {
 
 // ── Fetch helpers by category ─────────────────────────────────────────────────
 
-// Overnight metrics — meaningful as daily summaries (sleep, HRV, resp rate, resting HR)
-// These are fixed once you wake up; always fetched from yesterday's window.
-async function fetchOvernightMetrics(accessToken, date) {
-  const startTime = `${date}T00:00:00Z`
-  const endTime   = `${date}T23:59:59Z`
+/**
+ * OVERNIGHT METRICS — sleep, HRV, resting HR, SpO2, respiratory rate.
+ * These are derived from the PREVIOUS night's data, so we always fetch
+ * from the "night before" window (yesterdayDate) and write to writeDate (today).
+ *
+ * The overnight cron does NOT call this — it only finalises daytime metrics
+ * (steps/calories/weight). This prevents the overnight cron from overwriting
+ * sleep data that was already correctly written by the 08:00 daytime sync.
+ */
+async function fetchOvernightMetrics(accessToken, yesterdayDate) {
+  const startTime = `${yesterdayDate}T00:00:00Z`
+  const endTime   = `${yesterdayDate}T23:59:59Z`
 
-  const [sleepData, hrData, hrvData, respData] = await Promise.all([
+  const [sleepData, hrData, hrvData, respData, spo2Data] = await Promise.all([
     fetchDataPoints( accessToken, 'sleep',                        startTime, endTime),
     fetchDailyRollup(accessToken, 'heart-rate',                   startTime, endTime), // resting HR
     fetchDailyRollup(accessToken, 'daily-heart-rate-variability', startTime, endTime),
     fetchDailyRollup(accessToken, 'daily-respiratory-rate',       startTime, endTime),
+    fetchDailyRollup(accessToken, 'daily-oxygen-saturation',      startTime, endTime),
   ])
 
   const { sleep_minutes, in_bed_minutes } = parseSleep(sleepData)
@@ -156,12 +164,17 @@ async function fetchOvernightMetrics(accessToken, date) {
     resting_hr:       rollupValue(hrData),
     hrv:              rollupValue(hrvData),
     respiratory_rate: rollupValue(respData),
+    spo2:             rollupValue(spo2Data),
   }
 }
 
-// Live / cumulative metrics — update throughout the day (steps, calories, HR, SpO2)
-// Fetched from the current day's window.
-async function fetchLiveMetrics(accessToken, date) {
+/**
+ * DAYTIME METRICS — steps, calories, weight.
+ * These accumulate or update during the day, so we fetch from the current
+ * day's window. Also used by the overnight cron to finalise the previous day.
+ * Does NOT include sleep/HRV/resting HR/SpO2/resp — those are overnight-only.
+ */
+async function fetchDaytimeMetrics(accessToken, date) {
   const startTime = `${date}T00:00:00Z`
   const endTime   = `${date}T23:59:59Z`
 
@@ -172,19 +185,17 @@ async function fetchLiveMetrics(accessToken, date) {
     return d.toISOString()
   })()
 
-  const [stepsData, activeEnergyData, restingEnergyData, spo2Data, weightData] = await Promise.all([
-    fetchDailyRollup(accessToken, 'steps',                  startTime, endTime),
-    fetchDailyRollup(accessToken, 'active-energy-burned',   startTime, endTime),
-    fetchDailyRollup(accessToken, 'basal-metabolic-rate',   startTime, endTime), // resting/BMR energy
-    fetchDailyRollup(accessToken, 'daily-oxygen-saturation', startTime, endTime),
-    fetchDataPoints( accessToken, 'weight',                 weightStart, endTime),
+  const [stepsData, activeEnergyData, restingEnergyData, weightData] = await Promise.all([
+    fetchDailyRollup(accessToken, 'steps',                startTime, endTime),
+    fetchDailyRollup(accessToken, 'active-energy-burned', startTime, endTime),
+    fetchDailyRollup(accessToken, 'basal-metabolic-rate', startTime, endTime), // resting/BMR energy
+    fetchDataPoints( accessToken, 'weight',               weightStart, endTime),
   ])
 
   return {
     steps:               rollupValue(stepsData),
     active_energy_kcal:  rollupValue(activeEnergyData),
     resting_energy_kcal: rollupValue(restingEnergyData),
-    spo2:                rollupValue(spo2Data),
     // Weight: most recent point in window
     // TODO: verify unit — may need to confirm value is in kg not lbs
     weight_kg:           weightData?.dataPoints?.[0]?.value?.fpVal ?? null,
@@ -308,44 +319,41 @@ export default async function handler(req, res) {
 
   try {
     if (manualDate || mode === 'overnight') {
-      // ── Overnight / backfill: complete data for one date ──────────────────
+      // ── Overnight cron (00:30 UTC) / manual backfill ──────────────────────
+      // Finalises steps, calories, weight for yesterday ONLY.
+      // Does NOT touch sleep/HRV/resting HR/SpO2/resp — those were correctly
+      // written by the previous day's 08:00 daytime sync and must not be overwritten.
       const targetDate = manualDate ?? utcDateString(-1) // default: yesterday
-
-      const [overnight, live] = await Promise.all([
-        fetchOvernightMetrics(accessToken, targetDate),
-        fetchLiveMetrics(accessToken, targetDate),
-      ])
-      const patch = await writeToSupabase(targetDate, { ...overnight, ...live })
+      const patch = await writeToSupabase(targetDate, await fetchDaytimeMetrics(accessToken, targetDate))
       results[targetDate] = patch
 
     } else {
-      // ── Daytime: split fetch — overnight metrics from yesterday, live from today ──
+      // ── Daytime crons (08:00 / 11:00 / 14:00 / 17:00 / 21:00 UTC) ────────
+      // Split fetch: overnight metrics from yesterday's window (last night's
+      // sleep/HRV/etc), daytime metrics from today's window (running steps/calories).
+      // Both are written to TODAY's date.
+      // The 08:00 run also re-finalises yesterday's daytime metrics (in case
+      // steps/calories weren't complete when the 00:30 overnight ran).
       const today     = utcDateString(0)
       const yesterday = utcDateString(-1)
 
       const utcHour = new Date().getUTCHours()
-      const isFirstDaytimeRun = utcHour >= 8 && utcHour < 10 // ~9am UTC window
+      const isFirstDaytimeRun = utcHour >= 8 && utcHour < 10 // 08:00 UTC window
 
-      const [overnightYesterday, liveToday, overnightToday] = await Promise.all([
-        // Always: fetch yesterday's overnight metrics to write under today
-        fetchOvernightMetrics(accessToken, yesterday),
-        // Always: fetch today's live/cumulative metrics
-        fetchLiveMetrics(accessToken, today),
-        // First daytime run only: re-finalise yesterday's complete record
-        isFirstDaytimeRun ? (async () => {
-          const live = await fetchLiveMetrics(accessToken, yesterday)
-          const overnight = await fetchOvernightMetrics(accessToken, yesterday)
-          return { ...overnight, ...live }
-        })() : Promise.resolve(null),
+      const [overnightMetrics, todayDaytime, yesterdayDaytime] = await Promise.all([
+        fetchOvernightMetrics(accessToken, yesterday), // sleep/HRV/etc from last night → write to today
+        fetchDaytimeMetrics(accessToken, today),       // steps/calories so far today → write to today
+        isFirstDaytimeRun
+          ? fetchDaytimeMetrics(accessToken, yesterday) // re-finalise yesterday's steps/calories
+          : Promise.resolve(null),
       ])
 
-      // Write today: sleep/HRV/resp from last night + live steps/HR/SpO2 from today
-      const todayMetrics = { ...overnightYesterday, ...liveToday }
-      results[today] = await writeToSupabase(today, todayMetrics)
+      // Write today: last night's sleep/HRV + today's running steps/calories
+      results[today] = await writeToSupabase(today, { ...overnightMetrics, ...todayDaytime })
 
-      // Re-finalise yesterday on first daytime run
-      if (overnightToday) {
-        results[yesterday] = await writeToSupabase(yesterday, overnightToday)
+      // Re-finalise yesterday's daytime metrics at 08:00 only
+      if (yesterdayDaytime) {
+        results[yesterday] = await writeToSupabase(yesterday, yesterdayDaytime)
       }
     }
   } catch (e) {
