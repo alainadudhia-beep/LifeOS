@@ -4,8 +4,9 @@ import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import {
   MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField,
   EXERCISE_MODULE, BODY_MODULE, bodyRating,
-  sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins,
+  sleepColorFromFitbit, sleepColorFromOldData, fmtMins,
   rollingHrvAvg, spo2Rating, respRateRating, skinTempRating, hrvRating, recoveryComposite,
+  sleepScoreRating, deepPctRating, remPctRating,
 } from './LifeModules'
 import './LifeModules.css'
 import './MobileTodayModules.css'
@@ -88,12 +89,14 @@ export default function MobileTodayModules() {
   const fitbitToday  = fitbitRaw[today] ?? {}
   const oldSleep     = todayLog.sleep
   const sleepMin     = fitbitToday.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
-  const inBedMin     = fitbitToday.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
   const hasFitbitSleep = sleepMin != null && sleepMin <= 960
   const hasOldSleep    = !hasFitbitSleep && oldSleep?.hours != null
   const sleepBg    = hasFitbitSleep
-    ? sleepColorFromFitbit(sleepMin, inBedMin)
+    ? sleepColorFromFitbit(sleepMin)
     : hasOldSleep ? sleepColorFromOldData(oldSleep) : null
+  const s_sleepScore = sleepScoreRating(fitbitToday.sleep_score)
+  const s_deep       = deepPctRating(fitbitToday.deep_minutes, fitbitToday.sleep_minutes)
+  const s_rem        = remPctRating(fitbitToday.rem_minutes,   fitbitToday.sleep_minutes)
   const sleepLabel = hasFitbitSleep
     ? fmtMins(sleepMin)
     : hasOldSleep ? oldSleep.hours : null
@@ -538,12 +541,31 @@ export default function MobileTodayModules() {
             <div className="mlm-sheet-fields">
               {hasFitbitSleep ? (
                 <>
-                  <div className="mlm-info-row"><span>Asleep</span><strong>{fmtMins(sleepMin)}</strong></div>
-                  <div className="mlm-info-row"><span>In bed</span><strong>{fmtMins(inBedMin)}</strong></div>
-                  {sleepMin && inBedMin && (
+                  <div className="mlm-info-row" style={{ borderBottom: (s_sleepScore || s_deep || s_rem) ? '1px solid #f1f5f9' : 'none', paddingBottom: (s_sleepScore || s_deep || s_rem) ? 8 : 0, marginBottom: (s_sleepScore || s_deep || s_rem) ? 8 : 0 }}>
+                    <span>Asleep</span><strong>{fmtMins(sleepMin)}</strong>
+                  </div>
+                  {s_sleepScore && (
                     <div className="mlm-info-row">
-                      <span>Efficiency</span>
-                      <strong>{Math.round(sleepMin / inBedMin * 100)}% — {sleepEffLabel(sleepMin, inBedMin)}</strong>
+                      <span>Sleep score</span>
+                      <span style={{ background: s_sleepScore.bg, borderRadius: 4, padding: '1px 6px', fontSize: 12, fontWeight: 500 }}>
+                        {s_sleepScore.label} ({fitbitToday.sleep_score})
+                      </span>
+                    </div>
+                  )}
+                  {s_deep && (
+                    <div className="mlm-info-row">
+                      <span>Deep sleep</span>
+                      <span style={{ background: s_deep.bg, borderRadius: 4, padding: '1px 6px', fontSize: 12, fontWeight: 500 }}>
+                        {s_deep.label} ({Math.round(s_deep.pct)}%)
+                      </span>
+                    </div>
+                  )}
+                  {s_rem && (
+                    <div className="mlm-info-row">
+                      <span>REM sleep</span>
+                      <span style={{ background: s_rem.bg, borderRadius: 4, padding: '1px 6px', fontSize: 12, fontWeight: 500 }}>
+                        {s_rem.label} ({Math.round(s_rem.pct)}%)
+                      </span>
                     </div>
                   )}
                 </>

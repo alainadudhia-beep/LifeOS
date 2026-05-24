@@ -189,6 +189,35 @@ function skinTempRating(dev) {
   return                         { label: 'Bad',   bg: '#fee2e2' }
 }
 
+function sleepScoreRating(score) {
+  if (score == null) return null
+  if (score >= 83) return { label: 'Great', bg: '#86efac' }
+  if (score >= 75) return { label: 'Good',  bg: '#dcfce7' }
+  if (score >= 68) return { label: 'Fair',  bg: '#fef9c3' }
+  if (score >= 60) return { label: 'Poor',  bg: '#fde8c8' }
+  return                  { label: 'Bad',   bg: '#fee2e2' }
+}
+
+function deepPctRating(deepMin, sleepMin) {
+  if (deepMin == null || sleepMin == null || sleepMin === 0) return null
+  const pct = deepMin / sleepMin * 100
+  if (pct >= 21) return { label: 'Great', bg: '#86efac',  pct }
+  if (pct >= 15) return { label: 'Good',  bg: '#dcfce7',  pct }
+  if (pct >= 10) return { label: 'Fair',  bg: '#fef9c3',  pct }
+  if (pct >= 6)  return { label: 'Poor',  bg: '#fde8c8',  pct }
+  return                { label: 'Bad',   bg: '#fee2e2',  pct }
+}
+
+function remPctRating(remMin, sleepMin) {
+  if (remMin == null || sleepMin == null || sleepMin === 0) return null
+  const pct = remMin / sleepMin * 100
+  if (pct >= 26) return { label: 'Great', bg: '#86efac',  pct }
+  if (pct >= 18) return { label: 'Good',  bg: '#dcfce7',  pct }
+  if (pct >= 13) return { label: 'Fair',  bg: '#fef9c3',  pct }
+  if (pct >= 8)  return { label: 'Poor',  bg: '#fde8c8',  pct }
+  return                { label: 'Bad',   bg: '#fee2e2',  pct }
+}
+
 // 30-day rolling HRV average — excludes the target date itself (so today's reading compares against prior nights)
 function rollingHrvAvg(fitbitRaw, iso) {
   const d = new Date(iso)
@@ -1434,28 +1463,51 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         const raw      = fitbitRaw[sleepOpen]
         const oldSleep = logs[sleepOpen]?.sleep
         const sleepMin = raw?.sleep_minutes ?? oldSleep?._fitbit_minutes ?? null
-        const inBedMin = raw?.in_bed_minutes ?? oldSleep?._in_bed_minutes ?? null
         const hasFitbit = sleepMin != null && sleepMin <= 960
-        const eff       = hasFitbit && inBedMin ? Math.round(sleepMin / inBedMin * 100) : null
-        const effLabel  = sleepEffLabel(sleepMin, inBedMin)
-        const effColor  = effLabel === 'Good' ? '#16a34a' : effLabel === 'Fair' ? '#ca8a04' : '#dc2626'
+        const s_score = sleepScoreRating(raw?.sleep_score)
+        const s_deep  = deepPctRating(raw?.deep_minutes, raw?.sleep_minutes)
+        const s_rem   = remPctRating(raw?.rem_minutes,   raw?.sleep_minutes)
+        const hasChips = s_score || s_deep || s_rem
         const rect = cellEl.getBoundingClientRect()
-        const left = Math.min(rect.left, window.innerWidth - 220)
+        const left = Math.min(rect.left, window.innerWidth - 240)
         const top  = rect.bottom + 8
+        const chipStyle = (color) => ({
+          display: 'inline-block', background: color, borderRadius: 4,
+          padding: '1px 6px', fontSize: 12, fontWeight: 500, color: '#1e293b',
+        })
+        const rowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#64748b', marginBottom: 4 }
         return createPortal(
           <div
             ref={sleepRef}
-            style={{ position: 'fixed', top, left, zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: 180 }}
+            style={{ position: 'fixed', top, left, zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', minWidth: hasChips ? 220 : 180 }}
             onMouseDown={e => e.stopPropagation()}
           >
-            <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{fmtDate(sleepOpen)}</div>
+            <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{fmtDate(sleepOpen)}</span>
+              {hasFitbit && <AutosyncTag />}
+            </div>
             {hasFitbit ? (
               <>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Asleep: <strong>{fmtMins(sleepMin)}</strong></div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>In bed: <strong>{fmtMins(inBedMin)}</strong></div>
-                {eff != null && (
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                    Efficiency: <strong style={{ color: effColor }}>{eff}% — {effLabel}</strong>
+                <div style={{ ...rowStyle, marginBottom: hasChips ? 8 : 0, paddingBottom: hasChips ? 8 : 0, borderBottom: hasChips ? '1px solid #f1f5f9' : 'none' }}>
+                  <span>Asleep</span>
+                  <strong style={{ color: '#1e293b' }}>{fmtMins(sleepMin)}</strong>
+                </div>
+                {s_score && (
+                  <div style={rowStyle}>
+                    <span>Sleep score</span>
+                    <span style={chipStyle(s_score.bg)}>{s_score.label} ({raw.sleep_score})</span>
+                  </div>
+                )}
+                {s_deep && (
+                  <div style={rowStyle}>
+                    <span>Deep sleep</span>
+                    <span style={chipStyle(s_deep.bg)}>{s_deep.label} ({Math.round(s_deep.pct)}%)</span>
+                  </div>
+                )}
+                {s_rem && (
+                  <div style={rowStyle}>
+                    <span>REM sleep</span>
+                    <span style={chipStyle(s_rem.bg)}>{s_rem.label} ({Math.round(s_rem.pct)}%)</span>
                   </div>
                 )}
               </>
@@ -1960,4 +2012,4 @@ function PopoverField({ field, value, stale, onSet }) {
   return null
 }
 
-export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyRating, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins, rollingHrvAvg, spo2Rating, respRateRating, skinTempRating, hrvRating, recoveryComposite }
+export { MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField, EXERCISE_MODULE, BODY_MODULE, bodyRating, sleepColorFromFitbit, sleepColorFromOldData, sleepEffLabel, fmtMins, rollingHrvAvg, spo2Rating, respRateRating, skinTempRating, hrvRating, recoveryComposite, sleepScoreRating, deepPctRating, remPctRating }
