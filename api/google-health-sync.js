@@ -1,23 +1,21 @@
 /**
  * Google Health API sync.
  *
- * Two modes, both triggered by Vercel cron:
+ * Pulls health data directly from Google Health API (Fitbit syncs there automatically).
  *
- *   overnight  (00:30 UTC)
- *     → fetches everything from yesterday, writes to yesterday
- *     → final, authoritative record for the previous day
+ * Two modes, triggered by Vercel cron:
  *
- *   daytime  (9am / 12pm / 3pm / 6pm / 10pm UTC)
- *     → writes to TODAY using a split fetch:
- *         sleep / HRV / resting HR / resp rate  ← yesterday's window (overnight metrics)
- *         steps / active energy / HR / SpO2      ← today's running totals
- *         weight                                  ← most recent in last 7 days
- *     → the 9am run also re-finalises yesterday (catches anything that
- *       finalized after the overnight run)
+ *   overnight  (00:30 UTC)  — finalises steps + weight for yesterday only
+ *   daytime    (08:00–21:00 UTC)  — fetches all metrics attributed to TODAY
+ *       (Google Health attributes overnight metrics — sleep, resting HR, HRV,
+ *        SpO2, resp rate — to the date you WOKE UP, not when you fell asleep)
  *
- * Can also be triggered manually:
- *   POST /api/google-health-sync                 (x-health-secret header)
- *   GET  /api/google-health-sync?date=YYYY-MM-DD (manual backfill, overnight mode)
+ * The 08:00 run also re-finalises yesterday's steps in case of late sync.
+ *
+ * Manual triggers:
+ *   POST /api/google-health-sync                     (x-health-secret header)
+ *   GET  /api/google-health-sync?date=YYYY-MM-DD     (overnight/backfill mode)
+ *   GET  /api/google-health-sync?debug=true          (inspect raw API responses)
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -61,18 +59,32 @@ async function getAccessToken(refreshToken) {
   return data.access_token
 }
 
-// ── Google Health API fetch helpers ─────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
-// Convert a YYYY-MM-DD string to the CivilDateTime object Google Health API expects.
+function utcDateString(offsetDays = 0) {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+// Build a CivilDateTime object for the dailyRollUp POST body
 function civilDateTime(dateStr, hours = 0, minutes = 0, seconds = 0) {
   const [year, month, day] = dateStr.split('-').map(Number)
   return { date: { year, month, day }, time: { hours, minutes, seconds, nanos: 0 } }
 }
 
+// Check whether a CivilDate object {year, month, day} matches a YYYY-MM-DD string
+function civilDateMatches(civilDate, dateStr) {
+  if (!civilDate || !dateStr) return false
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return civilDate.year === year && civilDate.month === month && civilDate.day === day
+}
+
+// ── Google Health API fetch helpers ──────────────────────────────────────────
+
 /**
- * POST .../dataPoints:dailyRollUp
- * Body must use CivilDateTime (not ISO timestamps).
- * Used for: steps, resting HR, HRV, SpO2, respiratory rate, active calories, resting calories.
+ * POST .../dataPoints:dailyRollUp — used for steps (and total-calories once tested).
+ * Body uses CivilDateTime, NOT ISO timestamp strings.
  */
 async function fetchDailyRollup(accessToken, dataType, dateStr, debugErrors) {
   const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints:dailyRollUp`
@@ -96,12 +108,11 @@ async function fetchDailyRollup(accessToken, dataType, dateStr, debugErrors) {
 }
 
 /**
- * GET .../dataPoints (NOT :list — that path doesn't exist)
- * Used for: sleep sessions, weight readings.
+ * GET .../dataPoints — used for all list-based metrics.
+ * No date filter param exists; we filter client-side by date field.
  */
-async function fetchDataPoints(accessToken, dataType, startTime, endTime, debugErrors) {
-  const params = new URLSearchParams({ startTime, endTime, pageSize: '100' })
-  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints?${params}`
+async function listDataPoints(accessToken, dataType, pageSize = 10, debugErrors) {
+  const url = `${BASE_URL}/dataTypes/${dataType}/dataPoints?pageSize=${pageSize}`
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   if (!res.ok) {
     const text = await res.text()
@@ -112,15 +123,126 @@ async function fetchDataPoints(accessToken, dataType, startTime, endTime, debugE
   return res.json()
 }
 
-// ── Value extractors ─────────────────────────────────────────────────────────
+// ── Value parsers — based on confirmed API response shapes ───────────────────
 
-// Pull a single numeric value from a daily rollup response.
-// TODO: verify exact response shape during Phase 6 testing — adjust field path if null.
-function rollupValue(data) {
-  const point = data?.dataPoints?.[0]
-  if (!point) return null
-  return point.value?.fpVal ?? point.value?.intVal ?? null
+// Steps from dailyRollUp: rollupDataPoints[0].steps.countSum (string)
+function parseSteps(data) {
+  const val = data?.rollupDataPoints?.[0]?.steps?.countSum
+  return val != null ? parseInt(val) : null
 }
+
+/**
+ * Sleep: find the session whose endTime falls on targetDate (UTC).
+ * Google Health attributes sleep to the date you woke up, not when you fell asleep.
+ * Uses the pre-computed summary rather than summing individual stages.
+ *
+ * summary.minutesAsleep    = time actually asleep (excl. awake periods)
+ * summary.minutesInSleepPeriod = total time in bed (incl. awake periods)
+ */
+function parseSleepForDate(data, targetDate) {
+  const points = data?.dataPoints
+  if (!points?.length) return { sleep_minutes: null, in_bed_minutes: null }
+
+  // Find the session that ended on our target date (UTC date string match)
+  const session = points.find(p => p.sleep?.interval?.endTime?.startsWith(targetDate))
+  if (!session) return { sleep_minutes: null, in_bed_minutes: null }
+
+  const summary = session.sleep?.summary
+  return {
+    sleep_minutes:  summary?.minutesAsleep       ? parseInt(summary.minutesAsleep)       : null,
+    in_bed_minutes: summary?.minutesInSleepPeriod ? parseInt(summary.minutesInSleepPeriod) : null,
+  }
+}
+
+// Resting HR: find daily entry where date matches; value is beatsPerMinute (string)
+function parseRestingHR(data, dateStr) {
+  const p = data?.dataPoints?.find(p => civilDateMatches(p.dailyRestingHeartRate?.date, dateStr))
+  const bpm = p?.dailyRestingHeartRate?.beatsPerMinute
+  return bpm != null ? parseInt(bpm) : null
+}
+
+// HRV: average RMSSD across all samples attributed to dateStr
+// (Fitbit records 5-min interval readings throughout the night)
+function parseHRV(data, dateStr) {
+  const points = data?.dataPoints?.filter(p =>
+    civilDateMatches(p.heartRateVariability?.sampleTime?.civilTime?.date, dateStr)
+  )
+  if (!points?.length) return null
+  const avg = points.reduce((sum, p) =>
+    sum + (p.heartRateVariability?.rootMeanSquareOfSuccessiveDifferencesMilliseconds ?? 0), 0
+  ) / points.length
+  return Math.round(avg * 10) / 10  // 1 decimal
+}
+
+// SpO2: average percentage across all samples attributed to dateStr
+function parseSpO2(data, dateStr) {
+  const points = data?.dataPoints?.filter(p =>
+    civilDateMatches(p.oxygenSaturation?.sampleTime?.civilTime?.date, dateStr)
+  )
+  if (!points?.length) return null
+  const avg = points.reduce((sum, p) => sum + (p.oxygenSaturation?.percentage ?? 0), 0) / points.length
+  return Math.round(avg * 10) / 10
+}
+
+// Respiratory rate: find daily entry where date matches
+function parseRespRate(data, dateStr) {
+  const p = data?.dataPoints?.find(p => civilDateMatches(p.dailyRespiratoryRate?.date, dateStr))
+  return p?.dailyRespiratoryRate?.breathsPerMinute ?? null
+}
+
+// Weight: most recent reading, convert grams → kg
+function parseWeight(data) {
+  const grams = data?.dataPoints?.[0]?.weight?.weightGrams
+  return grams != null ? Math.round(grams / 100) / 10 : null  // e.g. 63900g → 63.9kg
+}
+
+// ── Metric fetchers ───────────────────────────────────────────────────────────
+
+/**
+ * All metrics for a given date (daytime and overnight).
+ * Overnight metrics (sleep, resting HR, HRV, SpO2, resp rate) are attributed
+ * by Google/Fitbit to the date you woke up — so pass TODAY as dateStr.
+ */
+async function fetchAllMetrics(accessToken, dateStr) {
+  const [
+    stepsData, sleepData, hrData, hrvData, spo2Data, respData, weightData,
+  ] = await Promise.all([
+    fetchDailyRollup(accessToken, 'steps',                    dateStr),
+    listDataPoints(  accessToken, 'sleep',                    10),    // find session ending on dateStr
+    listDataPoints(  accessToken, 'daily-resting-heart-rate', 5),
+    listDataPoints(  accessToken, 'heart-rate-variability',   500),   // many 5-min samples per night
+    listDataPoints(  accessToken, 'oxygen-saturation',        500),
+    listDataPoints(  accessToken, 'daily-respiratory-rate',   5),
+    listDataPoints(  accessToken, 'weight',                   3),     // most recent
+  ])
+
+  return {
+    steps:            parseSteps(stepsData),
+    resting_hr:       parseRestingHR(hrData, dateStr),
+    hrv:              parseHRV(hrvData, dateStr),
+    spo2:             parseSpO2(spo2Data, dateStr),
+    respiratory_rate: parseRespRate(respData, dateStr),
+    weight_kg:        parseWeight(weightData),
+    ...parseSleepForDate(sleepData, dateStr),
+  }
+}
+
+/**
+ * Daytime-only metrics (steps + weight) for finalising a previous day.
+ * Used by: overnight cron (finalise yesterday's steps/weight).
+ */
+async function fetchDaytimeMetrics(accessToken, dateStr) {
+  const [stepsData, weightData] = await Promise.all([
+    fetchDailyRollup(accessToken, 'steps',  dateStr),
+    listDataPoints(  accessToken, 'weight', 3),
+  ])
+  return {
+    steps:    parseSteps(stepsData),
+    weight_kg: parseWeight(weightData),
+  }
+}
+
+// ── Supabase write ────────────────────────────────────────────────────────────
 
 function minutesToHoursLabel(minutes) {
   if (minutes == null) return null
@@ -132,106 +254,10 @@ function minutesToHoursLabel(minutes) {
   return '9+'
 }
 
-// ── Sleep mapping ────────────────────────────────────────────────────────────
-
-// Google Health sleep sessions have a sleepStage field.
-// TODO: verify these stage names against actual Fitbit data via Google Health.
-// Known values include: SLEEP_AWAKE, SLEEP_LIGHT, SLEEP_DEEP, SLEEP_REM, SLEEP_OUT_OF_BED
-function parseSleep(sleepData) {
-  const points = sleepData?.dataPoints
-  if (!points?.length) return { sleep_minutes: null, in_bed_minutes: null }
-
-  const AWAKE_STAGES = new Set(['SLEEP_AWAKE', 'SLEEP_OUT_OF_BED'])
-  let asleepMs = 0
-  let inBedMs  = 0
-
-  for (const p of points) {
-    const dur = new Date(p.endTime).getTime() - new Date(p.startTime).getTime()
-    if (!AWAKE_STAGES.has(p.sleepStage)) asleepMs += dur
-    inBedMs += dur
-  }
-
-  return {
-    sleep_minutes:  asleepMs > 0 ? Math.round(asleepMs / 60000) : null,
-    in_bed_minutes: inBedMs  > 0 ? Math.round(inBedMs  / 60000) : null,
-  }
-}
-
-// ── Fetch helpers by category ─────────────────────────────────────────────────
-
-/**
- * OVERNIGHT METRICS — sleep, HRV, resting HR, SpO2, respiratory rate.
- * These are derived from the PREVIOUS night's data, so we always fetch
- * from the "night before" window (yesterdayDate) and write to writeDate (today).
- *
- * The overnight cron does NOT call this — it only finalises daytime metrics
- * (steps/calories/weight). This prevents the overnight cron from overwriting
- * sleep data that was already correctly written by the 08:00 daytime sync.
- */
-async function fetchOvernightMetrics(accessToken, yesterdayDate) {
-  const startTime = `${yesterdayDate}T00:00:00Z`
-  const endTime   = `${yesterdayDate}T23:59:59Z`
-
-  const [sleepData, hrData, hrvData, respData, spo2Data] = await Promise.all([
-    fetchDataPoints( accessToken, 'sleep',                       startTime, endTime),
-    fetchDailyRollup(accessToken, 'daily-resting-heart-rate',    yesterdayDate), // resting HR (not 'heart-rate')
-    fetchDailyRollup(accessToken, 'heart-rate-variability',      yesterdayDate), // was 'daily-heart-rate-variability'
-    fetchDailyRollup(accessToken, 'daily-respiratory-rate',      yesterdayDate),
-    fetchDailyRollup(accessToken, 'oxygen-saturation',           yesterdayDate), // was 'daily-oxygen-saturation'
-  ])
-
-  const { sleep_minutes, in_bed_minutes } = parseSleep(sleepData)
-
-  return {
-    sleep_minutes,
-    in_bed_minutes,
-    resting_hr:       rollupValue(hrData),
-    hrv:              rollupValue(hrvData),
-    respiratory_rate: rollupValue(respData),
-    spo2:             rollupValue(spo2Data),
-  }
-}
-
-/**
- * DAYTIME METRICS — steps, calories, weight.
- * These accumulate or update during the day, so we fetch from the current
- * day's window. Also used by the overnight cron to finalise the previous day.
- * Does NOT include sleep/HRV/resting HR/SpO2/resp — those are overnight-only.
- */
-async function fetchDaytimeMetrics(accessToken, date) {
-  const startTime = `${date}T00:00:00Z`
-  const endTime   = `${date}T23:59:59Z`
-
-  // Weight looks back 7 days to catch the most recent reading regardless of date
-  const weightStart = (() => {
-    const d = new Date(`${date}T00:00:00Z`)
-    d.setUTCDate(d.getUTCDate() - 7)
-    return d.toISOString()
-  })()
-
-  const [stepsData, activeEnergyData, restingEnergyData, weightData] = await Promise.all([
-    fetchDailyRollup(accessToken, 'steps',                          date),
-    fetchDailyRollup(accessToken, 'active-calories-burned',         date), // was 'active-energy-burned'
-    fetchDailyRollup(accessToken, 'daily-resting-calories-burned',  date), // was 'basal-metabolic-rate'
-    fetchDataPoints( accessToken, 'weight',                         weightStart, endTime),
-  ])
-
-  return {
-    steps:               rollupValue(stepsData),
-    active_energy_kcal:  rollupValue(activeEnergyData),
-    resting_energy_kcal: rollupValue(restingEnergyData),
-    // Weight: most recent point in window
-    // TODO: verify unit — may need to confirm value is in kg not lbs
-    weight_kg:           weightData?.dataPoints?.[0]?.value?.fpVal ?? null,
-  }
-}
-
-// ── Supabase write ────────────────────────────────────────────────────────────
-
 async function writeToSupabase(writeDate, metrics) {
   const {
     steps, sleep_minutes, in_bed_minutes, resting_hr, hrv,
-    respiratory_rate, spo2, active_energy_kcal, resting_energy_kcal, weight_kg,
+    respiratory_rate, spo2, weight_kg,
   } = metrics
 
   // ── life logs ──────────────────────────────────────────────────────────────
@@ -276,16 +302,14 @@ async function writeToSupabase(writeDate, metrics) {
   const raw   = rawRow?.value ?? {}
   const patch = { synced_at: new Date().toISOString(), source: 'google-health-api' }
 
-  if (steps               != null) patch.steps               = steps
-  if (sleep_minutes       != null) patch.sleep_minutes       = sleep_minutes
-  if (in_bed_minutes      != null) patch.in_bed_minutes      = in_bed_minutes
-  if (resting_hr          != null) patch.resting_hr          = resting_hr
-  if (hrv                 != null) patch.hrv                 = hrv
-  if (spo2                != null) patch.spo2                = spo2
-  if (respiratory_rate    != null) patch.respiratory_rate    = respiratory_rate
-  if (active_energy_kcal  != null) patch.active_energy_kcal  = active_energy_kcal
-  if (resting_energy_kcal != null) patch.resting_energy_kcal = resting_energy_kcal
-  if (weight_kg           != null) patch.weight_kg           = weight_kg
+  if (steps            != null) patch.steps            = steps
+  if (sleep_minutes    != null) patch.sleep_minutes    = sleep_minutes
+  if (in_bed_minutes   != null) patch.in_bed_minutes   = in_bed_minutes
+  if (resting_hr       != null) patch.resting_hr       = resting_hr
+  if (hrv              != null) patch.hrv              = hrv
+  if (spo2             != null) patch.spo2             = spo2
+  if (respiratory_rate != null) patch.respiratory_rate = respiratory_rate
+  if (weight_kg        != null) patch.weight_kg        = weight_kg
 
   raw[writeDate] = { ...(raw[writeDate] ?? {}), ...patch }
   await supabase
@@ -296,14 +320,6 @@ async function writeToSupabase(writeDate, metrics) {
     )
 
   return patch
-}
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function utcDateString(offsetDays = 0) {
-  const d = new Date()
-  d.setUTCDate(d.getUTCDate() + offsetDays)
-  return d.toISOString().slice(0, 10)
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -335,97 +351,56 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message })
   }
 
-  // ── Debug mode: return raw API responses without writing to Supabase ─────
+  const today     = utcDateString(0)
+  const yesterday = utcDateString(-1)
+
+  // ── Debug mode: return raw metrics without writing ─────────────────────────
   if (req.query?.debug === 'true') {
-    const yesterday = utcDateString(-1)
-    const today     = utcDateString(0)
-    const startYesterday = `${yesterday}T00:00:00Z`
-    const endYesterday   = `${yesterday}T23:59:59Z`
-    const startToday     = `${today}T00:00:00Z`
-    const endToday       = `${today}T23:59:59Z`
-    const weightStart    = (() => { const d = new Date(`${today}T00:00:00Z`); d.setUTCDate(d.getUTCDate() - 7); return d.toISOString() })()
-
-    const errors = {}
-
-    // Steps: dailyRollUp works ✅
-    const steps = await fetchDailyRollup(accessToken, 'steps', today, errors)
-
-    // Everything else: use list endpoint with pageSize only (no date filter yet)
-    // — we need to see the response shape before we can add proper filtering
-    const listTypes = [
-      'sleep', 'weight',
-      'daily-resting-heart-rate', 'heart-rate-variability',
-      'daily-respiratory-rate', 'oxygen-saturation',
-      'total-calories',          // active + resting combined — only calories type documented
-    ]
-    const listResults = {}
-    await Promise.all(listTypes.map(async (type) => {
-      const url = `${BASE_URL}/dataTypes/${type}/dataPoints?pageSize=3`
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
-      const text = await r.text()
-      if (!r.ok) {
-        errors[type] = { status: r.status, url, body: text }
-      } else {
-        try { listResults[type] = JSON.parse(text) } catch { listResults[type] = text }
-      }
-    }))
-
+    const [todayMetrics, yesterdaySteps] = await Promise.all([
+      fetchAllMetrics(accessToken, today),
+      fetchDaytimeMetrics(accessToken, yesterday),
+    ])
     return res.status(200).json({
-      debug: true,
-      dates: { yesterday, today },
-      steps_raw: steps,
-      list_results: listResults,
-      errors,
+      debug: true, today, yesterday,
+      today_metrics: todayMetrics,
+      yesterday_steps: yesterdaySteps,
     })
   }
 
   // ── Determine mode ────────────────────────────────────────────────────────
-  // Manual backfill: ?date=YYYY-MM-DD always runs overnight (single-date) mode
   const manualDate = req.query?.date
   const mode       = req.query?.mode ?? 'overnight'
   const results    = {}
 
   try {
     if (manualDate || mode === 'overnight') {
-      // ── Overnight cron (00:30 UTC) / manual backfill ──────────────────────
-      // Finalises steps, calories, weight for yesterday ONLY.
-      // Does NOT touch sleep/HRV/resting HR/SpO2/resp — those were correctly
-      // written by the previous day's 08:00 daytime sync and must not be overwritten.
-      const targetDate = manualDate ?? utcDateString(-1) // default: yesterday
-      const patch = await writeToSupabase(targetDate, await fetchDaytimeMetrics(accessToken, targetDate))
-      results[targetDate] = patch
+      // ── Overnight cron / backfill ──────────────────────────────────────────
+      // Finalises steps + weight for yesterday only.
+      // Sleep and overnight health metrics are already written by daytime crons
+      // under the wake-up date (today) — don't touch them here.
+      const targetDate = manualDate ?? yesterday
+      results[targetDate] = await writeToSupabase(targetDate, await fetchDaytimeMetrics(accessToken, targetDate))
 
     } else {
-      // ── Daytime crons (08:00 / 11:00 / 14:00 / 17:00 / 21:00 UTC) ────────
-      // Split fetch: overnight metrics from yesterday's window (last night's
-      // sleep/HRV/etc), daytime metrics from today's window (running steps/calories).
-      // Both are written to TODAY's date.
-      // The 08:00 run also re-finalises yesterday's daytime metrics (in case
-      // steps/calories weren't complete when the 00:30 overnight ran).
-      const today     = utcDateString(0)
-      const yesterday = utcDateString(-1)
-
+      // ── Daytime crons ──────────────────────────────────────────────────────
+      // Fetch all metrics for today. Google attributes overnight data (sleep,
+      // resting HR, HRV, SpO2, resp rate) to the wake-up date = today.
       const utcHour = new Date().getUTCHours()
-      const isFirstDaytimeRun = utcHour >= 8 && utcHour < 10 // 08:00 UTC window
+      const isFirstDaytimeRun = utcHour >= 8 && utcHour < 10 // 08:00 UTC
 
-      const [overnightMetrics, todayDaytime, yesterdayDaytime] = await Promise.all([
-        fetchOvernightMetrics(accessToken, yesterday), // sleep/HRV/etc from last night → write to today
-        fetchDaytimeMetrics(accessToken, today),       // steps/calories so far today → write to today
-        isFirstDaytimeRun
-          ? fetchDaytimeMetrics(accessToken, yesterday) // re-finalise yesterday's steps/calories
-          : Promise.resolve(null),
+      const [todayMetrics, yesterdayFinalise] = await Promise.all([
+        fetchAllMetrics(accessToken, today),
+        isFirstDaytimeRun ? fetchDaytimeMetrics(accessToken, yesterday) : Promise.resolve(null),
       ])
 
-      // Write today: last night's sleep/HRV + today's running steps/calories
-      results[today] = await writeToSupabase(today, { ...overnightMetrics, ...todayDaytime })
+      results[today] = await writeToSupabase(today, todayMetrics)
 
-      // Re-finalise yesterday's daytime metrics at 08:00 only
-      if (yesterdayDaytime) {
-        results[yesterday] = await writeToSupabase(yesterday, yesterdayDaytime)
+      if (yesterdayFinalise) {
+        results[yesterday] = await writeToSupabase(yesterday, yesterdayFinalise)
       }
     }
   } catch (e) {
-    console.error('[google-health-sync] Write error:', e)
+    console.error('[google-health-sync] Error:', e)
     return res.status(500).json({ error: e.message })
   }
 
