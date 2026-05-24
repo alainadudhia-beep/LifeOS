@@ -27,9 +27,9 @@ const USER_ID      = process.env.HEALTH_IMPORT_USER_ID
 const TOKENS_KEY   = 'google-health-tokens'
 
 const SCOPES = [
-  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness',
-  'https://www.googleapis.com/auth/googlehealth.sleep',
-  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements',
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
+  'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
 ].join(' ')
 
 export default async function handler(req, res) {
