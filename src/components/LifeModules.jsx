@@ -242,20 +242,31 @@ function recoveryComposite(raw, hrvAvg) {
 
   const hrv_r  = entries.find(([k]) => k === 'hrv')?.[1]
   const spo2_r = entries.find(([k]) => k === 'spo2')?.[1]
-  const primaryWorst = Math.min(
-    hrv_r  ? TIER_IDX[hrv_r.label]  : 4,
-    spo2_r ? TIER_IDX[spo2_r.label] : 4,
-  )
-  const worstTier = Math.min(...entries.map(([, r]) => TIER_IDX[r.label]))
+  const primaryTiers   = [hrv_r, spo2_r].filter(Boolean).map(r => TIER_IDX[r.label])
+  const primaryWorst   = primaryTiers.length ? Math.min(...primaryTiers) : 4
+  const primaryBest    = primaryTiers.length ? Math.max(...primaryTiers) : 4
+  const secondaryBest  = Math.max(...entries.filter(([k]) => k !== 'hrv' && k !== 'spo2').map(([, r]) => TIER_IDX[r.label]), -1)
+  const worstTier      = Math.min(...entries.map(([, r]) => TIER_IDX[r.label]))
 
-  // SpO2 Bad (< 91%) is a clinical floor — cap at Poor
+  // SpO2 Bad (< 91%) is a clinical floor — always cap at Poor
   if (spo2Rating(spo2)?.label === 'Bad') tierAvg = Math.min(tierAvg, 1.4)
-  // Either primary metric Poor or Bad → cap at Fair
-  if (primaryWorst <= 1) tierAvg = Math.min(tierAvg, 2.4)
-  // Both primaries below Good → cap at Fair (resp rate / skin temp can't rescue)
-  else if (hrv_r && spo2_r && TIER_IDX[hrv_r.label] < 3 && TIER_IDX[spo2_r.label] < 3) tierAvg = Math.min(tierAvg, 2.4)
-  // Secondary metric Poor or Bad → cap at Good
-  else if (worstTier <= 1) tierAvg = Math.min(tierAvg, 2.9)
+
+  if (primaryWorst === 0) {
+    // Primary Bad: if other primary is also Fair or worse → Poor; else → Fair
+    tierAvg = Math.min(tierAvg, primaryBest <= 2 ? 1.4 : 2.4)
+  } else if (primaryWorst === 1) {
+    // Primary Poor → cap at Fair
+    tierAvg = Math.min(tierAvg, 2.4)
+  } else if (primaryWorst <= 2 && primaryBest <= 2) {
+    // Both primaries Fair → cap at Fair
+    tierAvg = Math.min(tierAvg, 2.4)
+  } else if (worstTier <= 1) {
+    // Secondary metric Poor/Bad only (primaries are fine) → cap at Good
+    tierAvg = Math.min(tierAvg, 2.9)
+  }
+
+  // Uplift to Great: one primary Great, other at least Good, and at least one secondary Great
+  if (primaryBest >= 4 && primaryWorst >= 3 && secondaryBest >= 4) tierAvg = Math.max(tierAvg, 3.5)
 
   const score = tierAvg >= 3.5 ? 4 : tierAvg >= 2.5 ? 3 : tierAvg >= 1.5 ? 2 : tierAvg >= 0.5 ? 1 : 0
   return { label: RECOVERY_TIERS[score], bg: RECOVERY_BG_MAP[score] }
