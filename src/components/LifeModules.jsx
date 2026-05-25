@@ -467,7 +467,7 @@ const BODY_MODULE = {
     { key: 'wrist_nerve_pain', label: 'Wrist Pain',         type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'gut',              label: 'Gut',                type: 'options',     options: ['None','Low','Med','Bad'],   colors: SEVERITY_COLORS },
     { key: 'gut_symptoms',     label: 'Gut Symptoms',       type: 'multiselect', options: ['Bloating','Cramps','Diarrhoea','Bleeding','Smelly flatulence'] },
-    { key: 'stool',            label: 'Stool',              type: 'multiselect', options: ['1','2','3','4','5','6','7'] },
+    { key: 'stool',            label: 'Stool',              type: 'multiselect', options: ['1','2','3','4','5','6','7'], compact: true },
     { key: 'period',           label: 'Period',             type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
     { key: 'pill',             label: 'Contraceptive Pill', type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
     { key: 'illness',          label: 'Illness',            type: 'options',     options: ['None','Cold','Flu','Sick'], colors: { None: '#f1f5f9', Cold: '#fef9c3', Flu: '#fde8c8', Sick: '#fee2e2' } },
@@ -1964,11 +1964,13 @@ function PopoverField({ field, value, stale, onSet }) {
           {field.options.map(opt => {
             const on    = selected.includes(opt)
             const color = field.colors?.[opt]
+            const baseStyle = field.compact ? { padding: '0 5px' } : undefined
+            const activeStyle = on && color ? { background: color, borderColor: color, color: '#1e293b' } : undefined
             return (
               <button
                 key={opt}
                 className={`lm-pf-pill ${on ? 'lm-pf-pill--on' : ''}`}
-                style={on && color ? { background: color, borderColor: color, color: '#1e293b' } : undefined}
+                style={{ ...baseStyle, ...activeStyle }}
                 onClick={() => toggle(opt)}
               >{opt}</button>
             )
