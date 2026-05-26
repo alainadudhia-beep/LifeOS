@@ -24,8 +24,8 @@ async function geocode(city) {
 
 // Map Google Pollen API category strings to our internal label format
 function googlePollenLabel(category) {
-  if (!category || category === 'None' || category === 'Very Low') return 'Low'
-  if (category === 'Low')      return 'Low'
+  if (!category || category === 'None') return null
+  if (category === 'Very Low' || category === 'Low') return 'Low'
   if (category === 'Moderate') return 'Medium'
   if (category === 'High')     return 'High'
   return 'Very High'
