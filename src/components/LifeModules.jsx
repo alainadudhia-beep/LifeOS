@@ -933,7 +933,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         function weatherCellColor(w) {
           if (w == null) return null
           const grassRank = POLLEN_RANK[w.grass_pollen_label] ?? 0
-          const treeRank  = POLLEN_RANK[w.birch_pollen_label] ?? 0
+          const treeRank  = POLLEN_RANK[w.tree_pollen_label ?? w.birch_pollen_label] ?? 0
           const worst = Math.max(grassRank, treeRank)
           if (worst === 0) return '#86efac'
           if (worst === 1) return '#dcfce7'
@@ -944,7 +944,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         function weatherCellLabel(w) {
           if (w == null) return null
           const grassRank = POLLEN_RANK[w.grass_pollen_label] ?? 0
-          const treeRank  = POLLEN_RANK[w.birch_pollen_label] ?? 0
+          const treeRank  = POLLEN_RANK[w.tree_pollen_label ?? w.birch_pollen_label] ?? 0
           // Only show type label if above Low (rank > 1)
           if (grassRank > 1 && grassRank >= treeRank) return 'Grass'
           if (treeRank > 1) return 'Tree'
@@ -1651,8 +1651,8 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
 
         const rain  = rainChip(w.precipitation_mm)
         const wind  = windChip(w.wind_speed_max)
-        const grass = pollenChip(w.grass_pollen_label, w.grass_pollen)
-        const tree  = pollenChip(w.birch_pollen_label, w.birch_pollen)
+        const grass = pollenChip(w.grass_pollen_label)
+        const tree  = pollenChip(w.tree_pollen_label ?? w.birch_pollen_label)
         const aqi   = aqiChip(w.aqi_label, w.aqi)
         const uv    = uvChip(w.uv_index)
 

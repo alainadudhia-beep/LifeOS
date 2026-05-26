@@ -243,7 +243,7 @@ export default function MobileTodayModules() {
   }
   function pollenSev(w) {
     const RANK = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4 }
-    const worst = Math.max(RANK[w?.grass_pollen_label] ?? 0, RANK[w?.birch_pollen_label] ?? 0)
+    const worst = Math.max(RANK[w?.grass_pollen_label] ?? 0, RANK[w?.tree_pollen_label ?? w?.birch_pollen_label] ?? 0)
     if (worst <= 1) return 'good'
     if (worst === 2) return 'med'
     return 'bad'
@@ -700,13 +700,13 @@ export default function MobileTodayModules() {
               {todayWeather.grass_pollen_label && (
                 <div className="mlm-info-row">
                   <span>Grass pollen</span>
-                  <strong>{todayWeather.grass_pollen_label}{todayWeather.grass_pollen != null ? ` (${Math.round(todayWeather.grass_pollen)})` : ''}</strong>
+                  <strong>{todayWeather.grass_pollen_label}</strong>
                 </div>
               )}
-              {todayWeather.birch_pollen_label && (
+              {(todayWeather.tree_pollen_label ?? todayWeather.birch_pollen_label) && (
                 <div className="mlm-info-row">
                   <span>Tree pollen</span>
-                  <strong>{todayWeather.birch_pollen_label}{todayWeather.birch_pollen != null ? ` (${Math.round(todayWeather.birch_pollen)})` : ''}</strong>
+                  <strong>{todayWeather.tree_pollen_label ?? todayWeather.birch_pollen_label}</strong>
                 </div>
               )}
               {todayWeather.aqi_label && (

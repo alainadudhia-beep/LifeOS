@@ -22,21 +22,43 @@ async function geocode(city) {
 
 // ── Label helpers ─────────────────────────────────────────────────────────────
 
-function grassPollenLabel(v) {
-  if (v == null) return null
-  if (v < 30)  return 'Low'
-  if (v < 50)  return 'Medium'
-  if (v < 150) return 'High'
+// Map Google Pollen API category strings to our internal label format
+function googlePollenLabel(category) {
+  if (!category || category === 'None' || category === 'Very Low') return 'Low'
+  if (category === 'Low')      return 'Low'
+  if (category === 'Moderate') return 'Medium'
+  if (category === 'High')     return 'High'
   return 'Very High'
 }
 
-function treePollenLabel(v) {
-  if (v == null) return null
-  if (v < 15)   return 'Low'
-  if (v < 90)   return 'Medium'
-  if (v < 1500) return 'High'
-  return 'Very High'
+// Fetch pollen from Google Pollen API (forecast only — accurate measured+modelled data)
+async function fetchGooglePollen(lat, lon) {
+  const apiKey = process.env.GOOGLE_POLLEN_API_KEY
+  if (!apiKey) return null
+  const res = await fetch(
+    `https://pollen.googleapis.com/v1/forecast:lookup` +
+    `?key=${apiKey}&location.latitude=${lat}&location.longitude=${lon}&days=2&languageCode=en`
+  )
+  if (!res.ok) {
+    console.warn('[weather-fetch] Google Pollen API error:', res.status)
+    return null
+  }
+  const json = await res.json()
+
+  // Build { 'YYYY-MM-DD': { GRASS: 'High', TREE: 'Medium', WEED: 'Low' } }
+  const byDate = {}
+  for (const day of (json.dailyInfo ?? [])) {
+    const { year, month, day: d } = day.date
+    const iso = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    byDate[iso] = {}
+    for (const plant of (day.plantInfo ?? [])) {
+      byDate[iso][plant.code] = plant.indexInfo?.category ?? null
+    }
+  }
+  return byDate
 }
+
+function aqiLabel(v) {
 
 function aqiLabel(v) {
   if (v == null) return null
@@ -119,8 +141,8 @@ export default async function handler(req, res) {
     const city         = await resolveLocation(today)
     const { lat, lon } = await geocode(city)
 
-    // Fetch 2 days of forecast + air quality in parallel
-    const [forecastRes, airByDate] = await Promise.all([
+    // Fetch forecast, air quality, and Google pollen in parallel
+    const [forecastRes, airByDate, googlePollen] = await Promise.all([
       fetch(
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${lat}&longitude=${lon}` +
@@ -128,32 +150,30 @@ export default async function handler(req, res) {
         `&timezone=auto&forecast_days=2`
       ).then(r => { if (!r.ok) throw new Error(`Forecast API error: ${r.status}`); return r.json() }),
       fetchAirQualityForDates(lat, lon, today, tomorrow),
+      fetchGooglePollen(lat, lon),
     ])
 
-    function buildDayWeather(dateStr, dayIndex, airByDate) {
-      const d = forecastRes.daily
-      const a = airByDate[dateStr] ?? {}
-      const gp = a.grass_pollen ?? null
-      const bp = a.birch_pollen ?? null
-      const ap = a.alder_pollen ?? null
+    function buildDayWeather(dateStr, dayIndex) {
+      const d  = forecastRes.daily
+      const a  = airByDate[dateStr] ?? {}
+      const gp = googlePollen?.[dateStr] ?? {}
       const aq = a.european_aqi ?? null
       return {
         location:           city,
-        temp_max:           d.temperature_2m_max?.[dayIndex]  ?? null,
-        temp_min:           d.temperature_2m_min?.[dayIndex]  ?? null,
-        precipitation_mm:   d.precipitation_sum?.[dayIndex]   ?? null,
-        wind_speed_max:     d.windspeed_10m_max?.[dayIndex]   ?? null,
-        uv_index:           d.uv_index_max?.[dayIndex]        ?? null,
+        temp_max:           d.temperature_2m_max?.[dayIndex]       ?? null,
+        temp_min:           d.temperature_2m_min?.[dayIndex]       ?? null,
+        precipitation_mm:   d.precipitation_sum?.[dayIndex]        ?? null,
+        wind_speed_max:     d.windspeed_10m_max?.[dayIndex]        ?? null,
+        uv_index:           d.uv_index_max?.[dayIndex]             ?? null,
         humidity_pct:       d.relative_humidity_2m_mean?.[dayIndex] ?? null,
-        grass_pollen:       gp,
-        grass_pollen_label: grassPollenLabel(gp),
-        birch_pollen:       bp,
-        birch_pollen_label: treePollenLabel(bp),
-        alder_pollen:       ap,
-        alder_pollen_label: treePollenLabel(ap),
-        ragweed_pollen:     a.ragweed_pollen  ?? null,
-        pm10:               a.pm10            ?? null,
-        pm2_5:              a.pm2_5           ?? null,
+        // Pollen from Google (accurate) — falls back to null if API unavailable
+        grass_pollen_label: googlePollenLabel(gp.GRASS),
+        tree_pollen_label:  googlePollenLabel(gp.TREE),
+        weed_pollen_label:  googlePollenLabel(gp.WEED),
+        pollen_source:      googlePollen ? 'google' : 'none',
+        // AQI from Open-Meteo (reliable for PM/AQI)
+        pm10:               a.pm10   ?? null,
+        pm2_5:              a.pm2_5  ?? null,
         aqi:                aq,
         aqi_label:          aqiLabel(aq),
         fetched_at:         new Date().toISOString(),
@@ -161,8 +181,8 @@ export default async function handler(req, res) {
       }
     }
 
-    const todayWeather    = buildDayWeather(today,    0, airByDate)
-    const tomorrowWeather = buildDayWeather(tomorrow, 1, airByDate)
+    const todayWeather    = buildDayWeather(today,    0)
+    const tomorrowWeather = buildDayWeather(tomorrow, 1)
 
     const { data: existing } = await supabase
       .from('user_data').select('value').eq('key', WEATHER_KEY).single()
