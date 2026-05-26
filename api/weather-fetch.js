@@ -59,8 +59,6 @@ async function fetchGooglePollen(lat, lon) {
 }
 
 function aqiLabel(v) {
-
-function aqiLabel(v) {
   if (v == null) return null
   if (v <= 20)  return 'Good'
   if (v <= 40)  return 'Fair'
