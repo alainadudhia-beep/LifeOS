@@ -154,6 +154,31 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ── Manual grass pollen patch for May 2026 ──────────────────────────────
+    // Run once: /api/weather-backfill?patchGrass=true
+    if (req.query.patchGrass === 'true') {
+      const GRASS_PATCH = {
+        '2026-05-22': { grass_pollen_label: 'High',      pollen_source: 'manual' },
+        '2026-05-23': { grass_pollen_label: 'High',      pollen_source: 'manual' },
+        '2026-05-24': { grass_pollen_label: 'High',      pollen_source: 'manual' },
+        '2026-05-25': { grass_pollen_label: 'High',      pollen_source: 'manual' },
+        '2026-05-26': { grass_pollen_label: 'Very High', pollen_source: 'manual' },
+        '2026-05-27': { grass_pollen_label: 'High',      pollen_source: 'manual' },
+      }
+      const { data: existing } = await supabase
+        .from('user_data').select('value').eq('key', WEATHER_KEY).single()
+      const weather = existing?.value ?? {}
+      for (const [date, fields] of Object.entries(GRASS_PATCH)) {
+        if (weather[date]) Object.assign(weather[date], fields)
+        else weather[date] = fields
+      }
+      await supabase.from('user_data').upsert(
+        { key: WEATHER_KEY, user_id: USER_ID, value: weather, updated_at: new Date().toISOString() },
+        { onConflict: 'key,user_id' }
+      )
+      return res.status(200).json({ ok: true, patched: Object.keys(GRASS_PATCH) })
+    }
+
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     const startDate = req.query.start ?? '2026-04-13'

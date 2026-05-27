@@ -825,7 +825,8 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         if (!Object.keys(patch).length) return prev
         return { ...prev, [date]: { ...(prev[date] ?? {}), [moduleKey]: { ...current, ...patch } } }
       })
-      setActiveCell({ moduleKey, date })
+      const rect = e.currentTarget.getBoundingClientRect()
+      setActiveCell({ moduleKey, date, rect })
     }
   }
 
@@ -867,6 +868,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
             onSet={(fieldKey, value) => setFieldValue(mod.key, iso, fieldKey, value)}
             mobile={mobile}
             onClose={() => setActiveCell(null)}
+            cellRect={activeCell?.rect}
           />
         )}
       </div>
@@ -1217,6 +1219,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
                     onSet={(fk, v) => setFieldValue('exercise', iso, fk, v)}
                     mobile={mobile}
                     onClose={() => setActiveCell(null)}
+                    cellRect={activeCell?.rect}
                   />
                 )}
               </div>
@@ -1246,7 +1249,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
                   </div>
                 )}
                 {open && (
-                  <Popover ref={popoverRef} mod={EXERCISE_MODULE} date={todayIso} dayData={{ ...(exData ?? {}), energy: exData?.energy ?? logs[todayIso]?.mood?.energy ?? undefined }} onSet={(fk, v) => setFieldValue('exercise', todayIso, fk, v)} mobile={mobile} onClose={() => setActiveCell(null)} />
+                  <Popover ref={popoverRef} mod={EXERCISE_MODULE} date={todayIso} dayData={{ ...(exData ?? {}), energy: exData?.energy ?? logs[todayIso]?.mood?.energy ?? undefined }} onSet={(fk, v) => setFieldValue('exercise', todayIso, fk, v)} mobile={mobile} onClose={() => setActiveCell(null)} cellRect={activeCell?.rect} />
                 )}
               </div>
             </div>
@@ -1300,6 +1303,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', iso, fk, v) }}
                     mobile={mobile}
                     onClose={() => setActiveCell(null)}
+                    cellRect={activeCell?.rect}
                   />
                 )}
               </div>
@@ -1343,6 +1347,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
                     onSet={(fk, v) => { if (!fk.startsWith('_')) setFieldValue('body', todayIso, fk, v) }}
                     mobile={mobile}
                     onClose={() => setActiveCell(null)}
+                    cellRect={activeCell?.rect}
                   />
                 )}
               </div>
@@ -1845,9 +1850,26 @@ function WeekLines({ days, dayW }) {
 
 const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none' }
 
-const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose }, ref) {
+function desktopFixedStyle(rect) {
+  const POPOVER_WIDTH = 300
+  const MARGIN = 10
+  const HEADER_H = 80
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  let left = rect.left + rect.width / 2 - POPOVER_WIDTH / 2
+  left = Math.max(8, Math.min(left, vw - POPOVER_WIDTH - 8))
+  const spaceAbove = rect.top - HEADER_H - MARGIN
+  const spaceBelow = vh - rect.bottom - MARGIN
+  if (spaceAbove < 150 && spaceBelow > spaceAbove) {
+    return { position: 'fixed', top: rect.bottom + MARGIN, left, transform: 'none', zIndex: 9999, minWidth: POPOVER_WIDTH, maxHeight: Math.max(150, spaceBelow - 8), overflowY: 'auto' }
+  }
+  return { position: 'fixed', bottom: vh - rect.top + MARGIN, left, transform: 'none', zIndex: 9999, minWidth: POPOVER_WIDTH, maxHeight: Math.max(150, spaceAbove), overflowY: 'auto' }
+}
+
+const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose, cellRect }, ref) {
+  const fixedStyle = !mobile && cellRect ? desktopFixedStyle(cellRect) : undefined
   const content = (
-    <div className="lm-popover" ref={ref} onClick={e => e.stopPropagation()} style={mobile ? POPOVER_MOBILE_STYLE : undefined}>
+    <div className="lm-popover" ref={ref} onClick={e => e.stopPropagation()} style={mobile ? POPOVER_MOBILE_STYLE : fixedStyle}>
       <div className="lm-popover-title">
         <span className="lm-popover-module">{mod.label}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1866,7 +1888,7 @@ const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile,
       ))}
     </div>
   )
-  return mobile ? createPortal(content, document.body) : content
+  return (mobile || fixedStyle) ? createPortal(content, document.body) : content
 })
 
 // ─── PopoverField ─────────────────────────────────────────────────────────────

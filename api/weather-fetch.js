@@ -20,42 +20,70 @@ async function geocode(city) {
   return { lat, lon }
 }
 
-// ── Label helpers ─────────────────────────────────────────────────────────────
+// ── Met Office pollen scraper (grass + weed labels for London & SE) ──────────
 
-// Map Google Pollen API category strings to our internal label format
-function googlePollenLabel(category) {
-  if (!category || category === 'None') return null
-  if (category === 'Very Low' || category === 'Low') return 'Low'
-  if (category === 'Moderate') return 'Medium'
-  if (category === 'High')     return 'High'
-  return 'Very High'
-}
+const MO_LEVELS = { 'very high': 'Very High', 'high': 'High', 'moderate': 'Medium', 'low': 'Low' }
 
-// Fetch pollen from Google Pollen API (forecast only — accurate measured+modelled data)
-async function fetchGooglePollen(lat, lon) {
-  const apiKey = process.env.GOOGLE_POLLEN_API_KEY
-  if (!apiKey) return null
-  const res = await fetch(
-    `https://pollen.googleapis.com/v1/forecast:lookup` +
-    `?key=${apiKey}&location.latitude=${lat}&location.longitude=${lon}&days=2&languageCode=en`
-  )
-  if (!res.ok) {
-    console.warn('[weather-fetch] Google Pollen API error:', res.status)
+async function fetchMetOfficePollen() {
+  try {
+    const res = await fetch(
+      'https://weather.metoffice.gov.uk/warnings-and-advice/seasonal-advice/pollen-forecast',
+      { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' } }
+    )
+    if (!res.ok) { console.warn('[weather-fetch] Met Office pollen HTTP', res.status); return null }
+    const html = await res.text()
+
+    // Find the London & South East England section (handles &amp; or literal &)
+    const idx = html.search(/London\s*(?:&amp;|&)\s*South\s*East\s*England/i)
+    if (idx === -1) { console.warn('[weather-fetch] London SE section not found in Met Office page'); return null }
+    const section = html.slice(idx, idx + 2000)
+
+    const grassMatch = section.match(/(very high|high|moderate|low)\s+grass\s+pollen/i)
+    const weedMatch  = section.match(/(very high|high|moderate|low)\s+weed\s+pollen/i)
+
+    return {
+      grass: MO_LEVELS[grassMatch?.[1]?.toLowerCase()] ?? null,
+      weed:  MO_LEVELS[weedMatch?.[1]?.toLowerCase()]  ?? null,
+    }
+  } catch (e) {
+    console.warn('[weather-fetch] Met Office scrape failed:', e.message)
     return null
   }
-  const json = await res.json()
+}
 
-  // Build { 'YYYY-MM-DD': { GRASS: 'High', TREE: 'Medium', WEED: 'Low' } }
-  const byDate = {}
-  for (const day of (json.dailyInfo ?? [])) {
-    const { year, month, day: d } = day.date
-    const iso = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-    byDate[iso] = {}
-    for (const plant of (day.plantInfo ?? [])) {
-      byDate[iso][plant.code] = plant.indexInfo?.category ?? null
+// ── Airmine pollen scraper (numerical scores + birch for London) ──────────────
+
+const AIRMINE_LEVELS = { 'very high': 'Very High', 'high': 'High', 'medium': 'Medium', 'low': 'Low', 'none': null }
+
+function parseAirminePlant(html, plant) {
+  // Matches: "Grass (Poaceae):</strong>Medium 41/100"
+  const re = new RegExp(`${plant}[^<]*<\\/strong>\\s*(Very High|High|Medium|Low|None)\\s+(\\d+)\\/100`, 'i')
+  const m  = html.match(re)
+  if (!m) return { label: null, score: null }
+  return { label: AIRMINE_LEVELS[m[1].toLowerCase()] ?? null, score: parseInt(m[2]) }
+}
+
+async function fetchAirminePollen() {
+  try {
+    const res = await fetch('https://airmine.ai/pollen/united-kingdom/london/', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' }
+    })
+    if (!res.ok) { console.warn('[weather-fetch] Airmine pollen HTTP', res.status); return null }
+    const html = await res.text()
+
+    // Split at the "tomorrow" section boundary
+    const tIdx        = html.search(/\btomorrow\b/i)
+    const todayHtml    = tIdx > -1 ? html.slice(0, tIdx) : html
+    const tomorrowHtml = tIdx > -1 ? html.slice(tIdx)    : ''
+
+    return {
+      today:    { grass: parseAirminePlant(todayHtml,    'Grass'), birch: parseAirminePlant(todayHtml,    'Birch') },
+      tomorrow: { grass: parseAirminePlant(tomorrowHtml, 'Grass'), birch: parseAirminePlant(tomorrowHtml, 'Birch') },
     }
+  } catch (e) {
+    console.warn('[weather-fetch] Airmine scrape failed:', e.message)
+    return null
   }
-  return byDate
 }
 
 function aqiLabel(v) {
@@ -139,8 +167,8 @@ export default async function handler(req, res) {
     const city         = await resolveLocation(today)
     const { lat, lon } = await geocode(city)
 
-    // Fetch forecast, air quality, and Google pollen in parallel
-    const [forecastRes, airByDate, googlePollen] = await Promise.all([
+    // Fetch forecast, air quality, Met Office pollen, and Airmine pollen in parallel
+    const [forecastRes, airByDate, metOfficePollen, airminePollen] = await Promise.all([
       fetch(
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${lat}&longitude=${lon}` +
@@ -148,27 +176,37 @@ export default async function handler(req, res) {
         `&timezone=auto&forecast_days=2`
       ).then(r => { if (!r.ok) throw new Error(`Forecast API error: ${r.status}`); return r.json() }),
       fetchAirQualityForDates(lat, lon, today, tomorrow),
-      fetchGooglePollen(lat, lon),
+      fetchMetOfficePollen(),
+      fetchAirminePollen(),
     ])
 
     function buildDayWeather(dateStr, dayIndex) {
-      const d  = forecastRes.daily
-      const a  = airByDate[dateStr] ?? {}
-      const gp = googlePollen?.[dateStr] ?? {}
-      const aq = a.european_aqi ?? null
+      const d   = forecastRes.daily
+      const a   = airByDate[dateStr] ?? {}
+      const aq  = a.european_aqi ?? null
+      const air = dayIndex === 0 ? airminePollen?.today : airminePollen?.tomorrow
+
+      // Grass label: Met Office (station-accurate) for today; Airmine forecast for tomorrow
+      const grassLabel = dayIndex === 0
+        ? (metOfficePollen?.grass ?? air?.grass?.label ?? null)
+        : (air?.grass?.label ?? null)
+
       return {
         location:           city,
-        temp_max:           d.temperature_2m_max?.[dayIndex]       ?? null,
-        temp_min:           d.temperature_2m_min?.[dayIndex]       ?? null,
-        precipitation_mm:   d.precipitation_sum?.[dayIndex]        ?? null,
-        wind_speed_max:     d.windspeed_10m_max?.[dayIndex]        ?? null,
-        uv_index:           d.uv_index_max?.[dayIndex]             ?? null,
+        temp_max:           d.temperature_2m_max?.[dayIndex]        ?? null,
+        temp_min:           d.temperature_2m_min?.[dayIndex]        ?? null,
+        precipitation_mm:   d.precipitation_sum?.[dayIndex]         ?? null,
+        wind_speed_max:     d.windspeed_10m_max?.[dayIndex]         ?? null,
+        uv_index:           d.uv_index_max?.[dayIndex]              ?? null,
         humidity_pct:       d.relative_humidity_2m_mean?.[dayIndex] ?? null,
-        // Pollen from Google (accurate) — falls back to null if API unavailable
-        grass_pollen_label: googlePollenLabel(gp.GRASS),
-        tree_pollen_label:  googlePollenLabel(gp.TREE),
-        weed_pollen_label:  googlePollenLabel(gp.WEED),
-        pollen_source:      googlePollen ? 'google' : 'none',
+        // Grass + weed from Met Office (station data), score from Airmine (0–100)
+        grass_pollen_label: grassLabel,
+        grass_pollen_score: air?.grass?.score ?? null,
+        weed_pollen_label:  dayIndex === 0 ? (metOfficePollen?.weed ?? null) : null,
+        // Tree (birch) from Airmine
+        tree_pollen_label:  air?.birch?.label ?? null,
+        tree_pollen_score:  air?.birch?.score ?? null,
+        pollen_source:      'metoffice+airmine',
         // AQI from Open-Meteo (reliable for PM/AQI)
         pm10:               a.pm10   ?? null,
         pm2_5:              a.pm2_5  ?? null,

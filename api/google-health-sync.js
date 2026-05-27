@@ -83,6 +83,27 @@ function civilDateMatches(civilDate, dateStr) {
 // ── Google Health API fetch helpers ──────────────────────────────────────────
 
 /**
+ * Thrown when Google returns MISSING_OAUTH_SCOPE — needs re-auth, not a retry.
+ */
+class ScopeError extends Error {
+  constructor(dataType, required) {
+    super(`OAuth scope missing for ${dataType}: requires ${required}. Re-auth needed: /api/google-health-auth`)
+    this.name = 'ScopeError'
+  }
+}
+
+function checkForScopeError(dataType, status, body) {
+  if (status !== 403) return
+  let parsed
+  try { parsed = JSON.parse(body) } catch { return }
+  const reason = parsed?.error?.details?.[0]?.reason
+  if (reason === 'MISSING_OAUTH_SCOPE') {
+    const required = parsed?.error?.details?.[0]?.metadata?.any_of_required ?? 'unknown'
+    throw new ScopeError(dataType, required)
+  }
+}
+
+/**
  * POST .../dataPoints:dailyRollUp — used for steps (and total-calories once tested).
  * Body uses CivilDateTime, NOT ISO timestamp strings.
  */
@@ -102,6 +123,7 @@ async function fetchDailyRollup(accessToken, dataType, dateStr, debugErrors) {
     const text = await res.text()
     console.error(`[google-health-sync] ${dataType} rollup ${res.status}:`, text)
     if (debugErrors) debugErrors[dataType] = { status: res.status, url, body: text }
+    checkForScopeError(dataType, res.status, text)
     return null
   }
   return res.json()
@@ -118,6 +140,7 @@ async function listDataPoints(accessToken, dataType, pageSize = 10, debugErrors)
     const text = await res.text()
     console.error(`[google-health-sync] ${dataType} list ${res.status}:`, text)
     if (debugErrors) debugErrors[dataType] = { status: res.status, url, body: text }
+    checkForScopeError(dataType, res.status, text)
     return null
   }
   return res.json()
@@ -433,15 +456,10 @@ function computeSleepScore(metrics, rawAll, writeDate) {
     hrScore = Math.round(Math.min(10, Math.max(0, 5 + diff)))
   }
 
-  // ── Skin temp modifier ─────────────────────────────────────────────────────
-  let skinPenalty = 0
-  if (skin_temp_deviation != null) {
-    if      (skin_temp_deviation > 0.5)  skinPenalty = -10
-    else if (skin_temp_deviation > 0.3)  skinPenalty = -5
-    else if (skin_temp_deviation > 0.15) skinPenalty = -2
-  }
-
   // ── Combine — scale proportionally if any component is missing ─────────────
+  // Note: skin_temp_deviation is intentionally excluded from the score.
+  // It's an inflammation/illness signal, not a sleep quality signal — Fitbit
+  // doesn't include it in their score either. Surface it separately in the UI.
   const parts = [
     { score: durationScore, max: 25 },
     { score: qualityScore,  max: 25 },
@@ -454,9 +472,8 @@ function computeSleepScore(metrics, rawAll, writeDate) {
 
   const earned   = parts.reduce((s, p) => s + p.score, 0)
   const possible = parts.reduce((s, p) => s + p.max,   0)
-  const scaled   = Math.round((earned / possible) * 100)
 
-  return Math.min(100, Math.max(0, scaled + skinPenalty))
+  return Math.min(100, Math.max(0, Math.round((earned / possible) * 100)))
 }
 
 // ── Supabase write ────────────────────────────────────────────────────────────
@@ -743,6 +760,13 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, mode: 'backfill', from: fromDate, to: toDate, results })
     } catch (e) {
       console.error('[google-health-sync] Backfill error:', e)
+      if (e.name === 'ScopeError') {
+        return res.status(403).json({
+          error: 'OAuth scope revoked — re-auth required',
+          hint:  'Visit https://life-os-chi-opal.vercel.app/api/google-health-auth in your browser to reconnect.',
+          detail: e.message,
+        })
+      }
       return res.status(500).json({ error: e.message })
     }
   }
@@ -777,6 +801,13 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('[google-health-sync] Error:', e)
+    if (e.name === 'ScopeError') {
+      return res.status(403).json({
+        error: 'OAuth scope revoked — re-auth required',
+        hint:  'Visit https://life-os-chi-opal.vercel.app/api/google-health-auth in your browser to reconnect.',
+        detail: e.message,
+      })
+    }
     return res.status(500).json({ error: e.message })
   }
 
