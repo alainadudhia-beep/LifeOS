@@ -1861,9 +1861,9 @@ function desktopFixedStyle(rect) {
   const spaceAbove = rect.top - HEADER_H - MARGIN
   const spaceBelow = vh - rect.bottom - MARGIN
   if (spaceAbove < 150 && spaceBelow > spaceAbove) {
-    return { position: 'fixed', top: rect.bottom + MARGIN, left, transform: 'none', zIndex: 9999, minWidth: POPOVER_WIDTH, maxHeight: Math.max(150, spaceBelow - 8), overflowY: 'auto' }
+    return { position: 'fixed', top: rect.bottom + MARGIN, left, transform: 'none', zIndex: 9999, width: POPOVER_WIDTH, maxHeight: Math.max(150, spaceBelow - 8), overflowY: 'auto' }
   }
-  return { position: 'fixed', bottom: vh - rect.top + MARGIN, left, transform: 'none', zIndex: 9999, minWidth: POPOVER_WIDTH, maxHeight: Math.max(150, spaceAbove), overflowY: 'auto' }
+  return { position: 'fixed', bottom: vh - rect.top + MARGIN, left, transform: 'none', zIndex: 9999, width: POPOVER_WIDTH, maxHeight: Math.max(150, spaceAbove), overflowY: 'auto' }
 }
 
 const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose, cellRect }, ref) {
