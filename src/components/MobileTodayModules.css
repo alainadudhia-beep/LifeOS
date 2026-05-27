@@ -10,22 +10,8 @@
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 6px;
-  position: relative;
 }
 
-/* Thin vertical divider between autosync (cols 1-2) and manual (cols 3-6) */
-.mlm-grid::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  /* Centre of the 6px gap between col 2 and col 3:
-     2 cols + 2 gaps = (100% - 30px)/3 + 12px, minus 3px to centre in gap */
-  left: calc((100% - 30px) / 3 + 9px);
-  width: 1px;
-  background: #e2e8f0;
-  pointer-events: none;
-}
 
 .mlm-card {
   display: flex;
@@ -42,6 +28,21 @@
   transition: background 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
   font-family: inherit;
+  position: relative;
+}
+
+/* Thin vertical divider anchored to the left edge of col 3 (between autosync and manual) */
+.mlm-card:nth-child(3)::before,
+.mlm-card:nth-child(9)::before {
+  content: '';
+  position: absolute;
+  left: -3.5px;   /* centres the 1px line in the 6px gap */
+  top: -3px;      /* extend into row gap so line is continuous */
+  bottom: -3px;
+  width: 1px;
+  background: #e2e8f0;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .mlm-card:active { opacity: 0.8; }
