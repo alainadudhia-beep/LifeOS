@@ -819,8 +819,8 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
           const d = new Date(date)
           d.setDate(d.getDate() - 1)
           const yBody = prev[d.toISOString().slice(0, 10)]?.body ?? {}
-          if (current.pill   == null && yBody.pill   != null) patch.pill   = yBody.pill
-          if (current.period == null && yBody.period != null) patch.period = yBody.period
+          if (current.pill   === undefined && yBody.pill   != null) patch.pill   = yBody.pill
+          if (current.period === undefined && yBody.period != null) patch.period = yBody.period
         }
         if (!Object.keys(patch).length) return prev
         return { ...prev, [date]: { ...(prev[date] ?? {}), [moduleKey]: { ...current, ...patch } } }
