@@ -33,8 +33,8 @@ async function fetchMetOfficePollen() {
     if (!res.ok) { console.warn('[weather-fetch] Met Office pollen HTTP', res.status); return null }
     const html = await res.text()
 
-    // Find the London & South East England section (handles &amp; or literal &)
-    const idx = html.search(/London\s*(?:&amp;|&)\s*South\s*East\s*England/i)
+    // Find the region-heading <h3> for London SE — skip the <option> in the dropdown
+    const idx = html.search(/region-heading[^>]*>London\s*(?:&amp;|&)\s*South\s*East/i)
     if (idx === -1) { console.warn('[weather-fetch] London SE section not found in Met Office page'); return null }
     const section = html.slice(idx, idx + 2000)
 
@@ -56,9 +56,12 @@ async function fetchMetOfficePollen() {
 const AIRMINE_LEVELS = { 'very high': 'Very High', 'high': 'High', 'medium': 'Medium', 'low': 'Low', 'none': null }
 
 function parseAirminePlant(html, plant) {
-  // Matches: "Grass (Poaceae):</strong>Medium 41/100"
-  const re = new RegExp(`${plant}[^<]*<\\/strong>\\s*(Very High|High|Medium|Low|None)\\s+(\\d+)\\/100`, 'i')
-  const m  = html.match(re)
+  // Matches: <span class="pollen-name">Grass (Poaceae):</span><span class="pollen-level">Medium <span class="pollen-value">41/100</span>
+  const re = new RegExp(
+    `pollen-name">${plant}[^<]*<\\/span>\\s*<span[^>]*>\\s*(Very High|High|Medium|Low|None)\\s*<span[^>]*>(\\d+)\\/100`,
+    'i'
+  )
+  const m = html.match(re)
   if (!m) return { label: null, score: null }
   return { label: AIRMINE_LEVELS[m[1].toLowerCase()] ?? null, score: parseInt(m[2]) }
 }
@@ -71,8 +74,8 @@ async function fetchAirminePollen() {
     if (!res.ok) { console.warn('[weather-fetch] Airmine pollen HTTP', res.status); return null }
     const html = await res.text()
 
-    // Split at the "tomorrow" section boundary
-    const tIdx        = html.search(/\btomorrow\b/i)
+    // Split at the Tomorrow <h2> section heading (not the intro paragraph mention)
+    const tIdx        = html.search(/pollution-day-title[^>]*>[^<]*Tomorrow/i)
     const todayHtml    = tIdx > -1 ? html.slice(0, tIdx) : html
     const tomorrowHtml = tIdx > -1 ? html.slice(tIdx)    : ''
 
