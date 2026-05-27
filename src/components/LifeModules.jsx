@@ -868,7 +868,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
             onSet={(fieldKey, value) => setFieldValue(mod.key, iso, fieldKey, value)}
             mobile={mobile}
             onClose={() => setActiveCell(null)}
-            cellRect={activeCell?.rect}
+            cellRect={mod.key !== 'water' ? activeCell?.rect : undefined}
           />
         )}
       </div>
