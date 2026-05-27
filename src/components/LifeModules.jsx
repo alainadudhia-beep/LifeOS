@@ -1937,7 +1937,7 @@ function PopoverField({ field, value, stale, onSet }) {
           <button
             className={`lm-pf-btn ${!value ? 'lm-pf-btn--active' : ''}`}
             style={!value ? { background: '#f1f5f9' } : undefined}
-            onClick={() => onSet(null)}
+            onClick={() => onSet(false)}
           >{field.offLabel ?? 'No'}</button>
           <button
             className={`lm-pf-btn ${value ? 'lm-pf-btn--active' : ''}`}
