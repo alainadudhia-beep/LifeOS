@@ -36,14 +36,26 @@ async function fetchMetOfficePollen() {
     // Find the region-heading <h3> for London SE — skip the <option> in the dropdown
     const idx = html.search(/region-heading[^>]*>London\s*(?:&amp;|&)\s*South\s*East/i)
     if (idx === -1) { console.warn('[weather-fetch] London SE section not found in Met Office page'); return null }
-    const section = html.slice(idx, idx + 2000)
+    const section = html.slice(idx, idx + 3000)
 
+    // Today's grass/weed split from the paragraph text
     const grassMatch = section.match(/(very high|high|moderate|low)\s+grass\s+pollen/i)
     const weedMatch  = section.match(/(very high|high|moderate|low)\s+weed\s+pollen/i)
 
+    // 5-day forecast: dates from <time datetime="..."> and levels from data-category="h/vh/m/l"
+    const MO_CODE    = { vh: 'Very High', h: 'High', m: 'Medium', l: 'Low' }
+    const dateMatches = [...section.matchAll(/<time\s+datetime="(\d{4}-\d{2}-\d{2})"/gi)]
+    const catMatches  = [...section.matchAll(/data-category="(vh|h|m|l)"/gi)]
+    const forecast = {}
+    dateMatches.forEach((dm, i) => {
+      const cat = catMatches[i]?.[1]
+      if (dm[1] && cat) forecast[dm[1]] = MO_CODE[cat] ?? null
+    })
+
     return {
-      grass: MO_LEVELS[grassMatch?.[1]?.toLowerCase()] ?? null,
-      weed:  MO_LEVELS[weedMatch?.[1]?.toLowerCase()]  ?? null,
+      grass:    MO_LEVELS[grassMatch?.[1]?.toLowerCase()] ?? null,
+      weed:     MO_LEVELS[weedMatch?.[1]?.toLowerCase()]  ?? null,
+      forecast, // { 'YYYY-MM-DD': 'High', ... } for today + 4 days
     }
   } catch (e) {
     console.warn('[weather-fetch] Met Office scrape failed:', e.message)
@@ -163,9 +175,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today    = new Date().toISOString().slice(0, 10)
-    const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1)
-    const tomorrow = tomorrowD.toISOString().slice(0, 10)
+    // Build rolling 5-day date array: today + next 4 days
+    const dates = Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(); d.setDate(d.getDate() + i)
+      return d.toISOString().slice(0, 10)
+    })
+    const today    = dates[0]
+    const lastDate = dates[4]
 
     const city         = await resolveLocation(today)
     const { lat, lon } = await geocode(city)
@@ -176,9 +192,9 @@ export default async function handler(req, res) {
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${lat}&longitude=${lon}` +
         `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,uv_index_max,relative_humidity_2m_mean` +
-        `&timezone=auto&forecast_days=2`
+        `&timezone=auto&forecast_days=5`
       ).then(r => { if (!r.ok) throw new Error(`Forecast API error: ${r.status}`); return r.json() }),
-      fetchAirQualityForDates(lat, lon, today, tomorrow),
+      fetchAirQualityForDates(lat, lon, today, lastDate),
       fetchMetOfficePollen(),
       fetchAirminePollen(),
     ])
@@ -187,12 +203,17 @@ export default async function handler(req, res) {
       const d   = forecastRes.daily
       const a   = airByDate[dateStr] ?? {}
       const aq  = a.european_aqi ?? null
-      const air = dayIndex === 0 ? airminePollen?.today : airminePollen?.tomorrow
 
-      // Grass label: Met Office (station-accurate) for today; Airmine forecast for tomorrow
+      // Airmine only covers today (0) and tomorrow (1)
+      const air = dayIndex === 0 ? airminePollen?.today
+                : dayIndex === 1 ? airminePollen?.tomorrow
+                : null
+
+      // Grass label: Met Office grass-specific for today, Airmine for tomorrow,
+      // Met Office 5-day combined code for days 2–4 (grass dominates in summer)
       const grassLabel = dayIndex === 0
-        ? (metOfficePollen?.grass ?? air?.grass?.label ?? null)
-        : (air?.grass?.label ?? null)
+        ? (metOfficePollen?.grass ?? metOfficePollen?.forecast?.[dateStr] ?? null)
+        : (air?.grass?.label ?? metOfficePollen?.forecast?.[dateStr] ?? null)
 
       return {
         location:           city,
@@ -206,36 +227,35 @@ export default async function handler(req, res) {
         grass_pollen_label: grassLabel,
         grass_pollen_score: air?.grass?.score ?? null,
         weed_pollen_label:  dayIndex === 0 ? (metOfficePollen?.weed ?? null) : null,
-        // Tree (birch) from Airmine
+        // Tree (birch) from Airmine — today and tomorrow only
         tree_pollen_label:  air?.birch?.label ?? null,
         tree_pollen_score:  air?.birch?.score ?? null,
-        pollen_source:      'metoffice+airmine',
+        pollen_source:      dayIndex <= 1 ? 'metoffice+airmine' : 'metoffice-forecast',
         // AQI from Open-Meteo (reliable for PM/AQI)
         pm10:               a.pm10   ?? null,
         pm2_5:              a.pm2_5  ?? null,
         aqi:                aq,
         aqi_label:          aqiLabel(aq),
         fetched_at:         new Date().toISOString(),
-        is_forecast:        true,
+        is_forecast:        dayIndex > 0,
       }
     }
-
-    const todayWeather    = buildDayWeather(today,    0)
-    const tomorrowWeather = buildDayWeather(tomorrow, 1)
 
     const { data: existing } = await supabase
       .from('user_data').select('value').eq('key', WEATHER_KEY).single()
 
     const allWeather = existing?.value ?? {}
-    allWeather[today]    = todayWeather
-    allWeather[tomorrow] = tomorrowWeather
+    for (const [i, dateStr] of dates.entries()) {
+      allWeather[dateStr] = buildDayWeather(dateStr, i)
+    }
 
     await supabase.from('user_data').upsert(
       { key: WEATHER_KEY, user_id: USER_ID, value: allWeather, updated_at: new Date().toISOString() },
       { onConflict: 'key,user_id' }
     )
 
-    return res.status(200).json({ ok: true, date: today, location: city, today: todayWeather, tomorrow: tomorrowWeather })
+    const built = Object.fromEntries(dates.map(d => [d, allWeather[d]]))
+    return res.status(200).json({ ok: true, date: today, location: city, days: built })
 
   } catch (err) {
     console.error('[weather-fetch]', err)
