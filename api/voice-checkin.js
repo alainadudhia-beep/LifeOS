@@ -13,6 +13,8 @@ const WEATHER_KEY   = 'lifetracker-weather'
 
 const SYSTEM_PROMPT = `You are a personal health and life check-in parser. The user will give you a free-form voice transcription of their day. Your job is to extract structured data and return ONLY valid JSON with no preamble, no markdown fences, no explanation.
 
+CRITICAL: Omit any field whose value would be null. Only include fields with actual non-null values. Do not output null anywhere in the response — simply leave the field out. Empty arrays should also be omitted.
+
 IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes (—) or en dashes (–).
 
 Use exactly these field values:
