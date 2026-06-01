@@ -2,6 +2,8 @@ const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 
 const SYSTEM_PROMPT = `You are a personal health and life check-in parser. The user will give you a free-form voice transcription of their day. Your job is to extract structured data and return ONLY valid JSON with no preamble, no markdown fences, no explanation.
 
+CRITICAL: Omit any field whose value would be null. Only include fields with actual non-null values. Do not output null anywhere in the response — simply leave the field out. Empty arrays should also be omitted.
+
 IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes (—) or en dashes (–).
 
 Use exactly these field values:
@@ -121,7 +123,7 @@ export async function parseTranscript(transcript, trackNames = [], recentContext
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT + trackContext + recentContext,
       messages: [{ role: 'user', content: transcript }],
     }),
@@ -138,11 +140,24 @@ export async function parseTranscript(transcript, trackNames = [], recentContext
   // Strip markdown code fences if Claude wraps the JSON despite instructions
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 
+  // Robustly extract outermost JSON object — handles trailing text Claude sometimes appends
+  const firstBrace = text.indexOf('{')
+  if (firstBrace !== -1) {
+    let depth = 0, end = -1
+    for (let i = firstBrace; i < text.length; i++) {
+      if (text[i] === '{') depth++
+      else if (text[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+    }
+    if (end !== -1) text = text.slice(firstBrace, end + 1)
+  }
+
   try {
     const parsed = JSON.parse(text)
     console.log('[parseTranscript] result:', parsed)
     return parsed
   } catch {
-    throw new Error('Claude returned invalid JSON: ' + text.slice(0, 200))
+    const stopReason = data.stop_reason
+    const outTokens  = data.usage?.output_tokens
+    throw new Error(`Claude returned invalid JSON (stop=${stopReason} out=${outTokens}): TAIL: ${text.slice(-300)}`)
   }
 }
