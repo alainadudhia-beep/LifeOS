@@ -371,17 +371,8 @@ async function callClaude(transcript, dynamicContext) {
   try {
     return JSON.parse(text)
   } catch (e) {
-    // Log full detail server-side for diagnosis
-    console.error('[voice-checkin] JSON parse failed', {
-      stop_reason: stopReason,
-      tokens_in:   usage?.input_tokens,
-      tokens_out:  usage?.output_tokens,
-      parse_error: e.message,
-      tail:        text.slice(-300),
-    })
     throw new Error(
-      `Claude returned invalid JSON (stop_reason=${stopReason}, out=${usage?.output_tokens}): ` +
-      text.slice(0, 300)
+      `stop=${stopReason} out=${usage?.output_tokens} err=${e.message} TAIL:${text.slice(-400)}`
     )
   }
 }
