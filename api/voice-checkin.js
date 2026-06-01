@@ -346,13 +346,18 @@ async function callClaude(transcript, dynamicContext) {
   }
 
   const data = await res.json()
+  const stopReason = data.stop_reason
+  const usage = data.usage
   let text = data.content[0].text.trim()
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 
   try {
     return JSON.parse(text)
-  } catch {
-    throw new Error('Claude returned invalid JSON: ' + text.slice(0, 200))
+  } catch (e) {
+    throw new Error(
+      `Claude returned invalid JSON (stop_reason=${stopReason}, tokens_in=${usage?.input_tokens}, tokens_out=${usage?.output_tokens}): ` +
+      text.slice(0, 400)
+    )
   }
 }
 
