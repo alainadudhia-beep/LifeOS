@@ -349,14 +349,37 @@ async function callClaude(transcript, dynamicContext) {
   const stopReason = data.stop_reason
   const usage = data.usage
   let text = data.content[0].text.trim()
+
+  // Strip markdown fences if present
   text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+
+  // Robustly extract the outermost JSON object — handles any trailing text
+  // Claude sometimes appends explanatory notes after the closing brace on complex entries
+  const firstBrace = text.indexOf('{')
+  if (firstBrace !== -1) {
+    let depth = 0
+    let end = -1
+    for (let i = firstBrace; i < text.length; i++) {
+      if (text[i] === '{') depth++
+      else if (text[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+    }
+    if (end !== -1) text = text.slice(firstBrace, end + 1)
+  }
 
   try {
     return JSON.parse(text)
   } catch (e) {
+    // Log full detail server-side for diagnosis
+    console.error('[voice-checkin] JSON parse failed', {
+      stop_reason: stopReason,
+      tokens_in:   usage?.input_tokens,
+      tokens_out:  usage?.output_tokens,
+      parse_error: e.message,
+      tail:        text.slice(-300),
+    })
     throw new Error(
-      `Claude returned invalid JSON (stop_reason=${stopReason}, tokens_in=${usage?.input_tokens}, tokens_out=${usage?.output_tokens}): ` +
-      text.slice(0, 400)
+      `Claude returned invalid JSON (stop_reason=${stopReason}, out=${usage?.output_tokens}): ` +
+      text.slice(0, 300)
     )
   }
 }
