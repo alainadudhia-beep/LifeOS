@@ -73,12 +73,16 @@ async function writeSyncHealth(status, errors = null) {
 
   const shouldNotify = status !== 'ok' && !(previouslyFailing && notifiedRecently)
 
+  const slackChannelUrl = process.env.SLACK_HEALTH_CHANNEL_URL ?? null
+
   const value = {
     status,
     checked_at: now,
     last_ok: status === 'ok' ? now : (current?.last_ok ?? null),
     ...(errors && { errors }),
     notified_at: shouldNotify && status !== 'ok' ? now : (current?.notified_at ?? null),
+    // Persist the channel URL so the UI banner can deep-link to Slack
+    ...(status !== 'ok' && slackChannelUrl ? { slack_url: slackChannelUrl } : {}),
   }
 
   await supabase.from('user_data').upsert(

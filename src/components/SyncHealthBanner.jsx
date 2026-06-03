@@ -43,6 +43,18 @@ export default function SyncHealthBanner() {
               re-authentication needed
             </a>
           </>
+        ) : health.slack_url ? (
+          <>
+            Health sync issue —{' '}
+            <a
+              href={health.slack_url}
+              className="sync-banner__link"
+              target="_blank"
+              rel="noreferrer"
+            >
+              check Slack
+            </a>
+          </>
         ) : (
           'Health sync issue — check diagnostic'
         )}
