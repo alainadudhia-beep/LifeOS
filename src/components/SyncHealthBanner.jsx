@@ -49,8 +49,18 @@ export default function SyncHealthBanner() {
             <a
               href={health.slack_url}
               className="sync-banner__link"
-              target="_blank"
-              rel="noreferrer"
+              onClick={e => {
+                e.preventDefault()
+                // Try slack:// deep link first (opens app on mobile/desktop)
+                // Fall back to web URL after 1.5s if app didn't open
+                const match = health.slack_url.match(/\/client\/([^/]+)\/([^/?]+)/)
+                if (match) {
+                  window.location.href = `slack://channel?team=${match[1]}&id=${match[2]}`
+                  setTimeout(() => window.open(health.slack_url, '_blank'), 1500)
+                } else {
+                  window.open(health.slack_url, '_blank')
+                }
+              }}
             >
               check Slack
             </a>
