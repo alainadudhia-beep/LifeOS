@@ -754,14 +754,19 @@ export default async function handler(req, res) {
   // ── Score comparison — reads stored raw data, no API calls ────────────────
   // ── Test alert mode — fires Slack + writes error state, no real sync ────────
   if (req.query?.test_alert === 'true') {
-    const fakeErrors = { message: 'Test alert fired manually', type: 'TestError' }
-    await writeSyncHealth('api_error', fakeErrors)
-    const health = await getSyncHealth()
-    return res.status(200).json({
-      test: true,
-      message: 'Wrote api_error to Supabase and sent Slack alert (if webhook configured)',
-      sync_health: health,
-    })
+    try {
+      const fakeErrors = { message: 'Test alert fired manually', type: 'TestError' }
+      await writeSyncHealth('api_error', fakeErrors)
+      const health = await getSyncHealth()
+      return res.status(200).json({
+        test: true,
+        message: 'Wrote api_error to Supabase and sent Slack alert (if webhook configured)',
+        sync_health: health,
+      })
+    } catch (e) {
+      console.error('[google-health-sync] test_alert error:', e)
+      return res.status(500).json({ error: e.message, stack: e.stack?.slice(0, 500) })
+    }
   }
 
   if (req.query?.compare === 'true') {
