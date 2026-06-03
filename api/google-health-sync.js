@@ -712,21 +712,29 @@ export default async function handler(req, res) {
 
   // ── Debug mode: return raw metrics without writing ─────────────────────────
   if (req.query?.debug === 'true') {
-    const [todayMetrics, yesterdaySteps, sleepRaw] = await Promise.all([
+    const rollupErrors = {}
+    const [stepsRaw, caloriesRaw, sleepRaw] = await Promise.all([
+      fetchDailyRollup(accessToken, 'steps',          today, rollupErrors),
+      fetchDailyRollup(accessToken, 'total-calories', today, rollupErrors),
+      listDataPoints(  accessToken, 'sleep',          3),
+    ])
+    const [todayMetrics, yesterdaySteps] = await Promise.all([
       fetchAllMetrics(accessToken, today),
       fetchDaytimeMetrics(accessToken, yesterday),
-      listDataPoints(accessToken, 'sleep', 3),
     ])
-    // Expose the full summary of the most recent sleep session so we can confirm
-    // whether stage data (REM/deep/light minutes) is available in the API response
     const sleepProbe = sleepRaw?.dataPoints?.[0]?.sleep ?? null
     return res.status(200).json({
       debug: true, today, yesterday,
-      today_metrics:   todayMetrics,
-      yesterday_steps: yesterdaySteps,
+      today_metrics:    todayMetrics,
+      yesterday_steps:  yesterdaySteps,
+      rollup_raw: {
+        steps:    stepsRaw,
+        calories: caloriesRaw,
+      },
+      rollup_errors: Object.keys(rollupErrors).length ? rollupErrors : undefined,
       sleep_probe: {
-        endTime:  sleepProbe?.interval?.endTime,
-        summary:  sleepProbe?.summary,
+        endTime: sleepProbe?.interval?.endTime,
+        summary: sleepProbe?.summary,
       },
     })
   }
