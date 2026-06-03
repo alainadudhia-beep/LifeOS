@@ -117,6 +117,7 @@ async function fetchDailyRollup(accessToken, dataType, dateStr, debugErrors) {
         start: civilDateTime(dateStr, 0,  0,  0),
         end:   civilDateTime(dateStr, 23, 59, 59),
       },
+      window_size_days: 1,
     }),
   })
   if (!res.ok) {
