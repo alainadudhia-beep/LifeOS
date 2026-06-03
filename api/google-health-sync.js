@@ -85,10 +85,11 @@ async function writeSyncHealth(status, errors = null) {
     ...(status !== 'ok' && slackChannelUrl ? { slack_url: slackChannelUrl } : {}),
   }
 
-  await supabase.from('user_data').upsert(
+  const { error: upsertErr } = await supabase.from('user_data').upsert(
     { key: SYNC_HEALTH_KEY, user_id: USER_ID, value, updated_at: now },
     { onConflict: 'key,user_id' }
-  ).catch(e => console.error('[google-health-sync] writeSyncHealth error:', e))
+  )
+  if (upsertErr) console.error('[google-health-sync] writeSyncHealth error:', upsertErr)
 
   if (shouldNotify && status !== 'ok') {
     await sendSlackAlert(status, errors, current?.last_ok)
