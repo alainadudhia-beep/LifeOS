@@ -6,6 +6,7 @@ import TodayPanel from './components/TodayPanel'
 import MobileTodayModules from './components/MobileTodayModules'
 import VoiceCheckin from './components/VoiceCheckin'
 import AuthGate from './components/AuthGate'
+import SyncHealthBanner from './components/SyncHealthBanner'
 import { dbWrite } from './lib/db'
 import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
@@ -236,6 +237,7 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
           <header className="app-mobile-header">
             <h1 className="app-title">Life OS</h1>
           </header>
+          <SyncHealthBanner />
 
           <div className="app-mobile-content">
             {/* Always mounted so thisWeekRef stays valid during check-in on any tab */}
@@ -329,6 +331,7 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
         <button className="app-toggle-btn" onClick={() => importRef.current.click()}>Import backup</button>
         <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
       </header>
+      <SyncHealthBanner />
 
       <main className="app-main">
         <div className="app-left" style={{ width: leftWidth, minWidth: leftWidth }}>

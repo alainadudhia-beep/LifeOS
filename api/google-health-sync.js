@@ -25,13 +25,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const CLIENT_ID      = process.env.GOOGLE_HEALTH_CLIENT_ID
-const CLIENT_SECRET  = process.env.GOOGLE_HEALTH_CLIENT_SECRET
-const USER_ID        = process.env.HEALTH_IMPORT_USER_ID
-const TOKENS_KEY     = 'google-health-tokens'
-const LIFE_LOGS_KEY  = 'lifetracker-life-logs'
-const FITBIT_RAW_KEY = 'lifetracker-fitbit-raw'
-const BASE_URL       = 'https://health.googleapis.com/v4/users/me'
+const CLIENT_ID        = process.env.GOOGLE_HEALTH_CLIENT_ID
+const CLIENT_SECRET    = process.env.GOOGLE_HEALTH_CLIENT_SECRET
+const USER_ID          = process.env.HEALTH_IMPORT_USER_ID
+const TOKENS_KEY       = 'google-health-tokens'
+const LIFE_LOGS_KEY    = 'lifetracker-life-logs'
+const FITBIT_RAW_KEY   = 'lifetracker-fitbit-raw'
+const SYNC_HEALTH_KEY  = 'lifetracker-sync-health'
+const BASE_URL         = 'https://health.googleapis.com/v4/users/me'
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,88 @@ function isAuthorised(req) {
   const secret = req.headers['x-health-secret']
   if (secret && secret === process.env.HEALTH_IMPORT_SECRET) return true
   return false
+}
+
+// ── Sync health monitoring ────────────────────────────────────────────────────
+
+/**
+ * Read current sync_health record from Supabase.
+ */
+async function getSyncHealth() {
+  const { data } = await supabase
+    .from('user_data').select('value')
+    .eq('key', SYNC_HEALTH_KEY).eq('user_id', USER_ID).single()
+  return data?.value ?? null
+}
+
+/**
+ * Write sync health status to Supabase.
+ * - status: 'ok' | 'token_error' | 'api_error'
+ * - errors: optional object with error details
+ * Sends a Slack alert on first failure (or if > 24h since last alert).
+ */
+async function writeSyncHealth(status, errors = null) {
+  const now = new Date().toISOString()
+  let current = null
+  try { current = await getSyncHealth() } catch { /* ignore */ }
+
+  const previouslyFailing = current && current.status !== 'ok'
+  const notifiedRecently  = current?.notified_at &&
+    (Date.now() - new Date(current.notified_at).getTime()) < 24 * 60 * 60 * 1000
+
+  const shouldNotify = status !== 'ok' && !(previouslyFailing && notifiedRecently)
+
+  const value = {
+    status,
+    checked_at: now,
+    last_ok: status === 'ok' ? now : (current?.last_ok ?? null),
+    ...(errors && { errors }),
+    notified_at: shouldNotify && status !== 'ok' ? now : (current?.notified_at ?? null),
+  }
+
+  await supabase.from('user_data').upsert(
+    { key: SYNC_HEALTH_KEY, user_id: USER_ID, value, updated_at: now },
+    { onConflict: 'key,user_id' }
+  ).catch(e => console.error('[google-health-sync] writeSyncHealth error:', e))
+
+  if (shouldNotify && status !== 'ok') {
+    await sendSlackAlert(status, errors, current?.last_ok)
+  }
+}
+
+/**
+ * Send a Slack alert via incoming webhook.
+ * Requires SLACK_HEALTH_WEBHOOK_URL env var.
+ */
+async function sendSlackAlert(status, errors, lastOk) {
+  const webhookUrl = process.env.SLACK_HEALTH_WEBHOOK_URL
+  if (!webhookUrl) return
+
+  const lastOkText = lastOk
+    ? `Last successful sync: ${lastOk.slice(0, 16).replace('T', ' ')} UTC`
+    : 'No previous successful sync recorded'
+
+  let text
+  if (status === 'token_error') {
+    text = `🔴 *LifeTracker health sync: token expired*\n${lastOkText}\n\n` +
+      `Re-authenticate: https://life-os-chi-opal.vercel.app/api/google-health-auth`
+  } else {
+    const errDetail = errors
+      ? '```' + JSON.stringify(errors, null, 2).slice(0, 800) + '```'
+      : 'Unknown API error'
+    text = `🔴 *LifeTracker health sync: API error*\n${lastOkText}\n\n${errDetail}`
+  }
+
+  try {
+    const r = await fetch(webhookUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ text }),
+    })
+    if (!r.ok) console.error('[google-health-sync] Slack webhook returned', r.status)
+  } catch (e) {
+    console.error('[google-health-sync] Slack alert failed:', e.message)
+  }
 }
 
 async function getAccessToken(refreshToken) {
@@ -705,6 +788,9 @@ export default async function handler(req, res) {
   try {
     accessToken = await getAccessToken(tokenRow.value.refresh_token)
   } catch (e) {
+    // Token errors (invalid_grant = revoked refresh token) need re-auth
+    const isTokenError = e.message.includes('invalid_grant') || e.message.includes('Token refresh failed')
+    await writeSyncHealth(isTokenError ? 'token_error' : 'api_error', { message: e.message })
     return res.status(500).json({ error: e.message })
   }
 
@@ -810,6 +896,8 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('[google-health-sync] Error:', e)
+    const errStatus = e.name === 'ScopeError' ? 'token_error' : 'api_error'
+    await writeSyncHealth(errStatus, { message: e.message, type: e.name })
     if (e.name === 'ScopeError') {
       return res.status(403).json({
         error: 'OAuth scope revoked — re-auth required',
@@ -819,6 +907,9 @@ export default async function handler(req, res) {
     }
     return res.status(500).json({ error: e.message })
   }
+
+  // Successful sync — clear any previous error state
+  await writeSyncHealth('ok')
 
   console.log('[google-health-sync]', mode, results)
   return res.status(200).json({ ok: true, mode, results })
