@@ -23,7 +23,7 @@ function mapWorkoutType(type) {
   const t = type.toLowerCase()
   if (t.includes('yoga'))                                        return 'Yoga'
   if (t.includes('pilates'))                                     return 'Pilates'
-  if (t.includes('walk'))                                        return 'Long walk'
+  if (t.includes('walk'))                                        return 'Dog walk'
   if (t.includes('gym') || t.includes('weight') ||
       t.includes('strength') || t.includes('lifting'))          return 'Gym'
   return null

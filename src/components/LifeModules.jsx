@@ -66,9 +66,10 @@ const FRUIT_SCORE    = { '1': 1, '2': 1, '3': 2, '4': 2, '5': 3, '6+': 3, '1-2':
 const CARBS_SCORE    = { Low: 2, Med: 3, High: 1 }
 const SNACKING_SCORE = { Low: 3, Med: 2, High: 0 }
 const SUGAR_SCORE    = { None: 3, Low: 2, Med: 1, High: 0 }
+const FATS_SCORE     = { Low: 1, Med: 3, High: 0 } // Med = sweet spot (healthy fats), Low = not enough, High = too much
 
 // Diet field weights — fruit_veg counts 2× (biggest dietary signal), carbs/sugar 1.5×
-const DIET_WEIGHTS   = { sugar: 1.5, protein: 1, fruit_veg: 2, carbs: 1.5, snacking: 1 }
+const DIET_WEIGHTS   = { sugar: 1.5, protein: 1, fruit_veg: 2, carbs: 1.5, snacking: 1, fats: 1 }
 
 function avg(nums) {
   const valid = nums.filter(n => n != null)
@@ -135,6 +136,7 @@ function dietScore(d) {
     ['fruit_veg', FRUIT_SCORE,    d.fruit_veg],
     ['carbs',     CARBS_SCORE,    d.carbs],
     ['snacking',  SNACKING_SCORE, d.snacking],
+    ['fats',      FATS_SCORE,     d.fats],
   ]
   let sum = 0, totalWeight = 0
   for (const [key, table, val] of fields) {
@@ -342,7 +344,7 @@ const MODULES = [
   // ── Mind ─────────────────────────────────────────────────────────────────────
   {
     key: 'mood', label: 'Mind',
-    defaults: { adhd_meds: 'None', ritalin: 'None', melatonin: false },
+    defaults: { attentin: 'None', ritalin: 'None', melatonin: false },
     cellColor: d => {
       const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
@@ -358,7 +360,7 @@ const MODULES = [
       { key: 'life',      label: 'Mood (life)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'focus',     label: 'Focus',       type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'symptoms',  label: 'Symptoms',    type: 'multiselect', options: ['Fatigue','Brain fog','Anxious','Headache','Crying'] },
-      { key: 'adhd_meds', label: 'Attentin',     type: 'options',     options: ['None','5mg','7.5mg','10mg'], colors: { None: '#f1f5f9', '5mg': '#e0f2fe', '7.5mg': '#bae6fd', '10mg': '#7dd3fc' } },
+      { key: 'attentin',  label: 'Attentin',     type: 'options',     options: ['None','5mg','7.5mg','10mg'], colors: { None: '#f1f5f9', '5mg': '#e0f2fe', '7.5mg': '#bae6fd', '10mg': '#7dd3fc' } },
       { key: 'ritalin',   label: 'Ritalin',      type: 'options',     options: ['None','10mg','18mg'],        colors: { None: '#f1f5f9', '10mg': '#e0f2fe', '18mg': '#bae6fd' } },
       { key: 'melatonin', label: 'Melatonin',   type: 'toggle' },
       { key: 'note',      label: 'Note',        type: 'text' },
@@ -422,6 +424,7 @@ const MODULES = [
       { key: 'protein',     label: 'Protein',     type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#dcfce7', High: '#bbf7d0' } },
       { key: 'fruit_veg',   label: 'Fruit & Veg', type: 'options',     options: ['1','2','3','4','5','6+'],    colors: { '1': '#fee2e2', '2': '#fde8c8', '3': '#fef9c3', '4': '#dcfce7', '5': '#bbf7d0', '6+': '#86efac' } },
       { key: 'carbs',       label: 'Carbs',       type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#dcfce7', High: '#fef9c3' } },
+      { key: 'fats',        label: 'Fats',        type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#fef9c3', Med: '#86efac', High: '#fee2e2' } },
       { key: 'snacking',    label: 'Snacking',    type: 'options',     options: ['Low','Med','High'],           colors: { Low: '#bbf7d0', Med: '#fef9c3', High: '#fee2e2' } },
       { key: 'allergens',   label: 'Allergens',   type: 'multiselect', options: ['Dairy','Gluten','Soy','Wheat','Yeast','Raw Tomato','Avocado','Spinach','Strawberry','Banana','Citrus','Fermented/pickled','Aged cheese','Leftovers','Processed'] },
       { key: 'supplements', label: 'Supplements', type: 'multiselect', options: ['Omega 3','Collagen','Turmeric','Vitamin B','Vitamin D','Biotin','Adaptogenic Mushrooms'], uiHidden: true },
@@ -659,6 +662,24 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
       for (const [date, day] of Object.entries(prev)) {
         if (day.mood != null && day.mood.ritalin == null) {
           next[date] = { ...day, mood: { ...day.mood, ritalin: 'None' } }
+          changed = true
+        } else {
+          next[date] = day
+        }
+      }
+      return changed ? next : prev
+    })
+  }, []) // eslint-disable-line
+
+  // Migration: rename adhd_meds → attentin in mood entries
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      for (const [date, day] of Object.entries(prev)) {
+        if (day.mood?.adhd_meds != null) {
+          const { adhd_meds, ...restMood } = day.mood
+          next[date] = { ...day, mood: { ...restMood, attentin: adhd_meds } }
           changed = true
         } else {
           next[date] = day

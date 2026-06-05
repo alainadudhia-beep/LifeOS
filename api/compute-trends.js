@@ -184,8 +184,8 @@ function buildCauses(logs, weatherStore, fitbitRaw) {
     getValue: log => log.mood?.melatonin === true,
   })
   causes.push({
-    id: 'adhd_meds', label: 'ADHD meds', group: 'meds', maxLag: 1, isBinary: true,
-    getValue: log => log.mood?.adhd_meds != null && log.mood.adhd_meds !== 'None',
+    id: 'adhd_meds', label: 'Attentin', group: 'meds', maxLag: 1, isBinary: true,
+    getValue: log => { const v = log.mood?.attentin ?? log.mood?.adhd_meds; return v != null && v !== 'None' },
   })
   causes.push({
     id: 'antihistamines_input', label: 'Antihistamines taken', group: 'meds', maxLag: 2, isBinary: true,

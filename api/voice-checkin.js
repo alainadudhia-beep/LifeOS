@@ -28,6 +28,7 @@ const ADDITIVE_MAPS = {
     protein:   { 'Low': 1, 'Med': 2, 'High': 3 },
     carbs:     { 'Low': 1, 'Med': 2, 'High': 3 },
     snacking:  { 'Low': 1, 'Med': 2, 'High': 3 },
+    fats:      { 'Low': 1, 'Med': 2, 'High': 3 },
   },
   water: {
     glasses: { '<3': 1.5, '4-6': 5, '7+': 8, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
@@ -45,10 +46,11 @@ const ADDITIVE_REVERSE = {
   protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   carbs:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
   snacking:  n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  fats:      n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
 }
 
 const CAFFEINE_TO_N = { '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '4+': 4, '5': 5, '6+': 6 }
-const N_TO_CAFFEINE = n => n >= 6 ? '6+' : String(Math.round(n))
+const N_TO_CAFFEINE = n => n >= 4 ? '4+' : String(Math.round(n))
 
 function mergeModule(existing, parsed, moduleKey) {
   if (!parsed) return existing
@@ -279,9 +281,10 @@ async function callClaude(transcript, dynamicContext) {
 
 const PHASE_UNION = {
   diet:     new Set(['allergens']),
-  health:   new Set(['eczema_location', 'dryness']),
+  health:   new Set(['eczema_location', 'dryness', 'hayfever_symptoms', 'itchy']),
   mood:     new Set(['symptoms']),
   exercise: new Set(['activities']),
+  body:     new Set(['gut_symptoms', 'stool']),
 }
 
 const PHASE_FIRST_MENTION = {
