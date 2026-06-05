@@ -16,7 +16,6 @@ export default function TrackEditModal({ track, onSave, onDelete, onArchive, onC
   const [editingNoteId, setEditingNoteId] = useState(null)
   const [editingNoteText, setEditingNoteText] = useState('')
   const [confirmDelete,  setConfirmDelete]  = useState(false)
-  const [confirmArchive, setConfirmArchive] = useState(false)
 
   function updateSeg(id, field, value) {
     setHistory(h => h.map(s => s.id === id ? { ...s, [field]: value || null } : s))
@@ -226,13 +225,7 @@ export default function TrackEditModal({ track, onSave, onDelete, onArchive, onC
 
         <div className="modal-actions">
           <div className="modal-actions-left">
-            {confirmArchive ? (
-              <div className="delete-confirm">
-                <span className="delete-confirm-text">Archive this track?</span>
-                <button className="modal-btn-warning" onClick={() => onArchive(track.id)}>Archive</button>
-                <button className="modal-btn-secondary" onClick={() => setConfirmArchive(false)}>Cancel</button>
-              </div>
-            ) : confirmDelete ? (
+            {confirmDelete ? (
               <div className="delete-confirm">
                 <span className="delete-confirm-text">Permanently delete?</span>
                 <button className="modal-btn-danger" onClick={() => onDelete(track.id)}>Delete</button>
@@ -240,7 +233,9 @@ export default function TrackEditModal({ track, onSave, onDelete, onArchive, onC
               </div>
             ) : (
               <div className="delete-confirm">
-                <button className="modal-btn-ghost-warning" onClick={() => setConfirmArchive(true)}>Archive</button>
+                <button className="modal-btn-ghost-warning" onClick={() => onArchive(track.id)}>
+                  {track.archived ? 'Unarchive' : 'Archive'}
+                </button>
                 <button className="modal-btn-ghost-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
               </div>
             )}

@@ -187,7 +187,7 @@ export default function Timeline({ mobile } = {}) {
   }
 
   function handleArchiveTrack(id) {
-    update(ts => ts.map(t => t.id === id ? { ...t, archived: true } : t))
+    update(ts => ts.map(t => t.id === id ? { ...t, archived: !t.archived } : t))
     setEditingTrack(null)
   }
 
