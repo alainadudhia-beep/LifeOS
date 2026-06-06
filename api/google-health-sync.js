@@ -293,8 +293,15 @@ function parseSleepForDate(data, targetDate) {
   const points = data?.dataPoints
   if (!points?.length) return { sleep_minutes: null, in_bed_minutes: null }
 
-  const session = points.find(p => p.sleep?.interval?.endTime?.startsWith(targetDate))
-  if (!session) return { sleep_minutes: null, in_bed_minutes: null }
+  // Collect all sessions ending on targetDate, then pick the longest (ignores naps)
+  const sessions = points.filter(p => p.sleep?.interval?.endTime?.startsWith(targetDate))
+  if (!sessions.length) return { sleep_minutes: null, in_bed_minutes: null }
+
+  const session = sessions.reduce((best, p) => {
+    const mins = parseInt(p.sleep?.summary?.minutesAsleep ?? 0)
+    const bestMins = parseInt(best.sleep?.summary?.minutesAsleep ?? 0)
+    return mins > bestMins ? p : best
+  })
 
   const summary = session.sleep?.summary
 
