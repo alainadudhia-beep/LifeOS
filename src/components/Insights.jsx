@@ -309,12 +309,14 @@ const Insights = forwardRef(function Insights(_, ref) {
     setItems(prev => {
       const existingMsIds = new Set(prev.map(it => it.ms_id).filter(Boolean))
       const toAdd = []
+      const tracksGettingMilestone = new Set()
       for (const t of tracks) {
         if (t.archived) continue
         for (const ms of (t.milestones ?? [])) {
           if (ms.date <= today || ms.date > cutoffIso) continue
           const msId = `ms-${t.id}-${ms.id}`
           if (existingMsIds.has(msId)) continue
+          tracksGettingMilestone.add(t.id)
           const daysUntil = Math.round((new Date(ms.date) - new Date(today)) / 86400000)
           const when = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`
           toAdd.push({
@@ -330,27 +332,43 @@ const Insights = forwardRef(function Insights(_, ref) {
           })
         }
       }
-      return toAdd.length ? [...prev, ...toAdd] : prev
+      // When a milestone item is added for a track, evict the generic
+      // action_required item so we don't show both for the same track
+      const base = tracksGettingMilestone.size
+        ? prev.filter(it => !tracksGettingMilestone.has(it.track_id) || it.ms_id || it.completed)
+        : prev
+      return toAdd.length || base.length !== prev.length ? [...base, ...toAdd] : prev
     })
   }
 
   function autoCompleteTrackInsights(tracks) {
     setItems(prev => {
       let changed = false
-      // Track ids that are being newly completed this pass
-      const newlyCompletedTrackIds = new Set()
       const next = prev.map(item => {
-        if (item.completed || item.type !== 'track' || !item.track_id) return item
+        // Only process non-milestone track items — milestone nudges manage themselves
+        if (item.type !== 'track' || !item.track_id || item.ms_id) return item
         const track  = tracks.find(t => t.id === item.track_id)
         if (!track) return item
         const hist   = track.status_history
         const status = hist?.length ? hist[hist.length - 1].status : track.status
-        // Auto-complete whenever track moves away from action_required
-        if (status !== 'action_required') {
+
+        // Statuses that need active visibility (not completed wins)
+        const needsAttention = status === 'action_required' || status === 'on_hold' || status === 'closed'
+        if (needsAttention) {
+          const label = completionLabel(track.name, status)
+            ?? { text: `${track.name} - action required`, positive: false }
+          if (item.completed || item.text !== label.text) {
+            changed = true
+            return { ...item, ...label, completed: false, completed_at: null }
+          }
+          return item
+        }
+
+        // Completed wins (waiting, secured, in_progress)
+        const label = completionLabel(track.name, status) ?? { text: `${track.name} - updated`, positive: true }
+        if (!item.completed || item.text !== label.text) {
           changed = true
-          newlyCompletedTrackIds.add(item.track_id)
-          const label = completionLabel(track.name, status) ?? { text: `${track.name} - updated`, positive: true }
-          return { ...item, completed: true, completed_at: new Date().toISOString(), ...label }
+          return { ...item, ...label, completed: true, completed_at: item.completed_at ?? new Date().toISOString() }
         }
         return item
       })
