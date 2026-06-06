@@ -550,8 +550,11 @@ const Insights = forwardRef(function Insights(_, ref) {
   const claudeActiveText = claudeActive.map(it => it.text.toLowerCase())
 
   function coveredByClaude(item) {
-    const trackName = insightTopic(item.text)
-    return claudeActiveText.some(t => t.includes(trackName))
+    const trackTopic = insightTopic(item.text)
+    return claudeActive.some(cl => {
+      const claudeTopic = insightTopic(cl.text)
+      return claudeTopic === trackTopic || topicsOverlap(claudeTopic, trackTopic)
+    })
   }
 
   // Work Summary — track items + Claude items that mention a known track, sorted by gantt order
