@@ -25,10 +25,27 @@ function loadInsights() {
     const data = JSON.parse(localStorage.getItem(INSIGHTS_KEY))
     if (!Array.isArray(data)) return []
     const seen = new Set()
-    return data
+    const deduped = data
       .filter(it => it && it.id && it.text && it.type)
       // Deduplicate by id — prevents race-condition duplicates from persisting
       .filter(it => { if (seen.has(it.id)) return false; seen.add(it.id); return true })
+    // For track items: only keep the most recent completed insight per track_id
+    // (a track going action_required→in_progress→secured accumulates one per transition)
+    const latestCompletedByTrack = new Map()
+    for (const it of deduped) {
+      if (it.type === 'track' && it.completed && it.track_id) {
+        const cur = latestCompletedByTrack.get(it.track_id)
+        if (!cur || (it.completed_at ?? '') > (cur.completed_at ?? '')) {
+          latestCompletedByTrack.set(it.track_id, it)
+        }
+      }
+    }
+    return deduped
+      // Drop older completed track insights — keep only the latest per track
+      .filter(it => {
+        if (it.type !== 'track' || !it.completed || !it.track_id) return true
+        return latestCompletedByTrack.get(it.track_id)?.id === it.id
+      })
       // Drop stale claude observations from previous days
       .filter(isTodayClaude)
       // Claude items should never be "done" — only track items get struck through
@@ -320,6 +337,8 @@ const Insights = forwardRef(function Insights(_, ref) {
   function autoCompleteTrackInsights(tracks) {
     setItems(prev => {
       let changed = false
+      // Track ids that are being newly completed this pass
+      const newlyCompletedTrackIds = new Set()
       const next = prev.map(item => {
         if (item.completed || item.type !== 'track' || !item.track_id) return item
         const track  = tracks.find(t => t.id === item.track_id)
@@ -329,12 +348,26 @@ const Insights = forwardRef(function Insights(_, ref) {
         // Auto-complete whenever track moves away from action_required
         if (status !== 'action_required') {
           changed = true
+          newlyCompletedTrackIds.add(item.track_id)
           const label = completionLabel(track.name, status) ?? { text: `${track.name} - updated`, positive: true }
           return { ...item, completed: true, completed_at: new Date().toISOString(), ...label }
         }
         return item
       })
-      return changed ? next : prev
+      // Remove any older completed insights for the same track — only the newest survives
+      const latestByTrack = new Map()
+      for (const it of next) {
+        if (it.type === 'track' && it.completed && it.track_id) {
+          const cur = latestByTrack.get(it.track_id)
+          if (!cur || (it.completed_at ?? '') >= (cur.completed_at ?? '')) latestByTrack.set(it.track_id, it)
+        }
+      }
+      const deduped = next.filter(it =>
+        it.type !== 'track' || !it.completed || !it.track_id ||
+        latestByTrack.get(it.track_id)?.id === it.id
+      )
+      const dedupChanged = deduped.length !== next.length
+      return (changed || dedupChanged) ? deduped : prev
     })
   }
 
