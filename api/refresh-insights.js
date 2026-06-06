@@ -486,9 +486,15 @@ export default async function handler(req, res) {
     ])
 
     const logs           = { ...(logsRow.data?.value ?? {}) }
-    // Client sends today's log to override stale Supabase data (sync grace period)
+    // Client sends today's log to override stale Supabase data (sync grace period).
+    // Exception: sleep is written directly by Fitbit sync — Supabase is authoritative.
+    // Don't let a stale localStorage sleep value overwrite the correct server-synced one.
     const clientTodayLog = req.body?.todayLog
-    if (clientTodayLog && today) logs[today] = { ...(logs[today] ?? {}), ...clientTodayLog }
+    if (clientTodayLog && today) {
+      const supabaseSleep = logs[today]?.sleep
+      logs[today] = { ...(logs[today] ?? {}), ...clientTodayLog }
+      if (supabaseSleep) logs[today].sleep = supabaseSleep
+    }
     const tracksRaw      = tracksRow.data?.value        ?? {}
     const tracksArr      = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
     const weatherStore   = weatherRow.data?.value       ?? {}
