@@ -24,8 +24,11 @@ function loadInsights() {
   try {
     const data = JSON.parse(localStorage.getItem(INSIGHTS_KEY))
     if (!Array.isArray(data)) return []
+    const seen = new Set()
     return data
       .filter(it => it && it.id && it.text && it.type)
+      // Deduplicate by id — prevents race-condition duplicates from persisting
+      .filter(it => { if (seen.has(it.id)) return false; seen.add(it.id); return true })
       // Drop stale claude observations from previous days
       .filter(isTodayClaude)
       // Claude items should never be "done" — only track items get struck through
@@ -234,9 +237,10 @@ const Insights = forwardRef(function Insights(_, ref) {
       return status === 'action_required' && open
     })
     setItems(prev => {
-      const existingIds = new Set(prev.map(it => it.track_id).filter(Boolean))
+      const existingTrackIds = new Set(prev.map(it => it.track_id).filter(Boolean))
+      const existingItemIds  = new Set(prev.map(it => it.id).filter(Boolean))
       const toAdd = actionTracks
-        .filter(t => !existingIds.has(t.id))
+        .filter(t => !existingTrackIds.has(t.id) && !existingItemIds.has(`ins-track-${t.id}`))
         .map(t => {
           const lastNote = t.notes_log?.[0]?.text
           const text = lastNote && lastNote.length <= 80
