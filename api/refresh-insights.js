@@ -61,6 +61,7 @@ CAREER RULES:
 - 5+ days since last note on active track → "it's been a while since [Track] - worth a check-in"
 - NEVER repeat relative time phrases from note text (they are stale)
 - Prioritise: imminent deadline > action_required > stalest track. Skip quiet in_progress.
+- Days-until counts are pre-calculated and supplied in the context — use them exactly, do not recalculate.
 
 Date formatting: "14th May" not "2026-05-14".
 daily_win: one warm, specific sentence about something done well. Null if nothing genuine.
@@ -238,6 +239,7 @@ function buildCommitmentsContext(commitments, today) {
 
 function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, trendsData, trendsFeedback) {
   const lines = []
+  lines.push(`Today's date: ${fmtDate(today)} (${today})`)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowIso = tomorrow.toISOString().slice(0, 10)
@@ -409,7 +411,10 @@ function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, 
         .filter(m => m.date > tomorrowIso)  // imminent ones already surfaced above
         .sort((a, b) => a.date.localeCompare(b.date))
         .slice(0, 2)
-        .map(m => `${m.label} on ${fmtDate(m.date)}`)
+        .map(m => {
+          const days = daysDiff(m.date, today)
+          return `${m.label} on ${fmtDate(m.date)} (in ${days} days)`
+        })
         .join(', ')
       lines.push(
         `  "${t.name}" - ${status}` +
