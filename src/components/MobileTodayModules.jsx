@@ -505,7 +505,7 @@ export default function MobileTodayModules() {
               <button className="mlm-sheet-close" onClick={() => setActiveModule(null)}>✕</button>
             </div>
             <div className="mlm-sheet-fields">
-              {activeMod.fields.map(field => {
+              {activeMod.fields.filter(f => !f.uiHidden).map(field => {
                 const fullData = activeMod.key === 'body'
                   ? { ...bodyData, pill: pillFwd, period: periodFwdM, _weight_kg: kg != null ? (kg % 1 === 0 ? String(kg) : kg.toFixed(1)) : null, _weight_kg_stale: kgStaleM }
                   : null
