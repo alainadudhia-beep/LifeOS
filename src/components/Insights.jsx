@@ -587,7 +587,16 @@ const Insights = forwardRef(function Insights(_, ref) {
     if (refreshing) return
     setRefreshing(true)
     try {
-      const res  = await fetch('/api/refresh-insights', { method: 'POST' })
+      // Send today's log from localStorage so the API always has the latest
+      // (Supabase may lag if the sync grace period hasn't elapsed yet)
+      const today = new Date().toISOString().slice(0, 10)
+      const allLogs = (() => { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } })()
+      const todayLog = allLogs[today] ?? null
+      const res  = await fetch('/api/refresh-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ todayLog }),
+      })
       const data = await res.json()
       if (data.insights?.length) {
         setItems(prev => {

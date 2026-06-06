@@ -485,7 +485,10 @@ export default async function handler(req, res) {
       supabase.from('user_data').select('value').eq('key', TRENDS_FEEDBACK_KEY).eq('user_id', USER_ID).single(),
     ])
 
-    const logs           = logsRow.data?.value         ?? {}
+    const logs           = { ...(logsRow.data?.value ?? {}) }
+    // Client sends today's log to override stale Supabase data (sync grace period)
+    const clientTodayLog = req.body?.todayLog
+    if (clientTodayLog && today) logs[today] = { ...(logs[today] ?? {}), ...clientTodayLog }
     const tracksRaw      = tracksRow.data?.value        ?? {}
     const tracksArr      = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
     const weatherStore   = weatherRow.data?.value       ?? {}
