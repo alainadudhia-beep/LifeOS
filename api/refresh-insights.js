@@ -46,6 +46,7 @@ WHAT TO INCLUDE (priority order):
 5. Multi-day patterns (3+ days of same thing)
 
 WHAT TO EXCLUDE — do not generate these:
+- Mood insights of any kind — work mood, life mood, energy, focus scores. The user logs these themselves and does not want them reflected back.
 - Generic health advice ("stable sleep supports focus and mood" — textbook, not personal)
 - Speculative future narratives ("tracking this through future meetings will show whether...")
 - Numbers stated without baseline comparison ("you had 4 glasses of water" means nothing alone)
@@ -485,16 +486,7 @@ export default async function handler(req, res) {
       supabase.from('user_data').select('value').eq('key', TRENDS_FEEDBACK_KEY).eq('user_id', USER_ID).single(),
     ])
 
-    const logs           = { ...(logsRow.data?.value ?? {}) }
-    // Client sends today's log to override stale Supabase data (sync grace period).
-    // Exception: sleep is written directly by Fitbit sync — Supabase is authoritative.
-    // Don't let a stale localStorage sleep value overwrite the correct server-synced one.
-    const clientTodayLog = req.body?.todayLog
-    if (clientTodayLog && today) {
-      const supabaseSleep = logs[today]?.sleep
-      logs[today] = { ...(logs[today] ?? {}), ...clientTodayLog }
-      if (supabaseSleep) logs[today].sleep = supabaseSleep
-    }
+    const logs           = logsRow.data?.value         ?? {}
     const tracksRaw      = tracksRow.data?.value        ?? {}
     const tracksArr      = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
     const weatherStore   = weatherRow.data?.value       ?? {}

@@ -263,19 +263,23 @@ const Insights = forwardRef(function Insights(_, ref) {
       const existingTrackIds = new Set(prev.map(it => it.track_id).filter(Boolean))
       const existingItemIds  = new Set(prev.map(it => it.id).filter(Boolean))
       const toAdd = actionTracks
-        .filter(t => !existingTrackIds.has(t.id) && !existingItemIds.has(`ins-track-${t.id}`))
+        .filter(t => {
+          if (existingTrackIds.has(t.id) || existingItemIds.has(`ins-track-${t.id}`)) return false
+          // Skip action_required tracks with no note — generic fallback text is not useful
+          const hist   = t.status_history
+          const status = hist?.length ? hist[hist.length - 1].status : t.status
+          if (status === 'action_required') {
+            const lastNote = t.notes_log?.[0]?.text
+            return !!(lastNote && lastNote.length <= 80)
+          }
+          return true
+        })
         .map(t => {
           const hist   = t.status_history
           const status = hist?.length ? hist[hist.length - 1].status : t.status
-          let text
-          if (status === 'action_required') {
-            const lastNote = t.notes_log?.[0]?.text
-            text = lastNote && lastNote.length <= 80
-              ? `${t.name} - ${lastNote}`
-              : `${t.name} - action required`
-          } else {
-            text = completionLabel(t.name, status)?.text ?? `${t.name} - ${status}`
-          }
+          const text = status === 'action_required'
+            ? `${t.name} - ${t.notes_log[0].text}`
+            : completionLabel(t.name, status)?.text ?? `${t.name} - ${status}`
           return {
             id: `ins-track-${t.id}`,
             type: 'track',
@@ -587,16 +591,7 @@ const Insights = forwardRef(function Insights(_, ref) {
     if (refreshing) return
     setRefreshing(true)
     try {
-      // Send today's log from localStorage so the API always has the latest
-      // (Supabase may lag if the sync grace period hasn't elapsed yet)
-      const today = new Date().toISOString().slice(0, 10)
-      const allLogs = (() => { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } })()
-      const todayLog = allLogs[today] ?? null
-      const res  = await fetch('/api/refresh-insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ todayLog }),
-      })
+      const res  = await fetch('/api/refresh-insights', { method: 'POST' })
       const data = await res.json()
       if (data.insights?.length) {
         setItems(prev => {
