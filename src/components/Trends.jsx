@@ -11,7 +11,6 @@ const EFFECT_GROUPS = [
   { id: 'pain',         label: 'Nerve & joint pain',   effects: ['nerve_pain', 'knee_pain'] },
   { id: 'eyes_skin',    label: 'Eyes & skin',          effects: ['episcleritis', 'dryness'] },
   { id: 'energy',       label: 'Energy',               effects: ['energy'] },
-  { id: 'mood',         label: 'Mood',                 effects: ['work_mood', 'life_mood'] },
   { id: 'cognitive',    label: 'Brain fog & focus',    effects: ['brain_fog', 'focus'] },
   { id: 'headache',     label: 'Headache',             effects: ['headache'] },
   { id: 'sleep',        label: 'Sleep',                effects: ['sleep'] },
@@ -28,7 +27,6 @@ const EFFECT_LABELS = {
   nerve_pain: 'nerve pain', knee_pain: 'knee pain',
   episcleritis: 'episcleritis', dryness: 'dryness',
   energy: 'energy', focus: 'focus',
-  work_mood: 'work mood', life_mood: 'life mood',
   brain_fog: 'brain fog', headache: 'headaches',
   sleep: 'sleep quality',
   bloating: 'bloating', cramps: 'cramps', diarrhoea: 'diarrhoea',
@@ -57,7 +55,7 @@ const MOOD_LABEL = v => {
 
 function scoreLabel(effectId, val) {
   if (val == null) return '?'
-  if (['focus', 'energy', 'work_mood', 'life_mood', 'sleep'].includes(effectId)) return MOOD_LABEL(val)
+  if (['focus', 'energy', 'sleep'].includes(effectId)) return MOOD_LABEL(val)
   if (['brain_fog', 'headache', 'bloating', 'cramps', 'diarrhoea'].includes(effectId)) return val >= 0.5 ? 'present' : 'absent'
   return SEV_LABEL(val)
 }
