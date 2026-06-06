@@ -24,13 +24,31 @@ function loadInsights() {
   try {
     const data = JSON.parse(localStorage.getItem(INSIGHTS_KEY))
     if (!Array.isArray(data)) return []
+
+    // Read tracks once for status validation
+    const tracks = readTracks()
+    function trackStatus(trackId) {
+      const t = tracks.find(t => t.id === trackId)
+      if (!t) return null
+      const hist = t.status_history
+      return hist?.length ? hist[hist.length - 1].status : t.status
+    }
+
     const seen = new Set()
     const deduped = data
       .filter(it => it && it.id && it.text && it.type)
       // Deduplicate by id — prevents race-condition duplicates from persisting
       .filter(it => { if (seen.has(it.id)) return false; seen.add(it.id); return true })
+      // Drop completed track items whose track now needs attention (on_hold, closed, action_required)
+      // — these will be re-added as active items by syncTrackActions on mount
+      .filter(it => {
+        if (it.type !== 'track' || !it.completed || !it.track_id) return true
+        const status = trackStatus(it.track_id)
+        if (!status) return true
+        return status !== 'on_hold' && status !== 'closed' && status !== 'action_required'
+      })
+
     // For track items: only keep the most recent completed insight per track_id
-    // (a track going action_required→in_progress→secured accumulates one per transition)
     const latestCompletedByTrack = new Map()
     for (const it of deduped) {
       if (it.type === 'track' && it.completed && it.track_id) {
@@ -142,19 +160,6 @@ function computeAutoInsights(logs) {
       out.push({ id: 'auto-ex-gap', positive: false, text: `Exercise - nothing logged in ${daysSince} days, maybe worth doing some yoga soon` })
   }
 
-  // Mood
-  const moodDays = logged.filter(d => d.log.mood)
-  if (moodDays.length >= 3) {
-    const scores = moodDays.flatMap(d => ['work','life','energy','focus'].map(k => d.log.mood[k]).filter(v => v != null))
-    if (scores.length) {
-      const avg = scores.reduce((a, b) => a + b, 0) / scores.length
-      if (avg >= 3.7)
-        out.push({ id: 'auto-mood-good', positive: true, text: `Mood - consistently good this week` })
-      else if (avg < 2.5)
-        out.push({ id: 'auto-mood-low',  positive: false, text: `Mood - has been a bit low this week, be kind to yourself` })
-    }
-  }
-
   // Cycle - period ended
   const periodDays    = logged.filter(d => d.log.cycle?.period === true)
   const noPeriodToday = logged[0] && logged[0].log.cycle?.period === false
@@ -246,12 +251,13 @@ const Insights = forwardRef(function Insights(_, ref) {
   }
 
   function syncTrackActions(tracks) {
+    const NEEDS_ATTENTION = new Set(['action_required', 'on_hold', 'closed'])
     const actionTracks = tracks.filter(t => {
       if (t.archived) return false
       const hist   = t.status_history
       const status = hist?.length ? hist[hist.length - 1].status : t.status
       const open   = hist?.length ? !hist[hist.length - 1].end_date : true
-      return status === 'action_required' && open
+      return NEEDS_ATTENTION.has(status) && open
     })
     setItems(prev => {
       const existingTrackIds = new Set(prev.map(it => it.track_id).filter(Boolean))
@@ -259,10 +265,17 @@ const Insights = forwardRef(function Insights(_, ref) {
       const toAdd = actionTracks
         .filter(t => !existingTrackIds.has(t.id) && !existingItemIds.has(`ins-track-${t.id}`))
         .map(t => {
-          const lastNote = t.notes_log?.[0]?.text
-          const text = lastNote && lastNote.length <= 80
-            ? `${t.name} - ${lastNote}`
-            : `${t.name} - action required`
+          const hist   = t.status_history
+          const status = hist?.length ? hist[hist.length - 1].status : t.status
+          let text
+          if (status === 'action_required') {
+            const lastNote = t.notes_log?.[0]?.text
+            text = lastNote && lastNote.length <= 80
+              ? `${t.name} - ${lastNote}`
+              : `${t.name} - action required`
+          } else {
+            text = completionLabel(t.name, status)?.text ?? `${t.name} - ${status}`
+          }
           return {
             id: `ins-track-${t.id}`,
             type: 'track',
