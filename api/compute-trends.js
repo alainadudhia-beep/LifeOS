@@ -38,30 +38,28 @@ function r2(n)     { return Math.round(n * 100) / 100 }
 function buildEffects() {
   return [
     // Symptom severity (0–3)
-    { id: 'eczema',         label: 'Eczema',          scale: 3, getValue: l => sevOf(l, 'eczema') },
-    { id: 'hayfever',       label: 'Hayfever',        scale: 3, getValue: l => sevOf(l, 'hayfever') },
-    { id: 'gut',            label: 'Gut severity',    scale: 3, getValue: l => sevOf(l, 'gut') },
-    { id: 'nerve_pain',     label: 'Nerve pain',      scale: 3, getValue: l => sevOf(l, 'nerve_pain') },
-    { id: 'knee_pain',      label: 'Knee pain',       scale: 3, getValue: l => sevOf(l, 'knee_pain') },
-    { id: 'episcleritis',   label: 'Episcleritis',    scale: 3, getValue: l => sevOf(l, 'episcleritis') },
-    { id: 'dryness',        label: 'Dryness',         scale: 3, getValue: l => l.health?.dryness?.length ?? null },
+    { id: 'eczema',         label: 'Eczema',          scale: 3, maxLag: 3, getValue: l => sevOf(l, 'eczema') },
+    { id: 'hayfever',       label: 'Hayfever',        scale: 3, maxLag: 1, getValue: l => sevOf(l, 'hayfever') },
+    { id: 'gut',            label: 'Gut severity',    scale: 3, maxLag: 1, getValue: l => sevOf(l, 'gut') },
+    { id: 'nerve_pain',     label: 'Nerve pain',      scale: 3, maxLag: 1, getValue: l => sevOf(l, 'nerve_pain') },
+    { id: 'knee_pain',      label: 'Knee pain',       scale: 3, maxLag: 1, getValue: l => sevOf(l, 'knee_pain') },
+    { id: 'episcleritis',   label: 'Episcleritis',    scale: 3, maxLag: 1, getValue: l => sevOf(l, 'episcleritis') },
+    { id: 'dryness',        label: 'Dryness',         scale: 3, maxLag: 1, getValue: l => l.health?.dryness?.length ?? null },
     // Gut symptoms (binary)
-    { id: 'bloating',   label: 'Bloating',   scale: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Bloating')  ? 1 : 0) : null } },
-    { id: 'cramps',     label: 'Cramps',     scale: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Cramps')    ? 1 : 0) : null } },
-    { id: 'diarrhoea',  label: 'Diarrhoea',  scale: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Diarrhoea') ? 1 : 0) : null } },
+    { id: 'bloating',   label: 'Bloating',   scale: 1, maxLag: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Bloating')  ? 1 : 0) : null } },
+    { id: 'cramps',     label: 'Cramps',     scale: 1, maxLag: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Cramps')    ? 1 : 0) : null } },
+    { id: 'diarrhoea',  label: 'Diarrhoea',  scale: 1, maxLag: 1, getValue: l => { const s = l.body?.gut_symptoms ?? l.health?.gut_symptoms; return s ? (s.includes('Diarrhoea') ? 1 : 0) : null } },
 
     // Cognitive symptoms (binary)
-    { id: 'brain_fog',  label: 'Brain fog',  scale: 1, getValue: l => { const s = l.mood?.symptoms ?? []; return s.some(x => /brain.?fog|fog/i.test(x)) ? 1 : 0 } },
-    { id: 'headache',   label: 'Headache',   scale: 1, getValue: l => { const s = l.mood?.symptoms ?? []; return s.some(x => /headache/i.test(x)) ? 1 : 0 } },
+    { id: 'brain_fog',  label: 'Brain fog',  scale: 1, maxLag: 1, getValue: l => { const s = l.mood?.symptoms ?? []; return s.some(x => /brain.?fog|fog/i.test(x)) ? 1 : 0 } },
+    { id: 'headache',   label: 'Headache',   scale: 1, maxLag: 1, getValue: l => { const s = l.mood?.symptoms ?? []; return s.some(x => /headache/i.test(x)) ? 1 : 0 } },
 
-    // Mood / performance (1–5)
-    { id: 'focus',      label: 'Focus',      scale: 4, getValue: l => l.mood?.focus  ?? null },
-    { id: 'energy',     label: 'Energy',     scale: 4, getValue: l => l.mood?.energy ?? null },
-    { id: 'work_mood',  label: 'Work mood',  scale: 4, getValue: l => l.mood?.work   ?? null },
-    { id: 'life_mood',  label: 'Life mood',  scale: 4, getValue: l => l.mood?.life   ?? null },
+    // Performance (1–5) — mood excluded (too noisy / confounded)
+    { id: 'focus',      label: 'Focus',      scale: 4, maxLag: 1, getValue: l => l.mood?.focus  ?? null },
+    { id: 'energy',     label: 'Energy',     scale: 4, maxLag: 1, getValue: l => l.mood?.energy ?? null },
 
     // Sleep next night (continuous)
-    { id: 'sleep',      label: 'Sleep hours', scale: 4.5, getValue: l => SLEEP_H[l.sleep?.hours] ?? null },
+    { id: 'sleep',      label: 'Sleep hours', scale: 4.5, maxLag: 1, getValue: l => SLEEP_H[l.sleep?.hours] ?? null },
   ]
 }
 
@@ -312,6 +310,9 @@ export function computeTrends(logs, weatherStore = {}, fitbitRaw = {}) {
   for (const cause of causes) {
     for (let lag = 0; lag <= cause.maxLag; lag++) {
       for (const effect of effects) {
+        // Respect per-effect lag cap
+        if (lag > effect.maxLag) continue
+
         // Skip: cause and effect are the same metric (e.g. sleep→sleep at lag 0)
         if (cause.id.includes(effect.id) || effect.id.includes(cause.id.split(':')[0])) {
           if (lag === 0) continue
