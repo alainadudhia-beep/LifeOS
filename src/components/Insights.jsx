@@ -309,14 +309,15 @@ const Insights = forwardRef(function Insights(_, ref) {
     setItems(prev => {
       const existingMsIds = new Set(prev.map(it => it.ms_id).filter(Boolean))
       const toAdd = []
-      const tracksGettingMilestone = new Set()
+      // All tracks that have ANY milestone in the current window
+      const tracksWithMilestone = new Set()
       for (const t of tracks) {
         if (t.archived) continue
         for (const ms of (t.milestones ?? [])) {
           if (ms.date <= today || ms.date > cutoffIso) continue
+          tracksWithMilestone.add(t.id)
           const msId = `ms-${t.id}-${ms.id}`
           if (existingMsIds.has(msId)) continue
-          tracksGettingMilestone.add(t.id)
           const daysUntil = Math.round((new Date(ms.date) - new Date(today)) / 86400000)
           const when = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`
           toAdd.push({
@@ -332,10 +333,10 @@ const Insights = forwardRef(function Insights(_, ref) {
           })
         }
       }
-      // When a milestone item is added for a track, evict the generic
-      // action_required item so we don't show both for the same track
-      const base = tracksGettingMilestone.size
-        ? prev.filter(it => !tracksGettingMilestone.has(it.track_id) || it.ms_id || it.completed)
+      // Always evict generic (non-milestone, non-completed) items for tracks
+      // that have a milestone in the window — milestone is more specific
+      const base = tracksWithMilestone.size
+        ? prev.filter(it => !tracksWithMilestone.has(it.track_id) || it.ms_id || it.completed)
         : prev
       return toAdd.length || base.length !== prev.length ? [...base, ...toAdd] : prev
     })
@@ -394,6 +395,7 @@ const Insights = forwardRef(function Insights(_, ref) {
     const tracks = readTracks()
     syncTrackActions(tracks)
     syncMilestoneNudges(tracks)
+    autoCompleteTrackInsights(tracks)
 
     function onLogsUpdated() {
       refreshAuto()
