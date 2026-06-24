@@ -329,7 +329,7 @@ const MODULES = [
     cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
       { key: 'hayfever',          label: 'Hayfever',           type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
-      { key: 'hayfever_symptoms', label: 'Hayfever\nSymptoms', type: 'multiselect', options: ['Runny nose','Blocked nose','Blocked sinuses','Puffy eyes','Sneezing'] },
+      { key: 'hayfever_symptoms', label: 'Allergy\nSymptoms',  type: 'multiselect', options: ['Runny nose','Blocked nose','Blocked sinuses','Puffy eyes','Puffy face','Sneezing'] },
       { key: 'eczema',            label: 'Eczema',             type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
