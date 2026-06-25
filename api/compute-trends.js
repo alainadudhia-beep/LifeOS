@@ -301,8 +301,10 @@ function correlate(dates, cause, effect, lag, logs, weatherStore, fitbitRaw) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 export function computeTrends(logs, weatherStore = {}, fitbitRaw = {}) {
-  const dates  = Object.keys(logs).sort()
+  const dates  = Object.keys(logs).filter(k => ISO_DATE_RE.test(k)).sort()
   const causes  = buildCauses(logs, weatherStore, fitbitRaw)
   const effects = buildEffects()
   const findings = []
