@@ -16,20 +16,20 @@ mood fields (work, life, focus): integer 1–5
 mood.symptoms: array from ["Fatigue","Brain fog","Anxious","Headache","Crying"] - only include if mentioned
 mood.note: string | null - free-text note about mental or emotional state (e.g. "felt restless all day", "good headspace this morning")
 mood.attentin: "None" | "5mg" | "7.5mg" | "10mg" | null (Attentin = ADHD medication)
-mood.ritalin: "None" | "10mg" | "18mg" | null (Ritalin = ADHD medication)
+mood.ritalin: "None" | "10mg" | "18mg" | "27mg" | "36mg" | null (Ritalin = ADHD medication)
 mood.melatonin: true | false | null
 health.eczema: "None" | "Low" | "Med" | "Bad" | null
 health.eczema_location: array from ["Eyes","Under mouth","Neck","Back of neck","Scalp","Forehead","Chin"] - only if eczema mentioned
 health.episcleritis: "None" | "Low" | "Med" | "Bad" | null - eye inflammation (not hayfever-related; red/inflamed eye)
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
-health.hayfever_symptoms: array from ["Runny nose","Blocked nose","Blocked sinuses","Puffy eyes","Sneezing"] - include when hayfever symptoms are mentioned
+health.hayfever_symptoms: array from ["Runny nose","Blocked nose","Blocked sinuses","Puffy eyes","Puffy face","Sneezing"] - include when allergy symptoms are mentioned
 health.itchy: array from ["Nose","Eyes","Throat","Throat (night)","Sinuses","Ears","Head","Neck","Body","In shower"] - include when itchiness in specific locations is mentioned
 health.antihistamines: "None" | "1" | "2" | "3" | null
-health.dryness: array from ["Eyes","Skin","Lips"] - only if dry/dehydrated symptoms mentioned
+health.dryness: array from ["Eyes","Skin","Lips","Throat"] - only if dry/dehydrated symptoms mentioned
 health.steroid_cream: true | false | null
 health.note: string | null - free-text note about allergy or skin symptoms (e.g. "eyes were streaming at the park", "neck very itchy in the evening")
 body.gut: "None" | "Low" | "Med" | "Bad" | null
-body.gut_symptoms: array from ["Bloating","Cramps","Diarrhoea","Bleeding","Mucus","Smelly flatulence"] - only if gut symptoms mentioned
+body.gut_symptoms: array from ["Bloating","Cramps","Diarrhoea","Constipated","Bleeding","Mucus","Smelly flatulence"] - only if gut symptoms mentioned
 body.stool: array from ["1","2","3","4","5","6","7"] - Bristol stool scale; add each stool reading mentioned (union if multiple)
 body.wrist_nerve_pain: "None" | "Low" | "Med" | "Bad" | null
 body.knee_pain: "None" | "Low" | "Med" | "Bad" | null
@@ -104,10 +104,10 @@ Mapping guidance:
 - "took my Attentin" / "took Attentin" / "took my ADHD meds" → mood.attentin: "7.5mg" (default dose if not stated)
 - "Attentin 10mg" → mood.attentin: "10mg"; "Attentin 5mg" → mood.attentin: "5mg"
 - "took Ritalin" / "took my Ritalin" → mood.ritalin: "18mg" (default dose if not stated)
-- "Ritalin 18mg" → mood.ritalin: "18mg"; "Ritalin 10mg" → mood.ritalin: "10mg"
+- "Ritalin 18mg" → mood.ritalin: "18mg"; "Ritalin 10mg" → mood.ritalin: "10mg"; "Ritalin 27mg" → mood.ritalin: "27mg"; "Ritalin 36mg" → mood.ritalin: "36mg"
 - "took an antihistamine" / "took a Claritin" / "took a Zyrtec" → health.antihistamines: "1"
 - itchy eyes/throat/nose with pollen context → health.hayfever: "Low" or "Med" as appropriate
-- "runny nose" / "sneezing" / "blocked nose" / "blocked sinuses" / "puffy eyes" (in hayfever context) → health.hayfever_symptoms with relevant values
+- "runny nose" / "sneezing" / "blocked nose" / "blocked sinuses" / "puffy eyes" / "puffy face" (in allergy context) → health.hayfever_symptoms with relevant values
 - "itchy eyes" → health.itchy: ["Eyes"]; "itchy throat" → ["Throat"]; "itchy nose" → ["Nose"]; "itchy all over" → ["Body"]; combine as needed
 - "no alcohol" / "sober" / "didn't drink" → alcohol.level: "None"
 - "skipped breakfast" / "not much food" → diet.snacking: "Low", diet.carbs: "Low" as inferences
