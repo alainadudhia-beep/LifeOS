@@ -1,11 +1,11 @@
-// LifeTracker → Google Doc export
+// LifeTracker → Google Doc + Google Sheet export
 // Setup:
 //   1. In Apps Script editor: Project Settings > Script Properties, add:
 //        EXPORT_API_URL  = https://life-os-chi-opal.vercel.app/api/export-data
 //        EXPORT_SECRET   = <the EXPORT_SECRET value added to Vercel>
 //        DOC_ID          = 1dcm9O7lLJWN5_jQClpHVh6BlafyA4KAeNOICZP_tpvI
-//   2. Run syncToDoc once to grant permissions and do the initial sync
-//   3. Run setupHourlyTrigger once to enable live updates
+//        SHEET_ID        = 1CgfcgDQMdJ7qqEPaRnpydtzDGt1jCuewHm098XLB2jc
+//   2. Run syncToDoc / syncToSheet manually whenever you want a refresh
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -330,10 +330,336 @@ function syncToDoc() {
   Logger.log('Sync complete. ' + dates.length + ' dates written.')
 }
 
-// ── Trigger setup ─────────────────────────────────────────────────────────────
+// ── Sheet sync ────────────────────────────────────────────────────────────────
+
+function syncToSheet() {
+  var data    = fetchData()
+  var logs    = data.logs    || {}
+  var weather = data.weather || {}
+  var fitbit  = data.fitbit  || {}
+
+  // Dates oldest-first
+  var dates = Object.keys(logs)
+    .filter(function(k) { return /^\d{4}-\d{2}-\d{2}$/.test(k) })
+    .sort()
+
+  // ── Encoding helpers ────────────────────────────────────────────────────────
+
+  // "None"→0 "Low"→1 "Med"→2 "Bad"/"High"→3, null→''
+  function sev(v) {
+    if (v == null) return ''
+    var m = { 'None':0, 'Low':1, 'Med':2, 'Bad':3, 'High':3 }
+    return m[v] != null ? m[v] : ''
+  }
+
+  // Strip trailing "+" or prefix "<", return number or ''
+  function num(v) {
+    if (v == null) return ''
+    var s = String(v).replace('+','').replace('<','')
+    var n = parseFloat(s)
+    return isNaN(n) ? '' : n
+  }
+
+  // Binary membership in array
+  function has(arr, val) {
+    return (arr && arr.indexOf(val) !== -1) ? 1 : 0
+  }
+
+  // Pollen label → 0-4
+  function pollen(v) {
+    if (v == null) return ''
+    var m = { 'None':0, 'Low':1, 'Medium':2, 'High':3, 'Very High':4 }
+    return m[v] != null ? m[v] : ''
+  }
+
+  // Illness → 0-3
+  function illness(v) {
+    var m = { 'None':0, 'Cold':1, 'Flu':2, 'Sick':3 }
+    return (v != null && m[v] != null) ? m[v] : ''
+  }
+
+  // Attentin mg string → number
+  function mgNum(v) {
+    if (!v || v === 'None') return 0
+    return parseFloat(v) || ''
+  }
+
+  // Stool array → average (Bristol 1-7)
+  function stoolAvg(arr) {
+    if (!arr || !arr.length) return ''
+    var nums = arr.map(function(s) { return parseInt(s) }).filter(function(n) { return !isNaN(n) })
+    if (!nums.length) return ''
+    var sum = nums.reduce(function(a, b) { return a + b }, 0)
+    return Math.round((sum / nums.length) * 10) / 10
+  }
+
+  // Sleep hours label → numeric hours (midpoints)
+  function sleepHrs(v) {
+    if (v == null) return ''
+    if (v === '<5') return 4.5
+    var n = parseFloat(v)
+    return isNaN(n) ? '' : n
+  }
+
+  // ── Row definitions ─────────────────────────────────────────────────────────
+  // Each entry: [section label ('' = data row), row label, fn(log, w, fb) → value]
+  // Section label rows are written as bold grey headers with no data.
+
+  var ROWS = [
+    // ENVIRONMENT
+    ['ENVIRONMENT', '', null],
+    ['', 'Temp max (°C)',          function(l,w)   { return w.temp_max    != null ? w.temp_max    : '' }],
+    ['', 'Temp min (°C)',          function(l,w)   { return w.temp_min    != null ? w.temp_min    : '' }],
+    ['', 'Rain (mm)',              function(l,w)   { return w.precipitation_mm != null ? w.precipitation_mm : '' }],
+    ['', 'Wind max (km/h)',        function(l,w)   { return w.wind_speed_max  != null ? w.wind_speed_max  : '' }],
+    ['', 'UV index',               function(l,w)   { return w.uv_index    != null ? w.uv_index    : '' }],
+    ['', 'Humidity (%)',           function(l,w)   { return w.humidity_pct != null ? w.humidity_pct : '' }],
+    ['', 'Grass pollen (0-4)',     function(l,w)   { return pollen(w.grass_pollen_label) }],
+    ['', 'Grass pollen score',     function(l,w)   { return w.grass_pollen_score != null ? w.grass_pollen_score : '' }],
+    ['', 'Tree pollen (0-4)',      function(l,w)   { return pollen(w.tree_pollen_label) }],
+    ['', 'Tree pollen score',      function(l,w)   { return w.tree_pollen_score != null ? w.tree_pollen_score : '' }],
+    ['', 'Weed pollen (0-4)',      function(l,w)   { return pollen(w.weed_pollen_label) }],
+    ['', 'AQI',                    function(l,w)   { return w.aqi     != null ? w.aqi     : '' }],
+    ['', 'PM10',                   function(l,w)   { return w.pm10    != null ? w.pm10    : '' }],
+    ['', 'PM2.5',                  function(l,w)   { return w.pm2_5   != null ? w.pm2_5   : '' }],
+
+    // SLEEP
+    ['SLEEP', '', null],
+    ['', 'Sleep hours',            function(l,w,fb) { return sleepHrs(l.sleep && l.sleep.hours) }],
+    ['', 'Sleep efficiency (%)',   function(l,w,fb) {
+      var s = l.sleep || {}
+      if (s.efficiency_pct != null) return s.efficiency_pct
+      var sm = fb.sleep_minutes, ib = fb.in_bed_minutes
+      return (sm && ib) ? Math.round(sm / ib * 100) : ''
+    }],
+    ['', 'Sleep score (0-100)',    function(l,w,fb) { var s = l.sleep || {}; return s.score != null ? s.score : (fb.sleep_score != null ? fb.sleep_score : '') }],
+    ['', 'Deep sleep (min)',       function(l,w,fb) { var s = l.sleep || {}; return s.deep_minutes  != null ? s.deep_minutes  : (fb.deep_minutes  != null ? fb.deep_minutes  : '') }],
+    ['', 'REM sleep (min)',        function(l,w,fb) { var s = l.sleep || {}; return s.rem_minutes   != null ? s.rem_minutes   : (fb.rem_minutes   != null ? fb.rem_minutes   : '') }],
+    ['', 'Light sleep (min)',      function(l,w,fb) { var s = l.sleep || {}; return s.light_minutes != null ? s.light_minutes : (fb.light_minutes != null ? fb.light_minutes : '') }],
+    ['', 'Awake (min)',            function(l,w,fb) { var s = l.sleep || {}; return s.awake_minutes != null ? s.awake_minutes : (fb.awake_minutes != null ? fb.awake_minutes : '') }],
+    ['', 'Resting HR (bpm)',       function(l,w,fb) { return fb.resting_hr  != null ? fb.resting_hr  : '' }],
+    ['', 'HRV (ms)',               function(l,w,fb) { return fb.hrv         != null ? fb.hrv         : '' }],
+    ['', 'SpO2 (%)',               function(l,w,fb) { return fb.spo2        != null ? fb.spo2        : '' }],
+    ['', 'Respiratory rate',       function(l,w,fb) { return fb.respiratory_rate != null ? fb.respiratory_rate : '' }],
+    ['', 'Skin temp deviation (°C)',function(l,w,fb){ return fb.skin_temp_deviation != null ? fb.skin_temp_deviation : '' }],
+
+    // ACTIVITY
+    ['ACTIVITY', '', null],
+    ['', 'Steps',                  function(l,w,fb) { var ex = l.exercise || {}; return ex.steps != null ? ex.steps : (fb.steps != null ? fb.steps : '') }],
+    ['', 'Active energy (kcal)',   function(l,w,fb) { return fb.active_energy_kcal   != null ? fb.active_energy_kcal   : '' }],
+    ['', 'Total calories (kcal)',  function(l,w,fb) { return fb.total_calories_kcal  != null ? fb.total_calories_kcal  : '' }],
+    ['', 'Weight (kg)',            function(l,w,fb) { return fb.weight_kg != null ? fb.weight_kg : (l.body && l.body._weight_kg != null ? l.body._weight_kg : '') }],
+
+    // MIND
+    ['MIND', '', null],
+    ['', 'Work mood (1-5)',        function(l) { var m = l.mood || {}; return m.work   != null ? m.work   : '' }],
+    ['', 'Life mood (1-5)',        function(l) { var m = l.mood || {}; return m.life   != null ? m.life   : '' }],
+    ['', 'Focus (1-5)',            function(l) { var m = l.mood || {}; return m.focus  != null ? m.focus  : '' }],
+    ['', 'Energy (1-5)',           function(l) { var m = l.mood || {}; return m.energy != null ? m.energy : '' }],
+    ['', 'Attentin (mg)',          function(l) { return mgNum((l.mood || {}).attentin) }],
+    ['', 'Ritalin (mg)',           function(l) { return mgNum((l.mood || {}).ritalin)  }],
+    ['', 'Melatonin',              function(l) { var m = l.mood || {}; return m.melatonin ? 1 : (m.melatonin === false ? 0 : '') }],
+    ['', 'Symptom: Fatigue',       function(l) { return has((l.mood || {}).symptoms, 'Fatigue')    }],
+    ['', 'Symptom: Brain fog',     function(l) { return has((l.mood || {}).symptoms, 'Brain fog')  }],
+    ['', 'Symptom: Anxious',       function(l) { return has((l.mood || {}).symptoms, 'Anxious')    }],
+    ['', 'Symptom: Headache',      function(l) { return has((l.mood || {}).symptoms, 'Headache')   }],
+    ['', 'Symptom: Crying',        function(l) { return has((l.mood || {}).symptoms, 'Crying')     }],
+
+    // ALLERGIES
+    ['ALLERGIES', '', null],
+    ['', 'Hayfever (0-3)',         function(l) { return sev((l.health || {}).hayfever)     }],
+    ['', 'Eczema (0-3)',           function(l) { return sev((l.health || {}).eczema)       }],
+    ['', 'Episcleritis (0-3)',     function(l) { return sev((l.health || {}).episcleritis) }],
+    ['', 'HF: Runny nose',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Runny nose')      }],
+    ['', 'HF: Blocked nose',       function(l) { return has((l.health || {}).hayfever_symptoms, 'Blocked nose')    }],
+    ['', 'HF: Blocked sinuses',    function(l) { return has((l.health || {}).hayfever_symptoms, 'Blocked sinuses') }],
+    ['', 'HF: Puffy eyes',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Puffy eyes')      }],
+    ['', 'HF: Sneezing',           function(l) { return has((l.health || {}).hayfever_symptoms, 'Sneezing')        }],
+    ['', 'Eczema loc: Eyes',           function(l) { return has((l.health || {}).eczema_location, 'Eyes')          }],
+    ['', 'Eczema loc: Under mouth',    function(l) { return has((l.health || {}).eczema_location, 'Under mouth')   }],
+    ['', 'Eczema loc: Neck',           function(l) { return has((l.health || {}).eczema_location, 'Neck')          }],
+    ['', 'Eczema loc: Back of neck',   function(l) { return has((l.health || {}).eczema_location, 'Back of neck')  }],
+    ['', 'Eczema loc: Scalp',          function(l) { return has((l.health || {}).eczema_location, 'Scalp')         }],
+    ['', 'Eczema loc: Forehead',       function(l) { return has((l.health || {}).eczema_location, 'Forehead')      }],
+    ['', 'Eczema loc: Chin',           function(l) { return has((l.health || {}).eczema_location, 'Chin')          }],
+    ['', 'Itchy: Nose',            function(l) { return has((l.health || {}).itchy, 'Nose')         }],
+    ['', 'Itchy: Eyes',            function(l) { return has((l.health || {}).itchy, 'Eyes')         }],
+    ['', 'Itchy: Throat',          function(l) { return has((l.health || {}).itchy, 'Throat')       }],
+    ['', 'Itchy: Throat (night)',  function(l) { return has((l.health || {}).itchy, 'Throat (night)') }],
+    ['', 'Itchy: Sinuses',         function(l) { return has((l.health || {}).itchy, 'Sinuses')      }],
+    ['', 'Itchy: Ears',            function(l) { return has((l.health || {}).itchy, 'Ears')         }],
+    ['', 'Itchy: Head',            function(l) { return has((l.health || {}).itchy, 'Head')         }],
+    ['', 'Itchy: Neck',            function(l) { return has((l.health || {}).itchy, 'Neck')         }],
+    ['', 'Itchy: Body',            function(l) { return has((l.health || {}).itchy, 'Body')         }],
+    ['', 'Itchy: In shower',       function(l) { return has((l.health || {}).itchy, 'In shower')    }],
+    ['', 'Dryness: Eyes',          function(l) { return has((l.health || {}).dryness, 'Eyes')       }],
+    ['', 'Dryness: Skin',          function(l) { return has((l.health || {}).dryness, 'Skin')       }],
+    ['', 'Dryness: Lips',          function(l) { return has((l.health || {}).dryness, 'Lips')       }],
+    ['', 'Antihistamines (0-3)',    function(l) { var v = (l.health || {}).antihistamines; return (v == null || v === 'None') ? '' : parseInt(v) }],
+    ['', 'Steroid cream',          function(l) { var h = l.health || {}; return h.steroid_cream ? 1 : (h.steroid_cream === false ? 0 : '') }],
+
+    // WATER
+    ['WATER', '', null],
+    ['', 'Water (glasses)',        function(l) { return num((l.water || {}).glasses) }],
+
+    // ALCOHOL
+    ['ALCOHOL', '', null],
+    ['', 'Alcohol (0-5)',          function(l) { var v = (l.alcohol || {}).level; return (v == null) ? '' : (v === 'None' ? 0 : num(v)) }],
+    ['', 'Alc: White wine',        function(l) { return has((l.alcohol || {}).type, 'White wine')    }],
+    ['', 'Alc: Red wine',          function(l) { return has((l.alcohol || {}).type, 'Red wine')      }],
+    ['', 'Alc: Sparkling',         function(l) { return has((l.alcohol || {}).type, 'Sparkling')     }],
+    ['', 'Alc: Beer',              function(l) { return has((l.alcohol || {}).type, 'Beer')          }],
+    ['', 'Alc: Gin',               function(l) { return has((l.alcohol || {}).type, 'Gin')           }],
+    ['', 'Alc: Other spirits',     function(l) { return has((l.alcohol || {}).type, 'Other spirits') }],
+
+    // DIET
+    ['DIET', '', null],
+    ['', 'Caffeine (0-4)',         function(l) { return num((l.diet || {}).caffeine)  }],
+    ['', 'Sugar (0-3)',            function(l) { return sev((l.diet || {}).sugar)     }],
+    ['', 'Protein (0-3)',          function(l) { return sev((l.diet || {}).protein)   }],
+    ['', 'Fruit/veg (1-6)',        function(l) { return num((l.diet || {}).fruit_veg) }],
+    ['', 'Carbs (0-3)',            function(l) { return sev((l.diet || {}).carbs)     }],
+    ['', 'Fats (0-3)',             function(l) { return sev((l.diet || {}).fats)      }],
+    ['', 'Snacking (0-3)',         function(l) { return sev((l.diet || {}).snacking)  }],
+    ['', 'Allergen: Dairy',        function(l) { return has((l.diet || {}).allergens, 'Dairy')           }],
+    ['', 'Allergen: Gluten',       function(l) { return has((l.diet || {}).allergens, 'Gluten')          }],
+    ['', 'Allergen: Soy',          function(l) { return has((l.diet || {}).allergens, 'Soy')             }],
+    ['', 'Allergen: Wheat',        function(l) { return has((l.diet || {}).allergens, 'Wheat')           }],
+    ['', 'Allergen: Yeast',        function(l) { return has((l.diet || {}).allergens, 'Yeast')           }],
+    ['', 'Allergen: Raw Tomato',   function(l) { return has((l.diet || {}).allergens, 'Raw Tomato')      }],
+    ['', 'Allergen: Avocado',      function(l) { return has((l.diet || {}).allergens, 'Avocado')         }],
+    ['', 'Allergen: Spinach',      function(l) { return has((l.diet || {}).allergens, 'Spinach')         }],
+    ['', 'Allergen: Strawberry',   function(l) { return has((l.diet || {}).allergens, 'Strawberry')      }],
+    ['', 'Allergen: Banana',       function(l) { return has((l.diet || {}).allergens, 'Banana')          }],
+    ['', 'Allergen: Citrus',       function(l) { return has((l.diet || {}).allergens, 'Citrus')          }],
+    ['', 'Allergen: Fermented',    function(l) { return has((l.diet || {}).allergens, 'Fermented/pickled') }],
+    ['', 'Allergen: Aged cheese',  function(l) { return has((l.diet || {}).allergens, 'Aged cheese')     }],
+    ['', 'Allergen: Leftovers',    function(l) { return has((l.diet || {}).allergens, 'Leftovers')       }],
+    ['', 'Allergen: Processed',    function(l) { return has((l.diet || {}).allergens, 'Processed')       }],
+    ['', 'Supp: Omega 3',          function(l) { return has((l.diet || {}).supplements, 'Omega 3')              }],
+    ['', 'Supp: Collagen',         function(l) { return has((l.diet || {}).supplements, 'Collagen')             }],
+    ['', 'Supp: Turmeric',         function(l) { return has((l.diet || {}).supplements, 'Turmeric')             }],
+    ['', 'Supp: Vitamin B',        function(l) { return has((l.diet || {}).supplements, 'Vitamin B')            }],
+    ['', 'Supp: Vitamin D',        function(l) { return has((l.diet || {}).supplements, 'Vitamin D')            }],
+    ['', 'Supp: Biotin',           function(l) { return has((l.diet || {}).supplements, 'Biotin')               }],
+    ['', 'Supp: Adapt. Mushrooms', function(l) { return has((l.diet || {}).supplements, 'Adaptogenic Mushrooms') }],
+
+    // EXERCISE
+    ['EXERCISE', '', null],
+    ['', 'Exercise energy (1-5)',  function(l) { var ex = l.exercise || {}; return ex.energy != null ? ex.energy : '' }],
+    ['', 'Activity: Yoga',         function(l) { return has((l.exercise || {}).activities, 'Yoga')      }],
+    ['', 'Activity: Pilates',      function(l) { return has((l.exercise || {}).activities, 'Pilates')   }],
+    ['', 'Activity: Dog walk',     function(l) { return has((l.exercise || {}).activities, 'Dog walk')  }],
+    ['', 'Activity: Gym',          function(l) { return has((l.exercise || {}).activities, 'Gym')       }],
+
+    // BODY
+    ['BODY', '', null],
+    ['', 'Knee pain (0-3)',        function(l) { return sev((l.body || {}).knee_pain)        }],
+    ['', 'Wrist/nerve pain (0-3)', function(l) { return sev((l.body || {}).wrist_nerve_pain) }],
+    ['', 'Gut (0-3)',              function(l) { return sev((l.body || {}).gut)               }],
+    ['', 'Gut: Bloating',         function(l) { return has((l.body || {}).gut_symptoms, 'Bloating')         }],
+    ['', 'Gut: Cramps',           function(l) { return has((l.body || {}).gut_symptoms, 'Cramps')           }],
+    ['', 'Gut: Diarrhoea',        function(l) { return has((l.body || {}).gut_symptoms, 'Diarrhoea')        }],
+    ['', 'Gut: Bleeding',         function(l) { return has((l.body || {}).gut_symptoms, 'Bleeding')         }],
+    ['', 'Gut: Mucus',            function(l) { return has((l.body || {}).gut_symptoms, 'Mucus')            }],
+    ['', 'Gut: Smelly flatulence', function(l) { return has((l.body || {}).gut_symptoms, 'Smelly flatulence') }],
+    ['', 'Stool (Bristol avg)',    function(l) { return stoolAvg((l.body || {}).stool) }],
+    ['', 'Illness (0-3)',          function(l) { return illness((l.body || {}).illness)        }],
+    ['', 'Painkillers (tablets)',  function(l) { var v = (l.body || {}).painkillers; return (v == null) ? '' : parseInt(v) }],
+    ['', 'Period',                 function(l) { var b = l.body || {}; return b.period ? 1 : (b.period === false ? 0 : '') }],
+    ['', 'Pill',                   function(l) { var b = l.body || {}; return b.pill === true ? 1 : (b.pill === false ? 0 : '') }],
+
+    // SOCIAL
+    ['SOCIAL', '', null],
+    ['', 'Social: Friends',        function(l) { return has((l.social || {}).activities, 'Friends')          }],
+    ['', 'Social: Family',         function(l) { return has((l.social || {}).activities, 'Family')           }],
+    ['', 'Social: Date',           function(l) { return has((l.social || {}).activities, 'Date')             }],
+    ['', 'Social: Party',          function(l) { return has((l.social || {}).activities, 'Party')            }],
+    ['', 'Social: Work drinks',    function(l) { return has((l.social || {}).activities, 'Work drinks')      }],
+    ['', 'Social: Work from office',function(l){ return has((l.social || {}).activities, 'Work from office') }],
+    ['', 'Social: Dating apps',    function(l) { return has((l.social || {}).activities, 'Used dating apps') }],
+    ['', 'Social: Networking',     function(l) { return has((l.social || {}).activities, 'Networking')       }],
+  ]
+
+  // ── Build sheet ─────────────────────────────────────────────────────────────
+
+  var props   = PropertiesService.getScriptProperties()
+  var sheetId = props.getProperty('SHEET_ID')
+  var ss      = SpreadsheetApp.openById(sheetId)
+
+  var sheet = ss.getSheets()[0]
+  sheet.clearContents()
+  sheet.clearFormats()
+
+  // Header row: blank + dates
+  var headerRow = ['Metric'].concat(dates)
+  sheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow])
+
+  // Style header row
+  var headerRange = sheet.getRange(1, 1, 1, headerRow.length)
+  headerRange.setBackground('#1e293b').setFontColor('#ffffff').setFontWeight('bold').setFontSize(10)
+
+  // Write rows
+  var rowData    = []
+  var sectionRows = [] // 1-indexed row numbers of section headers
+
+  for (var ri = 0; ri < ROWS.length; ri++) {
+    var def     = ROWS[ri]
+    var section = def[0]
+    var label   = def[1]
+    var fn      = def[2]
+
+    if (section !== '') {
+      // Section header row
+      var sRow = [section].concat(new Array(dates.length).fill(''))
+      rowData.push(sRow)
+      sectionRows.push(rowData.length) // 1-based offset from row 2
+    } else {
+      // Data row
+      var vals = [label]
+      for (var di = 0; di < dates.length; di++) {
+        var d   = dates[di]
+        var log = logs[d]    || {}
+        var w   = weather[d] || {}
+        var fb  = fitbit[d]  || {}
+        try {
+          vals.push(fn(log, w, fb))
+        } catch(e) {
+          vals.push('')
+        }
+      }
+      rowData.push(vals)
+    }
+  }
+
+  // Write all data at once (much faster than row-by-row)
+  if (rowData.length > 0) {
+    sheet.getRange(2, 1, rowData.length, headerRow.length).setValues(rowData)
+  }
+
+  // Style section header rows (dark slate, bold)
+  for (var si = 0; si < sectionRows.length; si++) {
+    var sheetRow = sectionRows[si] + 1 // +1 for header row
+    var r = sheet.getRange(sheetRow, 1, 1, headerRow.length)
+    r.setBackground('#334155').setFontColor('#e2e8f0').setFontWeight('bold').setFontSize(9)
+  }
+
+  // Style metric label column (col A)
+  sheet.getRange(2, 1, rowData.length, 1).setFontWeight('bold').setBackground('#f8fafc')
+
+  // Freeze first row and first column
+  sheet.setFrozenRows(1)
+  sheet.setFrozenColumns(1)
+
+  // Auto-resize metric label column
+  sheet.autoResizeColumn(1)
+
+  Logger.log('Sheet sync complete. ' + dates.length + ' dates, ' + rowData.length + ' rows written.')
+}
+
+// ── Trigger setup (optional) ──────────────────────────────────────────────────
 
 function setupHourlyTrigger() {
-  // Remove any existing syncToDoc triggers first
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'syncToDoc') ScriptApp.deleteTrigger(t)
   })
