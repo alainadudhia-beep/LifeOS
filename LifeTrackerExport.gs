@@ -473,28 +473,30 @@ function syncToSheet() {
     ['', 'HF: Runny nose',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Runny nose')      }],
     ['', 'HF: Blocked nose',       function(l) { return has((l.health || {}).hayfever_symptoms, 'Blocked nose')    }],
     ['', 'HF: Blocked sinuses',    function(l) { return has((l.health || {}).hayfever_symptoms, 'Blocked sinuses') }],
-    ['', 'HF: Puffy eyes',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Puffy eyes')      }],
+    ['', 'HF: Puffy eyes',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Puffy eyes')      }, '2026-05-10'],
+    ['', 'HF: Puffy face',         function(l) { return has((l.health || {}).hayfever_symptoms, 'Puffy face')      }, '2026-06-24'],
     ['', 'HF: Sneezing',           function(l) { return has((l.health || {}).hayfever_symptoms, 'Sneezing')        }],
-    ['', 'Eczema loc: Eyes',           function(l) { return has((l.health || {}).eczema_location, 'Eyes')          }],
-    ['', 'Eczema loc: Under mouth',    function(l) { return has((l.health || {}).eczema_location, 'Under mouth')   }],
-    ['', 'Eczema loc: Neck',           function(l) { return has((l.health || {}).eczema_location, 'Neck')          }],
-    ['', 'Eczema loc: Back of neck',   function(l) { return has((l.health || {}).eczema_location, 'Back of neck')  }],
-    ['', 'Eczema loc: Scalp',          function(l) { return has((l.health || {}).eczema_location, 'Scalp')         }],
-    ['', 'Eczema loc: Forehead',       function(l) { return has((l.health || {}).eczema_location, 'Forehead')      }],
-    ['', 'Eczema loc: Chin',           function(l) { return has((l.health || {}).eczema_location, 'Chin')          }],
+    ['', 'Eczema loc: Eyes',           function(l) { return has((l.health || {}).eczema_location, 'Eyes')          }, '2026-05-02'],
+    ['', 'Eczema loc: Under mouth',    function(l) { return has((l.health || {}).eczema_location, 'Under mouth')   }, '2026-05-02'],
+    ['', 'Eczema loc: Neck',           function(l) { return has((l.health || {}).eczema_location, 'Neck')          }, '2026-05-02'],
+    ['', 'Eczema loc: Back of neck',   function(l) { return has((l.health || {}).eczema_location, 'Back of neck')  }, '2026-05-02'],
+    ['', 'Eczema loc: Scalp',          function(l) { return has((l.health || {}).eczema_location, 'Scalp')         }, '2026-05-02'],
+    ['', 'Eczema loc: Forehead',       function(l) { return has((l.health || {}).eczema_location, 'Forehead')      }, '2026-05-02'],
+    ['', 'Eczema loc: Chin',           function(l) { return has((l.health || {}).eczema_location, 'Chin')          }, '2026-05-02'],
     ['', 'Itchy: Nose',            function(l) { return has((l.health || {}).itchy, 'Nose')         }],
     ['', 'Itchy: Eyes',            function(l) { return has((l.health || {}).itchy, 'Eyes')         }],
     ['', 'Itchy: Throat',          function(l) { return has((l.health || {}).itchy, 'Throat')       }],
     ['', 'Itchy: Throat (night)',  function(l) { return has((l.health || {}).itchy, 'Throat (night)') }],
     ['', 'Itchy: Sinuses',         function(l) { return has((l.health || {}).itchy, 'Sinuses')      }],
     ['', 'Itchy: Ears',            function(l) { return has((l.health || {}).itchy, 'Ears')         }],
-    ['', 'Itchy: Head',            function(l) { return has((l.health || {}).itchy, 'Head')         }],
-    ['', 'Itchy: Neck',            function(l) { return has((l.health || {}).itchy, 'Neck')         }],
+    ['', 'Itchy: Head',            function(l) { return has((l.health || {}).itchy, 'Head')         }, '2026-05-29'],
+    ['', 'Itchy: Neck',            function(l) { return has((l.health || {}).itchy, 'Neck')         }, '2026-05-29'],
     ['', 'Itchy: Body',            function(l) { return has((l.health || {}).itchy, 'Body')         }],
     ['', 'Itchy: In shower',       function(l) { return has((l.health || {}).itchy, 'In shower')    }],
     ['', 'Dryness: Eyes',          function(l) { return has((l.health || {}).dryness, 'Eyes')       }],
     ['', 'Dryness: Skin',          function(l) { return has((l.health || {}).dryness, 'Skin')       }],
     ['', 'Dryness: Lips',          function(l) { return has((l.health || {}).dryness, 'Lips')       }],
+    ['', 'Dryness: Throat',        function(l) { return has((l.health || {}).dryness, 'Throat')     }, '2026-06-26'],
     ['', 'Antihistamines (0-3)',    function(l) { var v = (l.health || {}).antihistamines; return (v == null || v === 'None') ? '' : parseInt(v) }],
     ['', 'Steroid cream',          function(l) { var h = l.health || {}; return h.steroid_cream ? 1 : (h.steroid_cream === false ? 0 : '') }],
 
@@ -519,7 +521,7 @@ function syncToSheet() {
     ['', 'Protein (0-3)',          function(l) { return sev((l.diet || {}).protein)   }],
     ['', 'Fruit/veg (1-6)',        function(l) { return num((l.diet || {}).fruit_veg) }],
     ['', 'Carbs (0-3)',            function(l) { return sev((l.diet || {}).carbs)     }],
-    ['', 'Fats (0-3)',             function(l) { return sev((l.diet || {}).fats)      }],
+    ['', 'Fats (0-3)',             function(l) { return sev((l.diet || {}).fats)      }, '2026-06-05'],
     ['', 'Snacking (0-3)',         function(l) { return sev((l.diet || {}).snacking)  }],
     ['', 'Allergen: Dairy',        function(l) { return has((l.diet || {}).allergens, 'Dairy')           }],
     ['', 'Allergen: Gluten',       function(l) { return has((l.diet || {}).allergens, 'Gluten')          }],
@@ -560,8 +562,9 @@ function syncToSheet() {
     ['', 'Gut: Bloating',         function(l) { return has((l.body || {}).gut_symptoms, 'Bloating')         }],
     ['', 'Gut: Cramps',           function(l) { return has((l.body || {}).gut_symptoms, 'Cramps')           }],
     ['', 'Gut: Diarrhoea',        function(l) { return has((l.body || {}).gut_symptoms, 'Diarrhoea')        }],
+    ['', 'Gut: Constipated',      function(l) { return has((l.body || {}).gut_symptoms, 'Constipated')      }, '2026-06-12'],
     ['', 'Gut: Bleeding',         function(l) { return has((l.body || {}).gut_symptoms, 'Bleeding')         }],
-    ['', 'Gut: Mucus',            function(l) { return has((l.body || {}).gut_symptoms, 'Mucus')            }],
+    ['', 'Gut: Mucus',            function(l) { return has((l.body || {}).gut_symptoms, 'Mucus')            }, '2026-06-03'],
     ['', 'Gut: Smelly flatulence', function(l) { return has((l.body || {}).gut_symptoms, 'Smelly flatulence') }],
     ['', 'Stool (Bristol avg)',    function(l) { return stoolAvg((l.body || {}).stool) }],
     ['', 'Illness (0-3)',          function(l) { return illness((l.body || {}).illness)        }],
@@ -616,9 +619,14 @@ function syncToSheet() {
       sectionRows.push(rowData.length) // 1-based offset from row 2
     } else {
       // Data row
+      var validFrom = def[3] || null
       var vals = [label]
       for (var di = 0; di < dates.length; di++) {
         var d   = dates[di]
+        if (validFrom && d < validFrom) {
+          vals.push('')
+          continue
+        }
         var log = logs[d]    || {}
         var w   = weather[d] || {}
         var fb  = fitbit[d]  || {}
