@@ -6,6 +6,13 @@ export const TOTAL_DAYS = Math.ceil(
 
 export const TIMELINE_WIDTH = TOTAL_DAYS * DAY_WIDTH
 
+// Returns a date as YYYY-MM-DD in the device's local timezone.
+// Uses Intl (not toISOString) so the day boundary follows the local clock,
+// not UTC — entries logged at 10pm EDT stay on that local date, not UTC's next day.
+export function localDateStr(d) {
+  return new Intl.DateTimeFormat('en-CA').format(d)
+}
+
 export function dateToPx(date) {
   const d = typeof date === 'string' ? new Date(date) : date
   const days = (d - TIMELINE_START) / (1000 * 60 * 60 * 24)
@@ -14,17 +21,19 @@ export function dateToPx(date) {
 
 export function pxToDate(px) {
   const days = Math.round(px / DAY_WIDTH)
-  const d    = new Date(TIMELINE_START)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return localDateStr(new Date(TIMELINE_START.getTime() + days * 24 * 60 * 60 * 1000))
 }
 
 export function getDays() {
   const days = []
-  const d = new Date(TIMELINE_START)
-  while (d <= TIMELINE_END) {
-    days.push(new Date(d))
-    d.setDate(d.getDate() + 1)
+  const endStr = localDateStr(TIMELINE_END)
+  let isoStr = localDateStr(TIMELINE_START)
+  while (isoStr <= endStr) {
+    const [y, m, d] = isoStr.split('-').map(Number)
+    // Noon UTC: getDate()/getDay()/getMonth() return the correct calendar day
+    // in any timezone from UTC-12 to UTC+14, avoiding local-midnight ambiguity.
+    days.push(new Date(Date.UTC(y, m - 1, d, 12, 0, 0)))
+    isoStr = localDateStr(new Date(Date.UTC(y, m - 1, d + 1, 12, 0, 0)))
   }
   return days
 }

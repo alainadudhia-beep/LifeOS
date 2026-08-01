@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import { INITIAL_TRACKS, INITIAL_COMMITMENTS, STATUSES, STATUS_MIGRATION, DAY_WIDTH } from '../data/initialData'
-import { TIMELINE_WIDTH, getDays, getMonths, dateToPx, DAY_ABBR, MONTH_NAMES, currentStatus } from '../utils/timeline'
+import { TIMELINE_WIDTH, getDays, getMonths, dateToPx, DAY_ABBR, MONTH_NAMES, currentStatus, localDateStr } from '../utils/timeline'
 import CareerTrackRow from './CareerTrackRow'
 import TrackEditModal from './TrackEditModal'
 import CommitmentEditModal from './CommitmentEditModal'
@@ -19,7 +19,7 @@ function migrateTrack(t) {
       status_history: t.status_history.map(seg => ({ ...seg, status: migrateStatus(seg.status) }))
     }
   }
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr(new Date())
   return {
     ...t,
     status_history: [{ id: `sh-${t.id}-1`, status: migrateStatus(t.status || 'in_progress'), start_date: t.start_date || today, end_date: null }],
@@ -28,7 +28,7 @@ function migrateTrack(t) {
 }
 
 function newTrack() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr(new Date())
   return {
     id: `track-${Date.now()}`,
     name: 'New track',
@@ -45,13 +45,13 @@ function newTrack() {
 }
 
 function newCommitment() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr(new Date())
   return { id: `c-${Date.now()}`, name: 'New commitment', start_date: today, end_date: today }
 }
 
 const days     = getDays()
 const months   = getMonths()
-const todayIso = new Date().toISOString().slice(0, 10)
+const todayIso = localDateStr(new Date())
 
 function commitmentGeometry(c) {
   const left  = dateToPx(c.start_date)
@@ -192,7 +192,7 @@ export default function Timeline({ mobile } = {}) {
   }
 
   function handleStatusChange(id, newStatus) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateStr(new Date())
     update(ts => ts.map(t => {
       if (t.id !== id) return t
       const hist = t.status_history || []
@@ -205,7 +205,7 @@ export default function Timeline({ mobile } = {}) {
   }
 
   function handleAddNote(id, text) {
-    const todayPrefix = new Date().toISOString().slice(0, 10)
+    const todayPrefix = localDateStr(new Date())
     update(ts => ts.map(t => {
       if (t.id !== id) return t
       const log = t.notes_log || []

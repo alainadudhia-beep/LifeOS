@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { dbWrite } from '../lib/db'
+import { localDateStr } from '../utils/timeline'
 import Trends from './Trends'
 import './Insights.css'
 
@@ -17,7 +18,7 @@ function isTodayClaude(it) {
   // Claude insights are daily observations — expire them at midnight
   if (it.type !== 'claude') return true
   if (!it.created_at) return true
-  return it.created_at.slice(0, 10) >= new Date().toISOString().slice(0, 10)
+  return it.created_at.slice(0, 10) >= localDateStr(new Date())
 }
 
 function loadInsights() {
@@ -100,8 +101,7 @@ function topicsOverlap(a, b) {
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 }
 
 function daysAgo(n) {
-  const d = new Date(); d.setDate(d.getDate() - n)
-  return d.toISOString().slice(0, 10)
+  return localDateStr(new Date(Date.now() - n * 86400000))
 }
 function readLogs()     { try { return JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {} } catch { return {} } }
 function readFitbitRaw(){ try { return JSON.parse(localStorage.getItem('lifetracker-fitbit-raw')) ?? {} } catch { return {} } }
@@ -296,9 +296,8 @@ const Insights = forwardRef(function Insights(_, ref) {
   }
 
   function syncMilestoneNudges(tracks) {
-    const today = new Date().toISOString().slice(0, 10)
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 5)
-    const cutoffIso = cutoff.toISOString().slice(0, 10)
+    const today = localDateStr(new Date())
+    const cutoffIso = localDateStr(new Date(Date.now() + 5 * 86400000))
 
     let tracksChanged = false
     const updatedTracks = tracks.map(t => {
@@ -417,7 +416,7 @@ const Insights = forwardRef(function Insights(_, ref) {
     function onLogsUpdated() {
       refreshAuto()
       // Auto-dismiss nudges whose data has since been filled in manually
-      const todayIso = new Date().toISOString().slice(0, 10)
+      const todayIso = localDateStr(new Date())
       const log = readLogs()[todayIso] ?? {}
       setItems(prev => prev.filter(it => {
         if (it.completed) return true
@@ -595,7 +594,7 @@ const Insights = forwardRef(function Insights(_, ref) {
       const data = await res.json()
       if (data.insights?.length) {
         setItems(prev => {
-          const today = new Date().toISOString().slice(0, 10)
+          const today = localDateStr(new Date())
           const kept  = prev.filter(it => it.type !== 'claude' || (it.created_at ?? '').slice(0, 10) !== today)
           const fresh = data.insights.map(ins => ({
             id:           `ins-claude-${Date.now()}-${Math.random().toString(36).slice(2)}`,

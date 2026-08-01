@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
+import { localDateStr } from '../utils/timeline'
 import {
   MODULES, MODULE_EMOJI, COMPLETE_CHECK, PopoverField,
   EXERCISE_MODULE, BODY_MODULE, bodyRating,
@@ -15,7 +16,7 @@ const H5 = { 1: '#fee2e2', 2: '#fde8c8', 3: '#fef9c3', 4: '#dcfce7', 5: '#86efac
 const WATER_CYCLE = ['1', '2', '3', '4', '5', '6', '7', '8+', null]
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr(new Date())
 }
 
 function fmtDate(iso) {
@@ -166,7 +167,7 @@ export default function MobileTodayModules() {
     }
     return { kg: null, kgStaleM: false }
   })()
-  const yBodyM     = (() => { const d = new Date(today); d.setDate(d.getDate() - 1); return logs[d.toISOString().slice(0, 10)]?.body ?? {} })()
+  const yBodyM     = logs[localDateStr(new Date(Date.now() - 86400000))]?.body ?? {}
   const pillFwd    = bodyData.pill   != null ? bodyData.pill   : yBodyM.pill   ?? null
   const periodFwdM = bodyData.period != null ? bodyData.period : yBodyM.period ?? null
   const bodyR      = bodyRating(bodyData)

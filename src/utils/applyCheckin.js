@@ -4,7 +4,7 @@ const LIFE_LOGS_KEY = 'lifetracker-life-logs'
 const TRACKS_KEY    = 'lifetracker-tracks-v3'
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA').format(new Date())
 }
 
 function readJson(key) {

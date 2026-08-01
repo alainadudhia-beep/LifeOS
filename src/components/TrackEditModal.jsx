@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { STATUSES } from '../data/initialData'
-import { formatTimestamp } from '../utils/timeline'
+import { formatTimestamp, localDateStr } from '../utils/timeline'
 import './TrackEditModal.css'
 
 export default function TrackEditModal({ track, onSave, onDelete, onArchive, onClose, existingGroups = [] }) {
@@ -27,7 +27,7 @@ export default function TrackEditModal({ track, onSave, onDelete, onArchive, onC
 
   function addSeg() {
     const last = history[history.length - 1]
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateStr(new Date())
     setHistory(h => [
       ...h.map((s, i) => i === h.length - 1 && s.end_date === null ? { ...s, end_date: today } : s),
       { id: `sh-${Date.now()}`, status: 'in_progress', start_date: today, end_date: null }
@@ -36,7 +36,7 @@ export default function TrackEditModal({ track, onSave, onDelete, onArchive, onC
 
   function addNote() {
     if (!newNote.trim()) return
-    const todayPrefix = new Date().toISOString().slice(0, 10)
+    const todayPrefix = localDateStr(new Date())
     const todayIdx = notesLog.findIndex(n => n.timestamp.startsWith(todayPrefix))
     if (todayIdx !== -1) {
       setNotesLog(prev => prev.map((n, i) =>

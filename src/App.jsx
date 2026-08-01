@@ -12,6 +12,7 @@ import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
 import { applyCheckin } from './utils/applyCheckin'
 import { buildCheckinContext } from './utils/buildCheckinContext'
+import { localDateStr } from './utils/timeline'
 import './App.css'
 
 // One-time migration: '1-2' → '1', '3-4' → '3', '5+' → '5' for diet.fruit_veg
@@ -186,7 +187,7 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
       const todayLog = (() => {
         try {
           const logs = JSON.parse(localStorage.getItem('lifetracker-life-logs')) ?? {}
-          return logs[new Date().toISOString().slice(0, 10)] ?? {}
+          return logs[localDateStr(new Date())] ?? {}
         } catch { return {} }
       })()
 

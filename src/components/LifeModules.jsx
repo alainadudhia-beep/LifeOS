@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, forwardRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
-import { getDays, MONTH_NAMES, DAY_ABBR } from '../utils/timeline'
+import { getDays, MONTH_NAMES, DAY_ABBR, localDateStr } from '../utils/timeline'
 import { DAY_WIDTH } from '../data/initialData'
 import './LifeModules.css'
 
@@ -493,8 +493,8 @@ const COMPLETE_CHECK = {
 // ─── derived data ─────────────────────────────────────────────────────────────
 
 const allDays      = getDays()
-const todayIso     = new Date().toISOString().slice(0, 10)
-const yesterdayIso = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10) })()
+const todayIso     = localDateStr(new Date())
+const yesterdayIso = localDateStr(new Date(Date.now() - 86400000))
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -802,7 +802,7 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
   }
 
   function setFieldValue(moduleKey, date, fieldKey, value) {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateStr(new Date())
     setLogs(prev => {
       const updatedModule = { ...((prev[date] ?? {})[moduleKey] ?? {}), [fieldKey]: value }
       const updatedDay = { ...(prev[date] ?? {}), [moduleKey]: updatedModule }

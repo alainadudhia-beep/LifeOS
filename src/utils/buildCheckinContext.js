@@ -1,9 +1,7 @@
 // Builds a compact context string from recent logs + track statuses for Claude
 
 function daysAgo(n) {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d.toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA').format(new Date(Date.now() - n * 86400000))
 }
 
 function readJson(key) {
@@ -11,7 +9,7 @@ function readJson(key) {
 }
 
 export function buildCheckinContext() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Intl.DateTimeFormat('en-CA').format(new Date())
   const logs = readJson('lifetracker-life-logs')
   const tracksRaw = readJson('lifetracker-tracks-v3')
   const tracks = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
