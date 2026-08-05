@@ -495,6 +495,12 @@ const COMPLETE_CHECK = {
 const allDays      = getDays()
 const todayIso     = localDateStr(new Date())
 const yesterdayIso = localDateStr(new Date(Date.now() - 86400000))
+// Noon-UTC version of today: getDate/getDay/getMonth return the correct local calendar day
+// from any timezone (avoids the UTC-midnight → local-yesterday shift).
+const todayDateNoon = (() => {
+  const [y, m, d] = todayIso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
+})()
 
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -943,9 +949,9 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
             ))}
           </div>
           <div className="lm-today-col lm-today-col--header">
-            <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[new Date(todayIso).getMonth()]}</span>
-            <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[new Date(todayIso).getDay()]}</span>
-            <span className="lm-date-cell-num lm-date-cell-num--today">{new Date(todayIso).getDate()}</span>
+            <span className="lm-date-cell-month lm-date-cell-day--today">{MONTH_NAMES[todayDateNoon.getMonth()]}</span>
+            <span className="lm-date-cell-day lm-date-cell-day--today">{DAY_SHORT[todayDateNoon.getDay()]}</span>
+            <span className="lm-date-cell-num lm-date-cell-num--today">{todayDateNoon.getDate()}</span>
           </div>
         </div>
       )}
