@@ -110,6 +110,19 @@ const NUDGE_TEXT = {
 }
 
 export default function App() {
+  // ?forceSync clears the last-write-time locks so Supabase data is pulled fresh.
+  // Useful after a server-side write (voice check-in) that the browser missed.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('forceSync')) {
+      ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights'].forEach(k => {
+        localStorage.removeItem(`${k}:lwt`)
+      })
+      const url = new URL(window.location.href)
+      url.searchParams.delete('forceSync')
+      window.location.replace(url.toString())
+    }
+  }, [])
+
   const isMobile       = useIsMobile()
   const [mobileTab, setMobileTab] = useState('today')
   const importRef      = useRef(null)
