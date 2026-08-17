@@ -110,17 +110,24 @@ const NUDGE_TEXT = {
 }
 
 export default function App() {
-  // ?forceSync clears the last-write-time locks so Supabase data is pulled fresh.
+  // ?forceSync pulls fresh data from Supabase, bypassing the 30-min grace period.
   // Useful after a server-side write (voice check-in) that the browser missed.
+  // We must also clear the pending-writes flag so useSyncedStorage goes straight
+  // to the pull rather than writing stale localStorage → Supabase first.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has('forceSync')) {
-      ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights'].forEach(k => {
-        localStorage.removeItem(`${k}:lwt`)
-      })
-      const url = new URL(window.location.href)
-      url.searchParams.delete('forceSync')
-      window.location.replace(url.toString())
-    }
+    if (!new URLSearchParams(window.location.search).has('forceSync')) return
+    const KEYS = ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights']
+    // Clear pending-writes for these keys so the pull isn't blocked by a stale write
+    try {
+      const pending = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
+      KEYS.forEach(k => delete pending[k])
+      localStorage.setItem('lifetracker-pending-writes', JSON.stringify(pending))
+    } catch {}
+    // Clear the write-time lock so useSyncedStorage will pull on next mount
+    KEYS.forEach(k => localStorage.removeItem(`${k}:lwt`))
+    const url = new URL(window.location.href)
+    url.searchParams.delete('forceSync')
+    window.location.replace(url.toString())
   }, [])
 
   const isMobile       = useIsMobile()
