@@ -7,7 +7,7 @@ import MobileTodayModules from './components/MobileTodayModules'
 import VoiceCheckin from './components/VoiceCheckin'
 import AuthGate from './components/AuthGate'
 import SyncHealthBanner from './components/SyncHealthBanner'
-import { dbWrite } from './lib/db'
+import { dbWrite, preloadAllKeys } from './lib/db'
 import { exportData, importData } from './utils/exportImport'
 import { parseTranscript } from './utils/parseTranscript'
 import { applyCheckin } from './utils/applyCheckin'
@@ -128,6 +128,35 @@ export default function App() {
     const url = new URL(window.location.href)
     url.searchParams.delete('forceSync')
     window.location.replace(url.toString())
+  }, [])
+
+  // ?hardReset bypasses useSyncedStorage entirely: reads all keys directly from
+  // Supabase and writes them into localStorage, then reloads. Use this when the
+  // grace period or pending-write state is preventing a normal pull.
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('hardReset')) return
+    const KEYS = ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights']
+    // Give the Supabase client 800ms to restore the auth session from localStorage
+    // before we try to read (the session is loaded async on mount)
+    setTimeout(async () => {
+      try {
+        await preloadAllKeys()
+        // Set LWT so useSyncedStorage doesn't immediately overwrite what we just loaded
+        const now = String(Date.now())
+        KEYS.forEach(k => localStorage.setItem(`${k}:lwt`, now))
+        // Clear pending writes so no stale write fires on the next mount
+        try {
+          const pending = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
+          KEYS.forEach(k => delete pending[k])
+          localStorage.setItem('lifetracker-pending-writes', JSON.stringify(pending))
+        } catch {}
+      } catch (e) {
+        console.error('[hardReset] failed', e)
+      }
+      const url = new URL(window.location.href)
+      url.searchParams.delete('hardReset')
+      window.location.replace(url.toString())
+    }, 800)
   }, [])
 
   const isMobile       = useIsMobile()
