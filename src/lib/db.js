@@ -28,6 +28,18 @@ export async function dbRead(key) {
   return data.value
 }
 
+// Like dbRead but also returns the server-side updated_at timestamp (ms).
+// Used by useSyncedStorage to guard against writing stale local data to Supabase.
+export async function dbReadMeta(key) {
+  const { data, error } = await supabase
+    .from('user_data')
+    .select('value, updated_at')
+    .eq('key', key)
+    .single()
+  if (error || !data) return null
+  return { value: data.value, updatedAtMs: new Date(data.updated_at).getTime() }
+}
+
 export async function dbWrite(key, value) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return

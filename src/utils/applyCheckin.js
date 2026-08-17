@@ -230,7 +230,14 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
     p[LIFE_LOGS_KEY] = true
     localStorage.setItem('lifetracker-pending-writes', JSON.stringify(p))
   } catch {}
-  dbWrite(LIFE_LOGS_KEY, logs)
+  dbWrite(LIFE_LOGS_KEY, logs).then(() => {
+    // Clear pending after a successful write so the mount retry can't fire with stale data
+    try {
+      const p = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
+      delete p[LIFE_LOGS_KEY]
+      localStorage.setItem('lifetracker-pending-writes', JSON.stringify(p))
+    } catch {}
+  })
   window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
 
   // Apply career track updates + new track creation

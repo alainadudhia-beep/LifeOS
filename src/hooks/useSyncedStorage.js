@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { dbRead, dbWrite } from '../lib/db'
+import { dbRead, dbReadMeta, dbWrite } from '../lib/db'
 import { supabase } from '../lib/supabase'
 
 // Keys whose latest value needs to reach Supabase even if the page was closed mid-write.
@@ -88,15 +88,39 @@ export function useSyncedStorage(key, initialValue) {
 
   // On mount: retry any write that was in-flight when the page last closed,
   // then do the normal Supabase pull.
+  //
+  // Safety rule: only write local → Supabase if our local LWT is strictly newer
+  // than Supabase's updated_at. This prevents stale localStorage from silently
+  // overwriting good server data (e.g. after a forceSync cleared the LWT).
   useEffect(() => {
     const cancelled = { current: false }
-    if (hasPending(key)) {
-      // The localStorage value IS the authoritative latest — write it to Supabase.
-      dbWrite(key, valueRef.current)
-        .then(() => clearPending(key))
-        .catch(err => console.error('[useSyncedStorage] retry error', key, err))
-        .finally(() => { if (!cancelled.current) pullFromSupabase(cancelled) })
+    const localTs = lastWriteRef.current // 0 if LWT was cleared
+
+    if (hasPending(key) && localTs > 0) {
+      // Compare timestamps before writing to Supabase.
+      dbReadMeta(key)
+        .then(meta => {
+          if (cancelled.current) return
+          const serverTs = meta?.updatedAtMs ?? 0
+          if (localTs > serverTs) {
+            // Local data is genuinely newer — safe to retry the write.
+            dbWrite(key, valueRef.current)
+              .then(() => clearPending(key))
+              .catch(err => console.error('[useSyncedStorage] retry error', key, err))
+              .finally(() => { if (!cancelled.current) pullFromSupabase(cancelled) })
+          } else {
+            // Supabase is newer or equal — pull it, don't overwrite.
+            clearPending(key)
+            if (!cancelled.current) pullFromSupabase(cancelled)
+          }
+        })
+        .catch(() => {
+          // Can't read Supabase — safe default is to pull (not write).
+          if (!cancelled.current) pullFromSupabase(cancelled)
+        })
     } else {
+      // No pending write, or LWT was cleared (e.g. by forceSync) — just pull.
+      if (hasPending(key)) clearPending(key)
       pullFromSupabase(cancelled)
     }
     return () => { cancelled.current = true }
