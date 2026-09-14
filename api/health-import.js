@@ -75,13 +75,19 @@ export default async function handler(req, res) {
 
   if (!date) return res.status(400).json({ error: 'date required (YYYY-MM-DD)' })
 
-  // Read current life logs
-  const { data: logsRow } = await supabase
+  // Read current life logs — abort on any real error so a transient read failure
+  // never causes us to write {} back and wipe all historical data.
+  // PGRST116 = 0 rows (first import ever) — safe to treat as empty.
+  const { data: logsRow, error: logsReadError } = await supabase
     .from('user_data')
     .select('value')
     .eq('key', LIFE_LOGS_KEY)
     .eq('user_id', userId)
     .single()
+
+  if (logsReadError && logsReadError.code !== 'PGRST116') {
+    return res.status(500).json({ error: 'Failed to read logs before writing', detail: logsReadError.message })
+  }
 
   const logs = logsRow?.value ?? {}
   const dayLog = { ...(logs[date] ?? {}) }
@@ -135,12 +141,16 @@ export default async function handler(req, res) {
   if (logsError) return res.status(500).json({ error: 'Failed to write logs', detail: logsError.message })
 
   // Store full raw Fitbit values — used for future analytics UI
-  const { data: rawRow } = await supabase
+  const { data: rawRow, error: rawReadError } = await supabase
     .from('user_data')
     .select('value')
     .eq('key', FITBIT_RAW_KEY)
     .eq('user_id', userId)
     .single()
+
+  if (rawReadError && rawReadError.code !== 'PGRST116') {
+    return res.status(500).json({ error: 'Failed to read fitbit-raw before writing', detail: rawReadError.message })
+  }
 
   const raw = rawRow?.value ?? {}
   // Only overwrite existing values with non-null data so re-imports

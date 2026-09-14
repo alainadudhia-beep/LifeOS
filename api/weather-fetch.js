@@ -241,8 +241,11 @@ export default async function handler(req, res) {
       }
     }
 
-    const { data: existing } = await supabase
-      .from('user_data').select('value').eq('key', WEATHER_KEY).single()
+    const { data: existing, error: weatherReadErr } = await supabase
+      .from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', USER_ID).single()
+    if (weatherReadErr && weatherReadErr.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'Failed to read weather before writing', detail: weatherReadErr.message })
+    }
 
     const allWeather = existing?.value ?? {}
     for (const [i, dateStr] of dates.entries()) {

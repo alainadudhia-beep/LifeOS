@@ -165,8 +165,11 @@ export default async function handler(req, res) {
         '2026-05-26': { grass_pollen_label: 'Very High', pollen_source: 'manual' },
         '2026-05-27': { grass_pollen_label: 'High',      pollen_source: 'manual' },
       }
-      const { data: existing } = await supabase
-        .from('user_data').select('value').eq('key', WEATHER_KEY).single()
+      const { data: existing, error: patchReadErr } = await supabase
+        .from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', USER_ID).single()
+      if (patchReadErr && patchReadErr.code !== 'PGRST116') {
+        return res.status(500).json({ error: 'Failed to read weather before patching', detail: patchReadErr.message })
+      }
       const weather = existing?.value ?? {}
       for (const [date, fields] of Object.entries(GRASS_PATCH)) {
         if (weather[date]) Object.assign(weather[date], fields)
@@ -220,8 +223,11 @@ export default async function handler(req, res) {
     }
 
     // Merge with existing — existing entries win (already had a live fetch)
-    const { data: existing } = await supabase
-      .from('user_data').select('value').eq('key', WEATHER_KEY).single()
+    const { data: existing, error: mergeReadErr } = await supabase
+      .from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', USER_ID).single()
+    if (mergeReadErr && mergeReadErr.code !== 'PGRST116') {
+      return res.status(500).json({ error: 'Failed to read weather before merging', detail: mergeReadErr.message })
+    }
     const merged = { ...allNewWeather, ...(existing?.value ?? {}) }
 
     await supabase.from('user_data').upsert(

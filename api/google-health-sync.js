@@ -592,13 +592,20 @@ async function writeToSupabase(writeDate, metrics) {
   } = metrics
 
   // ── Load both tables in parallel ───────────────────────────────────────────
-  const [{ data: logsRow }, { data: rawRow }] = await Promise.all([
+  const [logsResult, rawResult] = await Promise.all([
     supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', USER_ID).single(),
     supabase.from('user_data').select('value').eq('key', FITBIT_RAW_KEY).eq('user_id', USER_ID).single(),
   ])
 
-  const logs = logsRow?.value ?? {}
-  const raw  = rawRow?.value  ?? {}
+  if (logsResult.error && logsResult.error.code !== 'PGRST116') {
+    throw new Error(`Failed to read logs before writing: ${logsResult.error.message}`)
+  }
+  if (rawResult.error && rawResult.error.code !== 'PGRST116') {
+    throw new Error(`Failed to read fitbit-raw before writing: ${rawResult.error.message}`)
+  }
+
+  const logs = logsResult.data?.value ?? {}
+  const raw  = rawResult.data?.value  ?? {}
 
   // ── Build fitbit-raw patch ─────────────────────────────────────────────────
   const patch = { synced_at: new Date().toISOString(), source: 'google-health-api' }

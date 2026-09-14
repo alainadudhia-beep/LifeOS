@@ -74,12 +74,18 @@ export function useSyncedStorage(key, initialValue) {
   // ─────────────────────────────────────────────────────────────────────────
 
   function pullFromSupabase(cancelled = { current: false }) {
-    if (Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
+    // Bypass the grace period if local data is empty — it's never correct to
+    // show nothing when Supabase has data, even if we wrote recently.
+    const localIsEmpty = !valueRef.current
+      || (typeof valueRef.current === 'object' && !Array.isArray(valueRef.current) && Object.keys(valueRef.current).length === 0)
+    if (!localIsEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session || cancelled.current) return
       dbRead(key).then(result => {
         if (result === null || cancelled.current) return
-        if (Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
+        const nowEmpty = !valueRef.current
+          || (typeof valueRef.current === 'object' && !Array.isArray(valueRef.current) && Object.keys(valueRef.current).length === 0)
+        if (!nowEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
         localStorage.setItem(key, JSON.stringify(result))
         setValue_(result)
       })

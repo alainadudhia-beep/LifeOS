@@ -7,7 +7,6 @@ const supabase = createClient(
 )
 
 const LIFE_LOGS_KEY = 'lifetracker-life-logs'
-const TRACKS_KEY    = 'lifetracker-tracks-v3'
 const WEATHER_KEY   = 'lifetracker-weather'
 
 // ── System prompt — single source of truth in src/utils/checkinPrompt.js ──────
@@ -18,7 +17,7 @@ const SYSTEM_PROMPT = CHECKIN_SYSTEM_PROMPT
 // ── Merge logic (mirrors applyCheckin.js — no browser APIs) ──────────────────
 
 const AVERAGE_FIELDS = {
-  mood: new Set(['work', 'life', 'energy', 'focus']),
+  mood: new Set(['life', 'energy', 'focus']),
 }
 
 const ADDITIVE_MAPS = {
@@ -139,7 +138,7 @@ function formatWeatherContext(w) {
   return parts.join(', ')
 }
 
-function buildContext(today, logs, tracksArr, weatherStore = {}) {
+function buildContext(today, logs, weatherStore = {}) {
   const lines = []
 
   // Today's weather
@@ -161,7 +160,7 @@ function buildContext(today, logs, tracksArr, weatherStore = {}) {
     }
     if (todayLog.exercise?.activities?.length) parts.push(`exercise: ${todayLog.exercise.activities.join(', ')}`)
     if (todayLog.mood) {
-      const scores = ['work', 'life', 'energy', 'focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
+      const scores = ['life', 'energy', 'focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (todayLog.sleep?.hours) parts.push(`sleep: ${todayLog.sleep.hours}hrs`)
@@ -178,7 +177,7 @@ function buildContext(today, logs, tracksArr, weatherStore = {}) {
     const parts = []
     if (log.exercise?.activities?.length) parts.push(`exercise: ${log.exercise.activities.join(', ')}`)
     if (log.mood) {
-      const scores = ['work', 'life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
+      const scores = ['life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours) parts.push(`sleep: ${log.sleep.hours}hrs${log.sleep.quality ? ' ' + log.sleep.quality : ''}`)
@@ -188,30 +187,6 @@ function buildContext(today, logs, tracksArr, weatherStore = {}) {
   if (recentDays.length) {
     lines.push('Recent life logs (last 7 days):')
     lines.push(...recentDays)
-  }
-
-  const activeTracks = tracksArr.filter(t => {
-    if (t.archived) return false
-    const status = t.status_history?.length
-      ? t.status_history[t.status_history.length - 1].status
-      : t.status
-    return status && status !== 'closed' && status !== 'secured'
-  })
-  if (activeTracks.length) {
-    lines.push('\nActive career tracks:')
-    for (const t of activeTracks) {
-      const status = t.status_history?.length
-        ? t.status_history[t.status_history.length - 1].status
-        : t.status
-      const lastNote = t.notes_log?.[0]?.text
-      const upcoming = (t.milestones ?? [])
-        .filter(m => m.date >= today)
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 2)
-        .map(m => `${m.label} on ${m.date}`)
-        .join(', ')
-      lines.push(`  "${t.name}" - status: ${status}${lastNote ? ` | last note: "${lastNote.slice(0, 80)}"` : ''}${upcoming ? ` | upcoming: ${upcoming}` : ''}`)
-    }
   }
 
   return lines.length ? '\n\n' + lines.join('\n') : ''
@@ -376,23 +351,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'transcript required' })
   }
 
-  // Read logs, tracks, insights, and weather in parallel
-  const [logsRow, tracksRow, insightsRow, weatherRow] = await Promise.all([
+  // Read logs, insights, and weather in parallel
+  const [logsRow, insightsRow, weatherRow] = await Promise.all([
     supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', userId).single(),
-    supabase.from('user_data').select('value').eq('key', TRACKS_KEY).eq('user_id', userId).single(),
     supabase.from('user_data').select('value').eq('key', 'lifetracker-insights').eq('user_id', userId).single(),
     supabase.from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', userId).single(),
   ])
 
+  // Guard: if the logs read fails (not just empty), abort — writing {} would wipe all data.
+  if (logsRow.error && logsRow.error.code !== 'PGRST116') {
+    return res.status(500).json({ error: 'Failed to read logs before writing', detail: logsRow.error.message })
+  }
+
   const logs          = logsRow.data?.value ?? {}
-  const tracksRaw     = tracksRow.data?.value ?? {}
-  const tracksArr     = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
   const insightsStore = insightsRow.data?.value ?? {}
   const weatherStore  = weatherRow.data?.value ?? {}
 
-  const trackNames     = tracksArr.map(t => t.name).filter(Boolean)
-  const dynamicContext = (trackNames.length ? `\n\nKnown career tracks: ${trackNames.join(', ')}` : '')
-    + buildContext(date, logs, tracksArr, weatherStore)
+  const dynamicContext = buildContext(date, logs, weatherStore)
 
   // Parse transcript with Claude (static system prompt is cached server-side)
   let parsed
@@ -482,81 +457,6 @@ export default async function handler(req, res) {
   const [logsResult] = await Promise.all(writes)
   if (logsResult.error) return res.status(500).json({ error: 'Failed to write logs', detail: logsResult.error.message })
 
-  // Apply career track updates
-  if (parsed.career_updates?.length || parsed.new_tracks?.length) {
-    let changed = false
-
-    for (const nt of (parsed.new_tracks ?? [])) {
-      if (!nt.name) continue
-      const status = nt.status || 'in_progress'
-      const id = `track-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      tracksArr.push({
-        id,
-        name: nt.name,
-        group: nt.group ?? null,
-        priority: null,
-        start_date: today,
-        end_date: '2026-09-01',
-        status_history: [{ id: `sh-${id}-1`, status, start_date: today, end_date: null }],
-        milestones: [],
-        notes_log: nt.note
-          ? [{ id: `n-${Date.now()}`, text: nt.note.replace(/—/g, '-').replace(/–/g, '-'), timestamp: new Date().toISOString() }]
-          : [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      changed = true
-    }
-
-    for (const update of (parsed.career_updates ?? [])) {
-      const match = tracksArr.find(t =>
-        t.name?.toLowerCase().includes(update.track_name?.toLowerCase())
-      )
-      if (!match) continue
-      if (update.status) {
-        const hist = match.status_history || []
-        const openSeg = hist.length ? hist[hist.length - 1] : null
-        const alreadySame = openSeg && !openSeg.end_date && openSeg.status === update.status
-        if (!alreadySame) {
-          const closed = hist.map((seg, i) =>
-            i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
-          )
-          match.status_history = [...closed, { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }]
-          match.updated_at = new Date().toISOString()
-        }
-      }
-      if (update.note) {
-        const noteText = update.note.replace(/—/g, '-').replace(/–/g, '-')
-        match.notes_log = [
-          { id: Date.now() + Math.random(), text: noteText, timestamp: new Date().toISOString() },
-          ...(match.notes_log ?? []),
-        ]
-      }
-      if (update.milestone?.date && update.milestone?.label) {
-        const ms = match.milestones ?? []
-        const exists = ms.some(m => m.date === update.milestone.date && m.label === update.milestone.label)
-        if (!exists) {
-          match.milestones = [...ms, {
-            id: `m-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            date: update.milestone.date,
-            label: update.milestone.label,
-          }]
-        }
-      }
-      changed = true
-    }
-
-    if (changed) {
-      const updatedTracks = Array.isArray(tracksRaw)
-        ? tracksArr
-        : Object.fromEntries(tracksArr.map(t => [t.id, t]))
-      await supabase.from('user_data').upsert(
-        { key: TRACKS_KEY, user_id: userId, value: updatedTracks, updated_at: new Date().toISOString() },
-        { onConflict: 'key,user_id' }
-      )
-    }
-  }
-
   // Build concise notification text for the Shortcut
   const MODULE_LABELS = {
     mood: 'mood', health: 'inflammation', diet: 'diet',
@@ -571,7 +471,6 @@ export default async function handler(req, res) {
   // Check specific important fields against today's merged log (not just this transcript)
   // One-time-per-day fields only (diet/water are ongoing so excluded)
   const IMPORTANT_FIELDS = [
-    { module: 'mood',   field: 'work',     label: 'work mood' },
     { module: 'mood',   field: 'life',     label: 'life mood' },
     { module: 'mood',   field: 'energy',   label: 'energy' },
     { module: 'health', field: 'eczema',   label: 'eczema' },
