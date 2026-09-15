@@ -53,11 +53,21 @@ export function useSyncedStorage(key, initialValue) {
   const inflightRef = useRef(false)
   const pendingRef  = useRef(null) // { value } of next write to send
 
+  // Gate: true once the initial pull (or grace-period skip) is resolved.
+  // Writes are held until then so a stale local state can never overwrite
+  // a newer Supabase value that a concurrent pull is about to return.
+  const syncReadyRef = useRef(false)
+
   async function scheduleWrite(toStore) {
     markPending(key)                      // persist intent — survives page refresh
     pendingRef.current = { value: toStore }
     if (inflightRef.current) return       // in-flight write will pick up pending
     inflightRef.current = true
+    // Wait for the initial pull to settle before writing (max 5 s then proceed)
+    const deadline = Date.now() + 5000
+    while (!syncReadyRef.current && Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 30))
+    }
     while (pendingRef.current !== null) {
       const { value: toWrite } = pendingRef.current
       pendingRef.current = null
@@ -78,18 +88,22 @@ export function useSyncedStorage(key, initialValue) {
     // show nothing when Supabase has data, even if we wrote recently.
     const localIsEmpty = !valueRef.current
       || (typeof valueRef.current === 'object' && !Array.isArray(valueRef.current) && Object.keys(valueRef.current).length === 0)
-    if (!localIsEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
+    if (!localIsEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) {
+      syncReadyRef.current = true   // grace period active — local is authoritative, writes can proceed
+      return
+    }
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session || cancelled.current) return
+      if (!session || cancelled.current) { syncReadyRef.current = true; return }
       dbRead(key).then(result => {
-        if (result === null || cancelled.current) return
+        if (result === null || cancelled.current) { syncReadyRef.current = true; return }
         const nowEmpty = !valueRef.current
           || (typeof valueRef.current === 'object' && !Array.isArray(valueRef.current) && Object.keys(valueRef.current).length === 0)
-        if (!nowEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) return
+        if (!nowEmpty && Date.now() - lastWriteRef.current < SYNC_GRACE_MS) { syncReadyRef.current = true; return }
         localStorage.setItem(key, JSON.stringify(result))
         setValue_(result)
-      })
-    })
+        syncReadyRef.current = true  // pull complete — safe to write
+      }).catch(() => { syncReadyRef.current = true })
+    }).catch(() => { syncReadyRef.current = true })
   }
 
   // On mount: retry any write that was in-flight when the page last closed,
@@ -100,6 +114,7 @@ export function useSyncedStorage(key, initialValue) {
   // overwriting good server data (e.g. after a forceSync cleared the LWT).
   useEffect(() => {
     const cancelled = { current: false }
+    syncReadyRef.current = false          // hold writes until pull settles
     const localTs = lastWriteRef.current // 0 if LWT was cleared
 
     if (hasPending(key) && localTs > 0) {
