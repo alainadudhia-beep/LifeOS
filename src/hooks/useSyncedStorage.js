@@ -45,7 +45,7 @@ export function useSyncedStorage(key, initialValue) {
   const lastWriteRef = useRef(Number(localStorage.getItem(`${key}:lwt`) ?? 0))
 
   // How long after a local write we trust localStorage over Supabase.
-  const SYNC_GRACE_MS = 30 * 60 * 1000  // 30 minutes
+  const SYNC_GRACE_MS = 5 * 60 * 1000  // 5 minutes
 
   // ── Serial write queue ────────────────────────────────────────────────────
   // Only one write in-flight at a time; the latest pending value always wins.
