@@ -108,9 +108,18 @@ function categoricalRating(severityValues) {
   return null
 }
 
+function itchyDerivedScore(itchy) {
+  const n = Array.isArray(itchy) ? itchy.length : 0
+  if (n === 0) return 'None'
+  if (n === 1) return 'Low'
+  if (n === 2) return 'Med'
+  return 'Bad'
+}
+
 function allergiesRating(d) {
   if (!d) return null
-  const vals = [d.eczema, d.hayfever, d.episcleritis].filter(v => v != null)
+  const itchyScore = d.itchy_score ?? (d.itchy != null ? itchyDerivedScore(d.itchy) : null)
+  const vals = [d.eczema, d.hayfever, d.episcleritis, itchyScore].filter(v => v != null)
   return categoricalRating(vals)
 }
 
@@ -334,8 +343,9 @@ const MODULES = [
       { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Head','Neck','Body','In shower'] },
+      { key: 'itchy_score',      label: 'Itchy Score',        type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips','Throat'] },
-      { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3'],                                                        colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc' } },
+      { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3','4'],                                                   colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc', '4': '#38bdf8' } },
       { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
       { key: 'note',              label: 'Note',               type: 'text' },
     ],
@@ -346,17 +356,16 @@ const MODULES = [
     key: 'mood', label: 'Mind',
     defaults: { attentin: 'None', ritalin: 'None', melatonin: false },
     cellColor: d => {
-      const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
+      const vals = ['life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
       return H5[Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)] ?? null
     },
     cellLabel: d => {
-      const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
+      const vals = ['life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
       return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
     },
     fields: [
-      { key: 'work',      label: 'Mood (work)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'life',      label: 'Mood (life)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'focus',     label: 'Focus',       type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'symptoms',  label: 'Symptoms',    type: 'multiselect', options: ['Fatigue','Brain fog','Anxious','Headache','Crying'] },
@@ -483,7 +492,7 @@ const BODY_MODULE = {
 
 const COMPLETE_CHECK = {
   health:   d => d?.eczema != null && d?.hayfever != null,
-  mood:     d => d?.work != null && d?.life != null && d?.focus != null,
+  mood:     d => d?.life != null && d?.focus != null,
   water:    d => d?.glasses != null,
   alcohol:  d => d?.level != null,
   diet:     d => d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,
@@ -1875,21 +1884,29 @@ function WeekLines({ days, dayW }) {
 
 // ─── Popover ──────────────────────────────────────────────────────────────────
 
-const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none' }
+const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none', maxHeight: 'calc(100dvh - 150px)', overflowY: 'auto' }
 
 function desktopFixedStyle(rect, width = 300) {
   const MARGIN = 10
-  const HEADER_H = 80
+  const HEADER_H = 44
+  const TARGET_H = 520
+  console.log('[popover] rect', rect.top, rect.bottom, 'vh', window.innerHeight)
   const vw = window.innerWidth
   const vh = window.innerHeight
   let left = rect.left + rect.width / 2 - width / 2
   left = Math.max(8, Math.min(left, vw - width - 8))
   const spaceAbove = rect.top - HEADER_H - MARGIN
   const spaceBelow = vh - rect.bottom - MARGIN
-  if (spaceAbove < 150 && spaceBelow > spaceAbove) {
-    return { position: 'fixed', top: rect.bottom + MARGIN, left, transform: 'none', zIndex: 9999, width, maxHeight: Math.max(150, spaceBelow - 8), overflowY: 'auto' }
+  if (spaceBelow >= spaceAbove) {
+    // Open below — shift top up if needed to reach TARGET_H
+    const idealTop = rect.bottom + MARGIN
+    const spaceAtIdeal = vh - idealTop - MARGIN
+    const top = spaceAtIdeal >= TARGET_H ? idealTop : Math.max(HEADER_H + MARGIN, idealTop - (TARGET_H - spaceAtIdeal))
+    const maxHeight = vh - top - MARGIN
+    return { position: 'fixed', top, bottom: 'auto', left, transform: 'none', zIndex: 9999, width, maxHeight, overflowY: 'auto' }
   }
-  return { position: 'fixed', bottom: vh - rect.top + MARGIN, left, transform: 'none', zIndex: 9999, width, maxHeight: Math.max(150, spaceAbove), overflowY: 'auto' }
+  // Open above
+  return { position: 'fixed', bottom: vh - rect.top + MARGIN, top: 'auto', left, transform: 'none', zIndex: 9999, width, maxHeight: spaceAbove, overflowY: 'auto' }
 }
 
 const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose, cellRect }, ref) {

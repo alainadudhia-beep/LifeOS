@@ -29,6 +29,9 @@ const ADDITIVE_MAPS = {
     snacking:  { 'Low': 1, 'Med': 2, 'High': 3 },
     fats:      { 'Low': 1, 'Med': 2, 'High': 3 },
   },
+  health: {
+    itchy_score: { 'None': 0, 'Low': 1, 'Med': 2, 'Bad': 3 },
+  },
   water: {
     glasses: { '<3': 1.5, '4-6': 5, '7+': 8, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
   },
@@ -38,14 +41,15 @@ const ADDITIVE_MAPS = {
 }
 
 const ADDITIVE_REVERSE = {
-  fruit_veg: n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
-  glasses:   n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
-  level:     n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
-  sugar:     n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  carbs:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  snacking:  n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  fats:      n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  fruit_veg:   n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
+  glasses:     n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
+  level:       n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
+  sugar:       n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  protein:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  carbs:       n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  snacking:    n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  fats:        n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  itchy_score: n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'Bad',
 }
 
 const CAFFEINE_TO_N = { '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '4+': 4, '5': 5, '6+': 6 }

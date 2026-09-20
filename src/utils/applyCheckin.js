@@ -1,7 +1,6 @@
 import { dbWrite } from '../lib/db'
 
 const LIFE_LOGS_KEY = 'lifetracker-life-logs'
-const TRACKS_KEY    = 'lifetracker-tracks-v3'
 
 function todayIso() {
   return new Intl.DateTimeFormat('en-CA').format(new Date())
@@ -66,7 +65,7 @@ function applyPhaseData(existingPhases, phaseData) {
 // Mood scores: running average across check-ins
 // Stored as: { work: 3.5, _work_sum: 7, _work_n: 2 }
 const AVERAGE_FIELDS = {
-  mood: new Set(['work', 'life', 'energy', 'focus']),
+  mood: new Set(['life', 'energy', 'focus']),
 }
 
 // Ordered categories that accumulate across check-ins (berries at breakfast + broccoli at lunch)
@@ -81,6 +80,9 @@ const ADDITIVE_MAPS = {
     snacking:  { 'Low': 1, 'Med': 2, 'High': 3 },
     fats:      { 'Low': 1, 'Med': 2, 'High': 3 },
   },
+  health: {
+    itchy_score: { 'None': 0, 'Low': 1, 'Med': 2, 'Bad': 3 },
+  },
   water: {
     glasses: { '<3': 1.5, '4-6': 5, '7+': 7, '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 },
   },
@@ -90,14 +92,15 @@ const ADDITIVE_MAPS = {
 }
 
 const ADDITIVE_REVERSE = {
-  fruit_veg: n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
-  glasses:   n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
-  level:     n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
-  sugar:     n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  protein:   n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  carbs:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  snacking:  n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
-  fats:      n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  fruit_veg:   n => n >= 6 ? '6+' : n >= 5 ? '5' : n >= 4 ? '4' : n >= 3 ? '3' : n >= 2 ? '2' : '1',
+  glasses:     n => n >= 8 ? '8+' : n <= 0 ? '0' : String(Math.round(n)),
+  level:       n => n <= 0 ? 'None' : n >= 5 ? '5+' : String(Math.round(n)),
+  sugar:       n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  protein:     n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  carbs:       n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  snacking:    n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  fats:        n => n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'High',
+  itchy_score: n => n <= 0 ? 'None' : n <= 1.5 ? 'Low' : n <= 2.5 ? 'Med' : 'Bad',
 }
 
 // Caffeine is a count string ("0"–"6+") - add numerically
@@ -174,7 +177,7 @@ function mergeModule(existing, parsed, moduleKey) {
   return out
 }
 
-export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
+export function applyCheckin(parsed, rawTranscript = null) {
   const today = parsed.log_date ?? todayIso()
   const logs = readJson(LIFE_LOGS_KEY)
   const todayLog = logs[today] ?? {}
@@ -239,89 +242,6 @@ export function applyCheckin(parsed, rawTranscript = null, onTracksUpdated) {
     } catch {}
   })
   window.dispatchEvent(new CustomEvent('lifetracker-logs-updated'))
-
-  // Apply career track updates + new track creation
-  if (parsed.career_updates?.length || parsed.new_tracks?.length) {
-    const tracks = readJson(TRACKS_KEY)
-    const tracksArr = Array.isArray(tracks) ? tracks : Object.values(tracks)
-    let changed = false
-
-    // Create new tracks
-    for (const nt of (parsed.new_tracks ?? [])) {
-      if (!nt.name) continue
-      const status = nt.status || 'in_progress'
-      const id = `track-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const newTrack = {
-        id,
-        name: nt.name,
-        group: nt.group ?? null,
-        priority: null,
-        start_date: today,
-        end_date: '2026-09-01',
-        status_history: [{ id: `sh-${id}-1`, status, start_date: today, end_date: null }],
-        milestones: [],
-        notes_log: nt.note
-          ? [{ id: `n-${Date.now()}`, text: nt.note.replace(/—/g, '-').replace(/–/g, '-'), timestamp: new Date().toISOString() }]
-          : [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-      tracksArr.push(newTrack)
-      changed = true
-    }
-
-    for (const update of parsed.career_updates ?? []) {
-      const match = tracksArr.find(t =>
-        t.name?.toLowerCase().includes(update.track_name?.toLowerCase())
-      )
-      if (!match) continue
-      if (update.status) {
-        const hist = match.status_history || []
-        const openSeg = hist.length ? hist[hist.length - 1] : null
-        const alreadySameStatus = openSeg && !openSeg.end_date && openSeg.status === update.status
-        if (!alreadySameStatus) {
-          const closed = hist.map((seg, i) =>
-            i === hist.length - 1 && seg.end_date === null ? { ...seg, end_date: today } : seg
-          )
-          const newSeg = { id: `sh-${match.id}-${Date.now()}`, status: update.status, start_date: today, end_date: null }
-          match.status_history = [...closed, newSeg]
-          match.updated_at = new Date().toISOString()
-        }
-      }
-      if (update.note) {
-        const noteText = update.note.replace(/—/g, '-').replace(/–/g, '-')
-        match.notes_log = [
-          { id: Date.now() + Math.random(), text: noteText, timestamp: new Date().toISOString() },
-          ...(match.notes_log ?? []),
-        ]
-      }
-      if (update.milestone?.date && update.milestone?.label) {
-        const ms = match.milestones ?? []
-        const alreadyExists = ms.some(m => m.date === update.milestone.date && m.label === update.milestone.label)
-        if (!alreadyExists) {
-          match.milestones = [
-            ...ms,
-            { id: `m-${Date.now()}-${Math.random().toString(36).slice(2)}`, date: update.milestone.date, label: update.milestone.label },
-          ]
-        }
-      }
-      changed = true
-    }
-
-    if (changed) {
-      if (Array.isArray(tracks)) {
-        writeJson(TRACKS_KEY, tracksArr)
-        dbWrite(TRACKS_KEY, tracksArr)
-      } else {
-        const updated = {}
-        for (const t of tracksArr) updated[t.id] = t
-        writeJson(TRACKS_KEY, updated)
-        dbWrite(TRACKS_KEY, updated)
-      }
-      window.dispatchEvent(new CustomEvent('lifetracker-tracks-updated'))
-      onTracksUpdated?.()
-    }
-  }
 
   return { today, todayLog }
 }

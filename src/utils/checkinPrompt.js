@@ -9,9 +9,8 @@ IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes 
 
 Use exactly these field values:
 
-mood fields (work, life, focus): integer 1–5
+mood fields (life, focus): integer 1–5
   - "life mood is a 3" / "life's been about a 3" → mood.life: 3
-  - "work mood is a 4" / "work was a solid 4" → mood.work: 4
   - "focus was poor, maybe a 2" / "couldn't concentrate, focus about a 2" → mood.focus: 2
 mood.symptoms: array from ["Fatigue","Brain fog","Anxious","Headache","Crying"] - only include if mentioned
 mood.note: string | null - free-text note about mental or emotional state (e.g. "felt restless all day", "good headspace this morning")
@@ -24,7 +23,8 @@ health.episcleritis: "None" | "Low" | "Med" | "Bad" | null - eye inflammation (n
 health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.hayfever_symptoms: array from ["Runny nose","Blocked nose","Blocked sinuses","Puffy eyes","Puffy face","Sneezing"] - include when allergy symptoms are mentioned
 health.itchy: array from ["Nose","Eyes","Throat","Throat (night)","Sinuses","Ears","Head","Neck","Body","In shower"] - include when itchiness in specific locations is mentioned
-health.antihistamines: "None" | "1" | "2" | "3" | null
+health.itchy_score: "None" | "Low" | "Med" | "Bad" | null - overall itchiness severity; only set if user explicitly rates it (e.g. "itchy was bad today", "really itchy", "barely itchy"); do NOT derive from the itchy array
+health.antihistamines: "None" | "1" | "2" | "3" | "4" | null
 health.dryness: array from ["Eyes","Skin","Lips","Throat"] - only if dry/dehydrated symptoms mentioned
 health.steroid_cream: true | false | null
 health.note: string | null - free-text note about allergy or skin symptoms (e.g. "eyes were streaming at the park", "neck very itchy in the evening")
@@ -73,16 +73,8 @@ phase_data: object | null - populate when the user references specific times of 
   - IMPORTANT: the flat fields (health.hayfever, water.glasses etc.) must still be populated as normal using the latest/dominant phase value
 cycle: true | false | null (true = period day)
 gratitude: string | null
-career_updates: array of { track_name: string, status: string | null, note: string | null, milestone: { date: "YYYY-MM-DD", label: string } | null }
-  - only for tracks that already exist; status values: "in_progress" | "waiting" | "action_required" | "on_hold" | "secured" | "closed"
-  - milestone: set when user mentions a specific upcoming event (interview, deadline, decision) with a date; label should be concise (e.g. "Interview", "Application deadline", "Decision")
-  - CRITICAL: use the EXACT track name as listed in the career tracks context — never abbreviate, rephrase, or invent track names
-new_tracks: array of { name: string, group: string | null, status: string, note: string | null }
-  - use when user mentions wanting to track, apply for, or add something new that doesn't exist yet
-  - group: assign to an existing group name if the user mentions one, otherwise null
-  - status values same as career_updates; default to "in_progress" if not specified
-daily_win: string in "Topic - one warm but not sycophantic observation" format (e.g. "Zoe application - got it done and off your plate") | null
-missing_important: array of field keys absent and important - default important set: ["mood"]; add "career_updates" if any work topic is mentioned
+daily_win: string in "Topic - one warm but not sycophantic observation" format (e.g. "Good sleep - got a solid 8 hours") | null
+missing_important: array of field keys absent and important - default important set: ["mood"]
 insights: array of { text: string, positive: boolean, actionable: boolean }
   - ALWAYS format text as "Topic - description" where Topic is the main subject (Sleep, Water, Alcohol, Eczema, Capsa, PM Role at Zoe, etc.) — this enables bolding in the UI
   - Always capitalise Topic: "Alcohol" not "alcohol", "Eczema" not "eczema", "Water" not "water", "Sleep" not "sleep"
@@ -91,8 +83,6 @@ insights: array of { text: string, positive: boolean, actionable: boolean }
   - actionable: true = user needs to do something specific (follow up, contact someone, apply, log data)
   - actionable: false = observation, celebration, or passive note
   - do NOT make negative or guilt-inducing; frame nudges as calm observations
-  - IMPORTANT: for every track in the context with status "action_required", always generate an actionable insight using the last note for context. E.g. if "PM Role at Zoe" is action_required with note "need to finish application", produce: { text: "PM Role at Zoe - still need to finish that application", positive: false, actionable: true }
-  - CRITICAL: always use the EXACT track name from the career tracks context in insight text — never abbreviate, paraphrase, or invent a name
 next_time_nudge: string | null - if any important fields were missing from this check-in OR have been inconsistently logged over the past week, include one short sentence like "Worth mentioning next time: diet allergens, wrist pain." Otherwise null.
 
 Mapping guidance:
@@ -114,7 +104,6 @@ Mapping guidance:
 - "2 matchas" / "a matcha" → diet.caffeine: "1" (matcha = 0.5 caffeine units; 2 matchas = 1)
 - "all my supplements" / "all of them" (re: supplements) → diet.supplements: all 7 options
 - "a good portion of salad and coleslaw" → diet.fruit_veg: "3" (count individual veg portions conservatively)
-- Career track names may be abbreviated - match loosely
 - A berry smoothie counts as 1 fruit portion. Be conservative with fruit_veg estimates.
 - dry/gritty/irritated eyes without hayfever context → health.dryness: ["Eyes"]
 - mentions applying steroid cream / hydrocortisone → health.steroid_cream: true
@@ -127,6 +116,6 @@ Mapping guidance:
 - "ibuprofen" / "paracetamol" / "nurofen" / "took painkillers" → body.painkillers: "2" (assume 2 tablets unless stated); adjust count if specified
 - "poo was a 6" / "stool type 4" / "had a type 3" → body.stool: ["6"] / ["4"] / ["3"]; if multiple stools mentioned, include all values
 - oily fish / salmon / avocado / nuts / olive oil / nut butter → diet.fats: "Med" (healthy fats, moderate); lots of fried food / processed meat / chips → diet.fats: "High" (unhealthy fats); very low fat day / lean meals only → diet.fats: "Low"
-- "life mood is a 3" / "life's been about a 3" → mood.life: 3; "work mood is a 4" → mood.work: 4; "focus was maybe a 2" → mood.focus: 2
+- "life mood is a 3" / "life's been about a 3" → mood.life: 3; "focus was maybe a 2" → mood.focus: 2
 - allergy or skin symptom notes (itchy, eczema flare, streaming eyes, sinus) → health.note, NOT body.note
 - physical symptom notes (pain, tiredness, illness) → body.note, NOT health.note`
