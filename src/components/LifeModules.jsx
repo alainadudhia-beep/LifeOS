@@ -333,7 +333,7 @@ const MODULES = [
   // ── Allergies ─────────────────────────────────────────────────────────────────
   {
     key: 'health', label: 'Allergies',
-    defaults: {},
+    defaults: { antihistamines: 'None' },
     cellColor: d => { const r = allergiesRating(d); return r != null ? r.bg : (hasAny(d) ? '#f1f5f9' : null) },
     cellLabel: d => { const r = allergiesRating(d); return r?.label ?? null },
     fields: [
