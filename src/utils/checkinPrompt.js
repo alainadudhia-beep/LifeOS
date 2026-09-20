@@ -24,7 +24,7 @@ health.hayfever: "None" | "Low" | "Med" | "Bad" | null
 health.hayfever_symptoms: array from ["Runny nose","Blocked nose","Blocked sinuses","Puffy eyes","Puffy face","Sneezing"] - include when allergy symptoms are mentioned
 health.itchy: array from ["Nose","Eyes","Throat","Throat (night)","Sinuses","Ears","Head","Neck","Body","In shower"] - include when itchiness in specific locations is mentioned
 health.itchy_score: "None" | "Low" | "Med" | "Bad" | null - overall itchiness severity; only set if user explicitly rates it (e.g. "itchy was bad today", "really itchy", "barely itchy"); do NOT derive from the itchy array
-health.antihistamines: "None" | "1" | "2" | "3" | "4" | null
+health.antihistamines: "None" | "1" | "2" | "3" | "4" | null - count of tablets/doses taken; if the specific antihistamine is named (cetirizine, fexofenadine, loratadine), include it in health.note
 health.dryness: array from ["Eyes","Skin","Lips","Throat"] - only if dry/dehydrated symptoms mentioned
 health.steroid_cream: true | false | null
 health.note: string | null - free-text note about allergy or skin symptoms (e.g. "eyes were streaming at the park", "neck very itchy in the evening")
