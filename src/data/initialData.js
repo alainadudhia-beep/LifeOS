@@ -14,7 +14,7 @@ export const STATUS_MIGRATION = {
 }
 
 export const TIMELINE_START = new Date('2026-04-01')
-export const TIMELINE_END   = new Date('2026-12-31')
+export const TIMELINE_END   = new Date(Date.UTC(2026, 11, 31, 12, 0, 0))
 export const DAY_WIDTH = 38
 
 // Each track has status_history: array of { id, status, start_date, end_date }
