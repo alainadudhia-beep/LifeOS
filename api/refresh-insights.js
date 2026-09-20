@@ -7,7 +7,6 @@ const supabase = createClient(
 
 const USER_ID            = process.env.HEALTH_IMPORT_USER_ID
 const LIFE_LOGS_KEY      = 'lifetracker-life-logs'
-const TRACKS_KEY         = 'lifetracker-tracks-v3'
 const WEATHER_KEY        = 'lifetracker-weather'
 const INSIGHTS_KEY       = 'lifetracker-insights'
 const FITBIT_RAW_KEY     = 'lifetracker-fitbit-raw'
@@ -109,7 +108,7 @@ const SLEEP_TO_N  = { '<5': 4.5, '5': 5, '6': 6, '7': 7, '8': 8, '9+': 9 }
 const WATER_TO_N  = { '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8+': 8 }
 
 function computeBaselines(today, logs, days = 14) {
-  const sleep = [], water = [], work = [], life = [], focus = [], energy = []
+  const sleep = [], water = [], life = [], focus = [], energy = []
   for (let i = 1; i <= days; i++) {
     const d = new Date(today)
     d.setDate(d.getDate() - i)
@@ -117,7 +116,6 @@ function computeBaselines(today, logs, days = 14) {
     if (!log) continue
     const sv = SLEEP_TO_N[log.sleep?.hours];  if (sv != null) sleep.push(sv)
     const wv = WATER_TO_N[log.water?.glasses]; if (wv != null) water.push(wv)
-    if (log.mood?.work   != null) work.push(log.mood.work)
     if (log.mood?.life   != null) life.push(log.mood.life)
     if (log.mood?.focus  != null) focus.push(log.mood.focus)
     if (log.mood?.energy != null) energy.push(log.mood.energy)
@@ -126,11 +124,10 @@ function computeBaselines(today, logs, days = 14) {
   return {
     sleep:  avg(sleep),
     water:  avg(water),
-    work:   avg(work),
     life:   avg(life),
     focus:  avg(focus),
     energy: avg(energy),
-    n: Math.max(sleep.length, water.length, work.length),
+    n: Math.max(sleep.length, water.length, life.length),
   }
 }
 
@@ -238,28 +235,9 @@ function buildCommitmentsContext(commitments, today) {
 
 // ── Context builder ───────────────────────────────────────────────────────────
 
-function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, trendsData, trendsFeedback) {
+function buildInsightContext(today, logs, weatherStore, commitments, trendsData, trendsFeedback) {
   const lines = []
   lines.push(`Today's date: ${fmtDate(today)} (${today})`)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowIso = tomorrow.toISOString().slice(0, 10)
-
-  // ── Imminent milestones (next 48h) — surfaced first so Claude treats as top priority
-  const imminent = []
-  for (const t of tracksArr) {
-    const status = t.status_history?.length
-      ? t.status_history[t.status_history.length - 1].status : t.status
-    if (status === 'closed' || status === 'secured' || t.archived) continue
-    for (const m of (t.milestones ?? [])) {
-      if (m.date === today)        imminent.push(`"${t.name}" - ${m.label} [TODAY] (${fmtDate(m.date)})`)
-      else if (m.date === tomorrowIso) imminent.push(`"${t.name}" - ${m.label} [TOMORROW] (${fmtDate(m.date)})`)
-    }
-  }
-  if (imminent.length) {
-    lines.push('URGENT - Upcoming milestones in next 48 hours:')
-    imminent.forEach(l => lines.push('  ' + l))
-  }
 
   // Baselines
   const baselines = computeBaselines(today, logs)
@@ -267,7 +245,6 @@ function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, 
     const parts = []
     if (baselines.sleep)  parts.push(`sleep ${baselines.sleep}hrs`)
     if (baselines.water)  parts.push(`water ${baselines.water} glasses`)
-    if (baselines.work)   parts.push(`work mood ${baselines.work}`)
     if (baselines.life)   parts.push(`life mood ${baselines.life}`)
     if (baselines.focus)  parts.push(`focus ${baselines.focus}`)
     if (baselines.energy) parts.push(`energy ${baselines.energy}`)
@@ -296,7 +273,7 @@ function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, 
     const parts = []
     const m = todayLog.mood
     if (m) {
-      const scores = ['work', 'life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
+      const scores = ['life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
       if (m.symptoms?.length) parts.push(`symptoms: ${m.symptoms.join(', ')}`)
       const attentinVal = m.attentin ?? m.adhd_meds
@@ -342,7 +319,7 @@ function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, 
     const parts = []
     const m = log.mood
     if (m) {
-      const scores = ['work', 'life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
+      const scores = ['life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours)  parts.push(`sleep: ${log.sleep.hours}hrs`)
@@ -382,47 +359,6 @@ function buildInsightContext(today, logs, tracksArr, weatherStore, commitments, 
   const feedbackCtx = buildTrendsFeedbackContext(trendsData, trendsFeedback)
   if (feedbackCtx) {
     lines.push('\n' + feedbackCtx)
-  }
-
-  // Career decision deadline
-  const septWeeks = Math.ceil((new Date('2026-09-01') - new Date(today)) / (7 * 86400000))
-  lines.push(`\nKey career decision deadline: 1st September 2026 (${septWeeks} weeks away)`)
-
-  // Active career tracks
-  const activeTracks = tracksArr.filter(t => {
-    const status = t.status_history?.length
-      ? t.status_history[t.status_history.length - 1].status
-      : t.status
-    return status && status !== 'closed' && status !== 'secured' && !t.archived
-  })
-  if (activeTracks.length) {
-    lines.push('\nActive career tracks:')
-    for (const t of activeTracks) {
-      const status = t.status_history?.length
-        ? t.status_history[t.status_history.length - 1].status
-        : t.status
-      const lastNoteEntry = t.notes_log?.[0]
-      const lastNoteText  = lastNoteEntry?.text
-      const lastNoteDate  = lastNoteEntry?.timestamp?.slice(0, 10)
-      const noteAgeDays   = lastNoteDate ? daysDiff(today, lastNoteDate) : null
-      const noteAge       = noteAgeDays != null
-        ? (noteAgeDays === 0 ? 'today' : noteAgeDays === 1 ? '1 day ago' : `${noteAgeDays} days ago`)
-        : 'unknown'
-      const upcoming = (t.milestones ?? [])
-        .filter(m => m.date > tomorrowIso)  // imminent ones already surfaced above
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 2)
-        .map(m => {
-          const days = daysDiff(m.date, today)
-          return `${m.label} on ${fmtDate(m.date)} (in ${days} days)`
-        })
-        .join(', ')
-      lines.push(
-        `  "${t.name}" - ${status}` +
-        (lastNoteText ? ` | last note (${noteAge}): "${lastNoteText.slice(0, 80)}"` : ' | no notes yet') +
-        (upcoming ? ` | upcoming: ${upcoming}` : '')
-      )
-    }
   }
 
   return lines.join('\n')
@@ -476,9 +412,8 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().slice(0, 10)
 
     // Read all data in parallel
-    const [logsRow, tracksRow, weatherRow, insightsRow, commitmentsRow, trendsRow, feedbackRow] = await Promise.all([
+    const [logsRow, weatherRow, insightsRow, commitmentsRow, trendsRow, feedbackRow] = await Promise.all([
       supabase.from('user_data').select('value').eq('key', LIFE_LOGS_KEY).eq('user_id', USER_ID).single(),
-      supabase.from('user_data').select('value').eq('key', TRACKS_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', WEATHER_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', INSIGHTS_KEY).eq('user_id', USER_ID).single(),
       supabase.from('user_data').select('value').eq('key', COMMITMENTS_KEY).eq('user_id', USER_ID).single(),
@@ -487,14 +422,12 @@ export default async function handler(req, res) {
     ])
 
     const logs           = logsRow.data?.value         ?? {}
-    const tracksRaw      = tracksRow.data?.value        ?? {}
-    const tracksArr      = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
     const weatherStore   = weatherRow.data?.value       ?? {}
     const commitments    = commitmentsRow.data?.value   ?? []
     const trendsData     = trendsRow.data?.value        ?? null
     const trendsFeedback = feedbackRow.data?.value      ?? null
 
-    const context = buildInsightContext(today, logs, tracksArr, weatherStore, commitments, trendsData, trendsFeedback)
+    const context = buildInsightContext(today, logs, weatherStore, commitments, trendsData, trendsFeedback)
     const parsed  = await callClaude(context)
 
     if (!parsed.insights?.length) {

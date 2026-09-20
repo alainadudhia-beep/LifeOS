@@ -104,9 +104,8 @@ function useIsMobile() {
 }
 
 const NUDGE_TEXT = {
-  mood:            'Mood - not logged yet today, worth adding',
-  sleep:           'Sleep - not mentioned yet today',
-  career_updates:  'Career - any work updates worth logging?',
+  mood:  'Mood - not logged yet today, worth adding',
+  sleep: 'Sleep - not mentioned yet today',
 }
 
 export default function App() {
@@ -116,7 +115,7 @@ export default function App() {
   // to the pull rather than writing stale localStorage → Supabase first.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('forceSync')) return
-    const KEYS = ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights']
+    const KEYS = ['lifetracker-life-logs', 'lifetracker-insights']
     // Clear pending-writes for these keys so the pull isn't blocked by a stale write
     try {
       const pending = JSON.parse(localStorage.getItem('lifetracker-pending-writes') ?? '{}')
@@ -135,7 +134,7 @@ export default function App() {
   // grace period or pending-write state is preventing a normal pull.
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('hardReset')) return
-    const KEYS = ['lifetracker-life-logs', 'lifetracker-tracks-v3', 'lifetracker-insights']
+    const KEYS = ['lifetracker-life-logs', 'lifetracker-insights']
     // Give the Supabase client 800ms to restore the auth session from localStorage
     // before we try to read (the session is loaded async on mount)
     setTimeout(async () => {
@@ -164,6 +163,7 @@ export default function App() {
   const importRef      = useRef(null)
   const todayRef       = useRef(null)
   const thisWeekRef    = useRef(null)
+  const timelineRef    = useRef(null)
 
   useEffect(() => { migrateFruitVeg(); migrateHistoricalSteps(); migrateDryEyes() }, [])
 
@@ -221,16 +221,8 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
     setCheckinStatus('parsing')
     setErrorMsg(null)
     try {
-      const trackNames = (() => {
-        try {
-          const raw = JSON.parse(localStorage.getItem('lifetracker-tracks-v3'))
-          const arr = Array.isArray(raw) ? raw : Object.values(raw ?? {})
-          return arr.map(t => t.name).filter(Boolean)
-        } catch { return [] }
-      })()
-
       const recentContext = buildCheckinContext()
-      const parsed = await parseTranscript(text, trackNames, recentContext)
+      const parsed = await parseTranscript(text, [], recentContext)
       applyCheckin(parsed, text)
 
       const todayLog = (() => {
@@ -300,14 +292,12 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
                 <LifeModules mobile />
               </div>
             )}
-            {mobileTab === 'work' && <Timeline mobile />}
           </div>
 
           <nav className="app-mobile-tabs">
             {[
               { key: 'today', label: 'Today', icon: '✦' },
               { key: 'life',  label: 'Life',  icon: '🌿' },
-              { key: 'work',  label: 'Work',  icon: '💼' },
             ].map(t => (
               <button
                 key={t.key}
@@ -377,6 +367,8 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
       <header className="app-header">
         <h1 className="app-title">Life OS</h1>
         <div className="app-header-spacer" />
+        <button className="app-toggle-btn" onClick={() => timelineRef.current?.scrollToToday()}>Today</button>
+        <button className="app-toggle-btn" onClick={() => timelineRef.current?.openNewCommitment()}>+ Commitment</button>
         <button className="app-toggle-btn" onClick={exportData}>Export backup</button>
         <button className="app-toggle-btn" onClick={() => importRef.current.click()}>Import backup</button>
         <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
@@ -394,7 +386,7 @@ const [checkinStatus, setCheckinStatus] = useState('idle')
           <Insights ref={thisWeekRef} />
         </div>
         <div className="app-resizer" onMouseDown={onResizerMouseDown} />
-        <Timeline />
+        <Timeline ref={timelineRef} />
       </main>
     </div>
     </AuthGate>

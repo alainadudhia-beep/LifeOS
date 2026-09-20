@@ -3,29 +3,6 @@ import { useSyncedStorage as useLocalStorage } from '../hooks/useSyncedStorage'
 import { INITIAL_THIS_WEEK } from '../data/initialData'
 import './ThisWeek.css'
 
-const DISMISSED_KEY = 'lifetracker-dismissed-track-actions'
-
-function getDismissed() {
-  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY)) ?? []) } catch { return new Set() }
-}
-function addDismissed(trackId) {
-  const s = getDismissed(); s.add(trackId)
-  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...s]))
-}
-
-function getActionRequiredTracks() {
-  try {
-    const raw = JSON.parse(localStorage.getItem('lifetracker-tracks-v3'))
-    const tracks = Array.isArray(raw) ? raw : Object.values(raw ?? {})
-    return tracks.filter(t => {
-      if (t.archived) return false
-      const hist = t.status_history
-      if (hist?.length) return hist[hist.length - 1].status === 'action_required' && !hist[hist.length - 1].end_date
-      return t.status === 'action_required'
-    })
-  } catch { return [] }
-}
-
 function getWeekStart(date = new Date()) {
   const d = new Date(date)
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7)) // back to Monday
@@ -79,34 +56,6 @@ const ThisWeek = forwardRef(function ThisWeek(props, ref) {
     setStored(reset)
   }, []) // eslint-disable-line
 
-  // Sync action_required tracks into Suggested
-  useEffect(() => {
-    function sync() {
-      const dismissed = getDismissed()
-      const actionTracks = getActionRequiredTracks()
-      setItems(prev => {
-        const existingTrackIds = new Set(prev.map(it => it.track_id).filter(Boolean))
-        const toAdd = actionTracks
-          .filter(t => !existingTrackIds.has(t.id) && !dismissed.has(t.id))
-          .map(t => ({
-            id: `w-track-${t.id}`,
-            text: `${t.name} - action required`,
-            order: 999,
-            source: 'suggested',
-            track_id: t.id,
-            completed: false,
-            completed_at: null,
-            week_of: getWeekStart(),
-            carried_forward: false,
-          }))
-        return toAdd.length ? [...prev, ...toAdd] : prev
-      })
-    }
-    sync()
-    window.addEventListener('lifetracker-tracks-updated', sync)
-    return () => window.removeEventListener('lifetracker-tracks-updated', sync)
-  }, []) // eslint-disable-line
-
   const weekStart  = getWeekStart()
   const manual     = items.filter(it => it.source !== 'suggested')
   const suggested  = items.filter(it => it.source === 'suggested')
@@ -142,11 +91,7 @@ const ThisWeek = forwardRef(function ThisWeek(props, ref) {
   }
 
   function deleteItem(id) {
-    setItems(prev => {
-      const item = prev.find(it => it.id === id)
-      if (item?.track_id) addDismissed(item.track_id)
-      return prev.filter(it => it.id !== id)
-    })
+    setItems(prev => prev.filter(it => it.id !== id))
   }
 
   function handleKeyDown(e, source) {

@@ -343,7 +343,7 @@ const MODULES = [
       { key: 'eczema_location',   label: 'Eczema\nLocation',    type: 'multiselect', options: ['Eyes','Under mouth','Neck','Back of neck','Scalp','Forehead','Chin'] },
       { key: 'episcleritis',      label: 'Episcleritis',       type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'itchy',             label: 'Itchy',              type: 'multiselect', options: ['Nose','Eyes','Throat','Throat (night)','Sinuses','Ears','Head','Neck','Body','In shower'] },
-      { key: 'itchy_score',      label: 'Itchy Score',        type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
+      { key: 'itchy_score',      label: 'Itchiness',          type: 'options',     options: ['None','Low','Med','Bad'],                                                  colors: SEVERITY_COLORS },
       { key: 'dryness',           label: 'Dryness',            type: 'multiselect', options: ['Eyes','Skin','Lips','Throat'] },
       { key: 'antihistamines',    label: 'Antihistamines',     type: 'options',     options: ['None','1','2','3','4'],                                                   colors: { None: '#f1f5f9', '1': '#e0f2fe', '2': '#bae6fd', '3': '#7dd3fc', '4': '#38bdf8' } },
       { key: 'steroid_cream',     label: 'Steroid Cream',      type: 'toggle',      onLabel: 'Yes', offLabel: 'No' },
@@ -695,6 +695,24 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
         if (day.mood?.adhd_meds != null) {
           const { adhd_meds, ...restMood } = day.mood
           next[date] = { ...day, mood: { ...restMood, attentin: adhd_meds } }
+          changed = true
+        } else {
+          next[date] = day
+        }
+      }
+      return changed ? next : prev
+    })
+  }, []) // eslint-disable-line
+
+  // Migration: backfill itchy_score from itchy array for historical entries
+  useEffect(() => {
+    setLogs(prev => {
+      let changed = false
+      const next = {}
+      for (const [date, day] of Object.entries(prev)) {
+        const health = day.health
+        if (health?.itchy != null && health.itchy_score == null) {
+          next[date] = { ...day, health: { ...health, itchy_score: itchyDerivedScore(health.itchy) } }
           changed = true
         } else {
           next[date] = day
@@ -1884,29 +1902,19 @@ function WeekLines({ days, dayW }) {
 
 // ─── Popover ──────────────────────────────────────────────────────────────────
 
-const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 90, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none', maxHeight: 'calc(100dvh - 150px)', overflowY: 'auto' }
+const POPOVER_MOBILE_STYLE = { position: 'fixed', bottom: 80, left: 12, right: 12, top: 'auto', transform: 'none', zIndex: 9999, maxWidth: 'none', maxHeight: 'calc(100dvh - 130px)', overflowY: 'auto' }
 
 function desktopFixedStyle(rect, width = 300) {
   const MARGIN = 10
   const HEADER_H = 44
-  const TARGET_H = 520
-  console.log('[popover] rect', rect.top, rect.bottom, 'vh', window.innerHeight)
   const vw = window.innerWidth
   const vh = window.innerHeight
   let left = rect.left + rect.width / 2 - width / 2
   left = Math.max(8, Math.min(left, vw - width - 8))
-  const spaceAbove = rect.top - HEADER_H - MARGIN
-  const spaceBelow = vh - rect.bottom - MARGIN
-  if (spaceBelow >= spaceAbove) {
-    // Open below — shift top up if needed to reach TARGET_H
-    const idealTop = rect.bottom + MARGIN
-    const spaceAtIdeal = vh - idealTop - MARGIN
-    const top = spaceAtIdeal >= TARGET_H ? idealTop : Math.max(HEADER_H + MARGIN, idealTop - (TARGET_H - spaceAtIdeal))
-    const maxHeight = vh - top - MARGIN
-    return { position: 'fixed', top, bottom: 'auto', left, transform: 'none', zIndex: 9999, width, maxHeight, overflowY: 'auto' }
-  }
-  // Open above
-  return { position: 'fixed', bottom: vh - rect.top + MARGIN, top: 'auto', left, transform: 'none', zIndex: 9999, width, maxHeight: spaceAbove, overflowY: 'auto' }
+  // Always maximise height: start just below the header, fill to bottom of viewport
+  const top = HEADER_H + MARGIN
+  const maxHeight = vh - top - MARGIN
+  return { position: 'fixed', top, bottom: 'auto', left, transform: 'none', zIndex: 9999, width, maxHeight, overflowY: 'auto' }
 }
 
 const Popover = forwardRef(function Popover({ mod, date, dayData, onSet, mobile, onClose, cellRect }, ref) {

@@ -1,7 +1,6 @@
 import { supabase } from './supabase'
 
 const DATA_KEYS = [
-  'lifetracker-tracks-v3',
   'lifetracker-commitments',
   'lifetracker-life-logs',
   'lifetracker-thisweek-v1',

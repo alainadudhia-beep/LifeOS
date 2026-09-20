@@ -2,7 +2,6 @@ import './CheckinNudge.css'
 
 const FIELD_LABELS = {
   mood: 'your mood',
-  'mood.work': 'work mood',
   'mood.life': 'life mood',
   'mood.energy': 'energy',
   'mood.focus': 'focus',
@@ -13,7 +12,6 @@ const FIELD_LABELS = {
   diet: 'your diet',
   exercise: 'exercise',
   water: 'water intake',
-  career_updates: 'any work updates',
 }
 
 function toLabel(field) {

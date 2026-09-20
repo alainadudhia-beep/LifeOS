@@ -11,8 +11,6 @@ function readJson(key) {
 export function buildCheckinContext() {
   const today = new Intl.DateTimeFormat('en-CA').format(new Date())
   const logs = readJson('lifetracker-life-logs')
-  const tracksRaw = readJson('lifetracker-tracks-v3')
-  const tracks = Array.isArray(tracksRaw) ? tracksRaw : Object.values(tracksRaw)
 
   const lines = []
 
@@ -32,7 +30,7 @@ export function buildCheckinContext() {
     }
     if (todayLog.exercise?.activities?.length) parts.push(`exercise: ${todayLog.exercise.activities.join(', ')}`)
     if (todayLog.mood) {
-      const scores = ['work','life','energy','focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
+      const scores = ['life','energy','focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (todayLog.sleep?.hours) parts.push(`sleep: ${todayLog.sleep.hours}hrs`)
@@ -50,7 +48,7 @@ export function buildCheckinContext() {
     const parts = []
     if (log.exercise?.activities?.length) parts.push(`exercise: ${log.exercise.activities.join(', ')}`)
     if (log.mood) {
-      const scores = ['work', 'life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
+      const scores = ['life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours) parts.push(`sleep: ${log.sleep.hours}hrs${log.sleep.quality ? ' ' + log.sleep.quality : ''}`)
@@ -60,31 +58,6 @@ export function buildCheckinContext() {
   if (recentDays.length) {
     lines.push('Recent life logs (last 7 days):')
     lines.push(...recentDays)
-  }
-
-  // ── Career tracks ──
-  const activeTracks = tracks.filter(t => {
-    if (t.archived) return false
-    const status = t.status_history?.length
-      ? t.status_history[t.status_history.length - 1].status
-      : t.status
-    return status && status !== 'closed' && status !== 'secured'
-  })
-  if (activeTracks.length) {
-    lines.push('\nActive career tracks:')
-    for (const t of activeTracks) {
-      const status = t.status_history?.length
-        ? t.status_history[t.status_history.length - 1].status
-        : t.status
-      const lastNote = t.notes_log?.[0]?.text
-      const upcoming = (t.milestones ?? [])
-        .filter(m => m.date >= today)
-        .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 2)
-        .map(m => `${m.label} on ${m.date}`)
-        .join(', ')
-      lines.push(`  "${t.name}" - status: ${status}${lastNote ? ` | last note: "${lastNote.slice(0, 80)}"` : ''}${upcoming ? ` | upcoming: ${upcoming}` : ''}`)
-    }
   }
 
   return lines.length ? '\n\n' + lines.join('\n') : ''
