@@ -711,8 +711,8 @@ export default function LifeModules({ mobile, weatherStore: weatherStoreProp } =
       const next = {}
       for (const [date, day] of Object.entries(prev)) {
         const health = day.health
-        if (health?.itchy != null && health.itchy_score == null) {
-          next[date] = { ...day, health: { ...health, itchy_score: itchyDerivedScore(health.itchy) } }
+        if (health != null && health.itchy_score == null) {
+          next[date] = { ...day, health: { ...health, itchy_score: itchyDerivedScore(health.itchy ?? []) } }
           changed = true
         } else {
           next[date] = day
