@@ -17,7 +17,7 @@ const SYSTEM_PROMPT = CHECKIN_SYSTEM_PROMPT
 // ── Merge logic (mirrors applyCheckin.js — no browser APIs) ──────────────────
 
 const AVERAGE_FIELDS = {
-  mood: new Set(['life', 'energy', 'focus']),
+  mood: new Set(['work', 'life', 'energy', 'focus']),
 }
 
 const ADDITIVE_MAPS = {
@@ -164,7 +164,7 @@ function buildContext(today, logs, weatherStore = {}) {
     }
     if (todayLog.exercise?.activities?.length) parts.push(`exercise: ${todayLog.exercise.activities.join(', ')}`)
     if (todayLog.mood) {
-      const scores = ['life', 'energy', 'focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
+      const scores = ['work', 'life', 'energy', 'focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (todayLog.sleep?.hours) parts.push(`sleep: ${todayLog.sleep.hours}hrs`)
@@ -181,7 +181,7 @@ function buildContext(today, logs, weatherStore = {}) {
     const parts = []
     if (log.exercise?.activities?.length) parts.push(`exercise: ${log.exercise.activities.join(', ')}`)
     if (log.mood) {
-      const scores = ['life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
+      const scores = ['work', 'life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours) parts.push(`sleep: ${log.sleep.hours}hrs${log.sleep.quality ? ' ' + log.sleep.quality : ''}`)

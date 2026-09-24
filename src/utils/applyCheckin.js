@@ -65,7 +65,7 @@ function applyPhaseData(existingPhases, phaseData) {
 // Mood scores: running average across check-ins
 // Stored as: { work: 3.5, _work_sum: 7, _work_n: 2 }
 const AVERAGE_FIELDS = {
-  mood: new Set(['life', 'energy', 'focus']),
+  mood: new Set(['work', 'life', 'energy', 'focus']),
 }
 
 // Ordered categories that accumulate across check-ins (berries at breakfast + broccoli at lunch)

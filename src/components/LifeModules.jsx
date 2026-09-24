@@ -356,16 +356,17 @@ const MODULES = [
     key: 'mood', label: 'Mind',
     defaults: { attentin: 'None', ritalin: 'None', melatonin: false },
     cellColor: d => {
-      const vals = ['life', 'focus'].map(k => d?.[k]).filter(v => v != null)
+      const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
       return H5[Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)] ?? null
     },
     cellLabel: d => {
-      const vals = ['life', 'focus'].map(k => d?.[k]).filter(v => v != null)
+      const vals = ['work', 'life', 'focus'].map(k => d?.[k]).filter(v => v != null)
       if (!vals.length) return null
       return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1)
     },
     fields: [
+      { key: 'work',      label: 'Mood (work)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'life',      label: 'Mood (life)', type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'focus',     label: 'Focus',       type: 'score',       min: 1, max: 5, colors: H5 },
       { key: 'symptoms',  label: 'Symptoms',    type: 'multiselect', options: ['Fatigue','Brain fog','Anxious','Headache','Crying'] },
@@ -492,7 +493,7 @@ const BODY_MODULE = {
 
 const COMPLETE_CHECK = {
   health:   d => d?.eczema != null && d?.hayfever != null,
-  mood:     d => d?.life != null && d?.focus != null,
+  mood:     d => d?.work != null && d?.life != null && d?.focus != null,
   water:    d => d?.glasses != null,
   alcohol:  d => d?.level != null,
   diet:     d => d?.sugar != null && d?.protein != null && d?.fruit_veg != null && d?.carbs != null && d?.snacking != null,

@@ -273,7 +273,7 @@ function buildInsightContext(today, logs, weatherStore, commitments, trendsData,
     const parts = []
     const m = todayLog.mood
     if (m) {
-      const scores = ['life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
+      const scores = ['work', 'life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
       if (m.symptoms?.length) parts.push(`symptoms: ${m.symptoms.join(', ')}`)
       const attentinVal = m.attentin ?? m.adhd_meds
@@ -319,7 +319,7 @@ function buildInsightContext(today, logs, weatherStore, commitments, trendsData,
     const parts = []
     const m = log.mood
     if (m) {
-      const scores = ['life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
+      const scores = ['work', 'life', 'energy', 'focus'].filter(k => m[k] != null).map(k => `${k}=${m[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours)  parts.push(`sleep: ${log.sleep.hours}hrs`)

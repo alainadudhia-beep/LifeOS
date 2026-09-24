@@ -9,7 +9,8 @@ IMPORTANT: Use only regular hyphens (-) in all text fields. Never use em dashes 
 
 Use exactly these field values:
 
-mood fields (life, focus): integer 1–5
+mood fields (work, life, focus): integer 1–5
+  - "work mood is a 3" / "work's been about a 3" → mood.work: 3
   - "life mood is a 3" / "life's been about a 3" → mood.life: 3
   - "focus was poor, maybe a 2" / "couldn't concentrate, focus about a 2" → mood.focus: 2
 mood.symptoms: array from ["Fatigue","Brain fog","Anxious","Headache","Crying"] - only include if mentioned
@@ -116,6 +117,6 @@ Mapping guidance:
 - "ibuprofen" / "paracetamol" / "nurofen" / "took painkillers" → body.painkillers: "2" (assume 2 tablets unless stated); adjust count if specified
 - "poo was a 6" / "stool type 4" / "had a type 3" → body.stool: ["6"] / ["4"] / ["3"]; if multiple stools mentioned, include all values
 - oily fish / salmon / avocado / nuts / olive oil / nut butter → diet.fats: "Med" (healthy fats, moderate); lots of fried food / processed meat / chips → diet.fats: "High" (unhealthy fats); very low fat day / lean meals only → diet.fats: "Low"
-- "life mood is a 3" / "life's been about a 3" → mood.life: 3; "focus was maybe a 2" → mood.focus: 2
+- "work mood is a 3" / "work's been about a 3" → mood.work: 3; "life mood is a 3" / "life's been about a 3" → mood.life: 3; "focus was maybe a 2" → mood.focus: 2
 - allergy or skin symptom notes (itchy, eczema flare, streaming eyes, sinus) → health.note, NOT body.note
 - physical symptom notes (pain, tiredness, illness) → body.note, NOT health.note`

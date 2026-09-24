@@ -30,7 +30,7 @@ export function buildCheckinContext() {
     }
     if (todayLog.exercise?.activities?.length) parts.push(`exercise: ${todayLog.exercise.activities.join(', ')}`)
     if (todayLog.mood) {
-      const scores = ['life','energy','focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
+      const scores = ['work','life','energy','focus'].filter(k => todayLog.mood[k] != null).map(k => `${k}=${todayLog.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (todayLog.sleep?.hours) parts.push(`sleep: ${todayLog.sleep.hours}hrs`)
@@ -48,7 +48,7 @@ export function buildCheckinContext() {
     const parts = []
     if (log.exercise?.activities?.length) parts.push(`exercise: ${log.exercise.activities.join(', ')}`)
     if (log.mood) {
-      const scores = ['life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
+      const scores = ['work', 'life', 'energy', 'focus'].filter(k => log.mood[k] != null).map(k => `${k}=${log.mood[k]}`)
       if (scores.length) parts.push(`mood: ${scores.join(', ')}`)
     }
     if (log.sleep?.hours) parts.push(`sleep: ${log.sleep.hours}hrs${log.sleep.quality ? ' ' + log.sleep.quality : ''}`)
